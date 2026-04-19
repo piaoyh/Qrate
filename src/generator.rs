@@ -13,7 +13,9 @@ use std::path::Path;
 
 use docx_rs::{ Docx, Paragraph, Run, BreakType, PageMargin, AlignmentType,
                 Footer, InstrText, InstrPAGE, InstrNUMPAGES, FieldCharType };
-use genpdf::{ Document, elements, fonts, style, Element, SimplePageDecorator, Alignment };
+
+use genpdfi::error::Error;
+use genpdfi::{ Document, elements, fonts, style, Element, SimplePageDecorator, Alignment };
 
 use crate::{ Choices, QBank, Questions, check_path };
 use crate::{ Students, Student };
@@ -2263,19 +2265,19 @@ impl Generator
             doc.push(elements::Paragraph::new("")); // Blank line
         }
 
-        doc.render_to_file(path).map_err(|e| e.to_string())?;
+        doc.render_to_file(path).map_err(|e: Error| e.to_string())?;
         Ok(())
     }
 
-    // fn write_exam_content_to_pdf(&self, doc: &mut genpdf::Document, student: &Student, qbank: &QBank) -> Result<(), String>
+    // fn write_exam_content_to_pdf(&self, doc: &mut genpdfi::Document, student: &Student, qbank: &QBank) -> Result<(), String>
     /// Writes the formatted exam content for a single student to a PDF document.
     ///
-    /// This private helper function takes a mutable PDF `genpdf::Document` object
+    /// This private helper function takes a mutable PDF `genpdfi::Document` object
     /// and appends the exam content for the given student and their shuffled
     /// question bank, applying PDF-specific formatting such as font sizes.
     ///
     /// # Arguments
-    /// * `doc` - A mutable reference to the `genpdf::Document` object.
+    /// * `doc` - A mutable reference to the `genpdfi::Document` object.
     /// * `student` - A reference to the `Student` for whom the exam content is being written.
     /// * `qbank` - A reference to the `QBank` containing the shuffled questions for this student.
     ///
@@ -2285,7 +2287,7 @@ impl Generator
     /// 
     /// # Caution
     /// - The attributes of underline and strike are not working.
-    fn write_exam_content_to_pdf(&self, doc: &mut genpdf::Document, student: &Student, qbank: &QBank) -> Result<(), String>
+    fn write_exam_content_to_pdf(&self, doc: &mut genpdfi::Document, student: &Student, qbank: &QBank) -> Result<(), String>
     {
         // Define font sizes
         let title_font_size = self.title_font_size as u8;       // 14 pt for default

@@ -3,7 +3,7 @@
 // use std::io::Write;
 use std::collections::HashMap;
 
-use cryptocol::random::Random as PRNG;
+use cryptocol::random::Random_PRNG_Creator;
 
 use crate::{ QBank, Student };
 
@@ -214,7 +214,7 @@ impl ShuffledQuestion
     /// ```
     pub fn shuffle(&mut self)
     {
-        let mut prng = PRNG::new();
+        let mut prng = Random_PRNG_Creator::create();
         let max = self.how_many_choices();
         for _ in 0..3
         {
@@ -304,7 +304,7 @@ impl ShuffledQSet
         if available_groups_keys.len() < selected
             { return None; }
 
-        let mut prng = PRNG::new(); // Slapdash::new() returns a Random_Generic object
+        let mut prng = Random_PRNG_Creator::create(); // Slapdash::new() returns a Random_Generic object
         let mut selected_shuffled_questions = ShuffledQuestions::new();
 
         for _ in 0..selected
@@ -353,7 +353,7 @@ impl ShuffledQSet
     /// ```
     pub fn shuffle(&mut self)
     {
-        let mut prng = PRNG::new();
+        let mut prng = Random_PRNG_Creator::create();
         let max = self.questions.len();
         for _ in 0..3
         {

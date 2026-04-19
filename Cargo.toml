@@ -1,7 +1,7 @@
 [package]
 authors = ["PARK Youngho"]
 name = "qrate"
-version = "0.5.2"
+version = "0.6.0"
 edition = "2024"
 keywords = ["quiz", "bank", "examination", "question", "teacher"]
 categories = ["algorithms", "data-structures", "database"]
@@ -10,19 +10,29 @@ license = "MIT OR Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/piaoyh/qrate"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 cryptocol = "0.19"
-rusqlite = { version = "0.38.0", features = ["bundled"] }
-rust_xlsxwriter = "0.93.0"
-calamine = "0.32.0"
-docx-rs = "0.4.18"
-genpdf = "0.2.0"
-# rtf-grimoire = "0.2.1"
+rusqlite = { version = "0.39", features = ["bundled"] }
+rust_xlsxwriter = "0.94"
+calamine = "0.34"
+docx-rs = "0.4"
+genpdfi = { path = "libs/genpdfi" }
+printpdf = { version = "0.7.0", default-features = false, features = ["chrono_time", "image"] }
+chrono = { version = "0.4", features = ["wasmbind"] }
 
 [profile.dev]
 incremental = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[package.metadata.docs.rs]
+targets = [
+    "x86_64-unknown-linux-gnu",
+    "x86_64-apple-darwin",
+    "x86_64-pc-windows-msvc",
+    "i686-unknown-linux-gnu",
+    "i686-pc-windows-msvc"
+]
 
 
 
