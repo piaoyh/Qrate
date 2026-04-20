@@ -16,9 +16,7 @@ rusqlite = { version = "0.39", features = ["bundled"] }
 rust_xlsxwriter = "0.94"
 calamine = "0.34"
 docx-rs = "0.4"
-genpdfi = { path = "libs/genpdfi" }
-printpdf = { version = "0.7.0", default-features = false, features = ["chrono_time", "image"] }
-chrono = { version = "0.4", features = ["wasmbind"] }
+genpdfi = "0.2.7"
 
 [profile.dev]
 incremental = false
@@ -34,6 +32,9 @@ targets = [
     "i686-pc-windows-msvc"
 ]
 
+[patch.crates-io]
+genpdfi = { path = "vendor/genpdfi" }
+printpdf = { path = "vendor/printpdf" }
 
 
 [[example]]
