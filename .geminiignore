@@ -1,0 +1,15 @@
+target/
+.gemini_tmp/
+.vscode/
+.idea/
+.git/
+.gitignore
+Cargo.lock
+git.txt
+*.pub
+.rustc_info.json
+.geminiignore
+.gemini.md
+.GEMINI.md
+.gemini.MD
+.GEMINI.MD
