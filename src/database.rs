@@ -8,7 +8,8 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 
-use rusqlite::{ Connection, Error };
+use std::ptr::copy_nonoverlapping;
+use rusqlite::{ Connection, ffi, Error };
 
 use crate::check_path;
 
@@ -42,9 +43,8 @@ impl SQLiteDB
     /// ```
     /// use qrate::SQLiteDB;
     ///
-    /// // Using an in-memory database for the example.
     /// // In a real scenario, you would provide a file path.
-    /// let db = SQLiteDB::open(":memory:".to_string(), "db");
+    /// let db = SQLiteDB::open_with_ext("./CProgramming".to_string(), "qbdb");
     /// assert!(db.is_some());
     /// ```
     pub fn open_with_ext(path: String, extention: &str) -> Option<Self>
@@ -54,6 +54,48 @@ impl SQLiteDB
             { Some(Self { path: extended_path, conn: con }) }
         else
             { None }
+    }
+
+    // pub fn open_in_memory(data: &[u8]) -> Option<Self>
+    /// Opens a new connection to an SQLite database in memory.
+    ///
+    /// # Arguments
+    /// * `data` - contains the contents of the SQLite database opened outside and read.
+    ///
+    /// # Output
+    /// An `Option<Self>` which is `Some(SQLiteDB)` on successful connection, or `None` on failure.
+    ///
+    /// # Examples
+    /// ```
+    /// use qrate::SQLiteDB;
+    ///
+    /// let data = std::fs::read("./CProgramming.qbdb").unwrap();
+    /// 
+    /// // Using an in-memory database for the example.
+    /// let db = SQLiteDB::open_in_memory(&data);
+    /// assert!(db.is_some());
+    /// ```
+    pub fn open_in_memory(data: &[u8]) -> Option<Self>
+    {
+        if let Ok(conn) = Connection::open_in_memory()
+        {
+            let db_handle = unsafe { conn.handle() };
+            let size = data.len() as i64;
+            let data_ptr = unsafe { ffi::sqlite3_malloc(size as i32) as *mut u8 };
+            if data_ptr.is_null()
+                { return None; }
+            unsafe { copy_nonoverlapping(data.as_ptr(), data_ptr, data.len()); }
+
+            // 4. sqlite3_deserialize 호출
+            // SQLITE_DESERIALIZE_FREEONCLOSE(1) | SQLITE_DESERIALIZE_RESIZEABLE(2)
+            let flags = 1 | 2;
+            let result = unsafe { ffi::sqlite3_deserialize(db_handle, b"main\0".as_ptr() as *const i8, data_ptr as *mut u8, size, size, flags) };
+            if result == 0 { Some(Self { path: String::new(), conn }) } else { None }
+        }
+        else
+        {
+            None
+        }
     }
 
     // pub fn close(self) -> Result<(), (Connection, Error)>
