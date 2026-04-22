@@ -14,7 +14,9 @@ use std::path::Path;
 use docx_rs::{ Docx, Paragraph, Run, BreakType, PageMargin, AlignmentType,
                 Footer, InstrText, InstrPAGE, InstrNUMPAGES, FieldCharType };
 
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 use genpdfi::error::Error;
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 use genpdfi::{ Document, elements, fonts, style, Element, SimplePageDecorator, Alignment };
 
 use crate::{ Choices, QBank, Questions, check_path };
@@ -1738,6 +1740,7 @@ impl Generator
         {
             Some("txt") => self.save_shuffled_exams_in_txt(file_path),
             Some("docx") => self.save_shuffled_exams_in_docx(file_path),
+            #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
             Some("pdf") => self.save_shuffled_exams_in_pdf(file_path),
             _ => Err("Unsupported file format. Please use .txt, .docx, or .pdf.".to_string()),
         }
@@ -2202,6 +2205,7 @@ impl Generator
     /// assert!(result.is_ok());
     /// std::fs::remove_file("exam.pdf").unwrap();
     /// ```
+    #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
     pub fn save_shuffled_exams_in_pdf(&self, path: &Path) -> Result<(), String>
     {
         let font_family = fonts::from_files("./fonts", "font", None).map_err(|e| format!("Failed to load font: {}", e))?;
@@ -2287,6 +2291,7 @@ impl Generator
     /// 
     /// # Caution
     /// - The attributes of underline and strike are not working.
+    #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
     fn write_exam_content_to_pdf(&self, doc: &mut genpdfi::Document, student: &Student, qbank: &QBank) -> Result<(), String>
     {
         // Define font sizes
