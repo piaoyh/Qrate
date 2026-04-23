@@ -195,6 +195,14 @@ impl QBank
             { None }
     }
 
+    // pub fn get_question_mut(&mut self, question_number: usize) -> Option<&mut Question>
+    /// Gets a mutable reference to a `Question` by its 1-based index.
+    ///
+    /// # Arguments
+    /// * `question_number` - The 1-based index of the question to retrieve.
+    ///
+    /// # Returns
+    /// An optional mutable reference to the `Question` at the specified index.
     pub fn get_question_mut(&mut self, question_number: usize) -> Option<&mut Question>
     {
         if (question_number <= self.questions.len()) && question_number > 0
@@ -256,7 +264,23 @@ impl QBank
         None
     }
 
-    /// ```
+    // pub fn set_choice(&mut self, question_number: usize, choice_number: usize, choice_answer: ChoiceAnswer) -> bool
+    /// Sets or changes `choice_number`-th choice of the question of `question_number`.
+    /// 
+    /// # Arguments
+    /// * `question_number` - Is the (1-based) question number of the question
+    ///   that this choice belongs to, and is of `unsize` type.
+    /// * `choice_number` - Is the (1-based) choice number of the choice
+    ///   that you want to set or change, and is of `unsize` type.
+    /// * `choice_answer` - Is a pair of choice sentence (String) and whether
+    ///   or not it is answer (bool), and is of `ChoiceAnswer` type.
+    ///   If it is an answer, it is `true`. Otherwise, `false`.
+    /// 
+    /// # Returns
+    /// * `true` if it succeeded to set or change.
+    /// * `false` if `question_number` is `0` or greater than the total number
+    ///   of questions.
+    /// 
     pub fn set_choice(&mut self, question_number: usize, choice_number: usize, choice_answer: ChoiceAnswer) -> bool
     {
         if (question_number <= self.questions.len()) && question_number > 0
@@ -273,5 +297,21 @@ impl QBank
     pub fn get_max_choices(&self) -> usize
     {
         self.get_questions().iter().map(|q| q.get_choices().len()).max().unwrap_or(0)
+    }
+
+    #[inline]
+    pub fn get_length(&self) -> usize
+    {
+        self.get_questions().len()
+    }
+
+    #[inline]
+    pub fn get_choices_length(&self, question_number: usize) -> usize
+    {
+        match self.get_question(question_number)
+        {
+            Some(question) => question.get_choices().len(),
+            None => 0
+        }
     }
 }
