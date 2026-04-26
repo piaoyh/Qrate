@@ -1904,6 +1904,60 @@ impl Generator
         Ok(())
     }
 
+    pub fn export_shuffled_exams_in_txt(&self) -> Result<Vec<u8>, String>
+    {
+        let mut content = String::new();
+        let shuffled_qbanks = self.get_shuffled_qbanks();
+
+        for (student, qbank) in &shuffled_qbanks
+        {
+            let exam_content = self.format_exam_for_student(&student, &qbank);
+            content.push_str(&exam_content);
+            // Add a separator for multiple students, if applicable
+            if self.shuffled_qsets.len() > 1
+                { content.push_str("-------X------- CUT -------X------- 자르기 -------X------- резать -------X-------\n\n"); }
+        }
+        // Add a separator for the answer sheet
+        //content.push_str("\n\u{000C}\n"); // Form feed for page break
+
+        let header = self.origin.get_header(); // Need the original header for titles
+        content.push_str(&format!("{}{}\n", self.answer_sheet_title, "\n"));
+        for (student, qbank) in &shuffled_qbanks
+        {
+            // Student Info
+            content.push_str(&format!("{}: {}        {}: {}\n",
+                header.get_name(), student.get_name(), header.get_id(), student.get_id()
+            ));
+
+            // Answers
+            let mut answer_line = String::new();
+            for (i, question) in qbank.get_questions().iter().enumerate() {
+                let correct_choices: Vec<String> = question.get_choices()
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, (_, is_correct))| *is_correct)
+                    .map(|(j, _)| ((b'a' + j as u8) as char).to_string())
+                    .collect();
+                let answer_string = correct_choices.join(", ");
+
+                let entry = format!("{}. {}    ", i + 1, answer_string);
+
+                // Simple line wrapping logic
+                if answer_line.len() + entry.len() > 80 && !answer_line.is_empty() {
+                    content.push_str(&format!("{}\n", answer_line));
+                    answer_line.clear();
+                }
+                answer_line.push_str(&entry);
+            }
+            if !answer_line.is_empty() {
+                content.push_str(&format!("{}\n", answer_line));
+            }
+            content.push_str("\n"); // Blank line after each student
+        }
+        let res: Vec<u8> = content.try_into().map_err(|e| e.to_string())?;
+        Ok(res)
+    }
+
     // pub fn save_shuffled_exams_in_docx(&self, path: &Path) -> Result<(), String>
     /// Saves the shuffled exam sets to a DOCX file.
     ///
@@ -1937,6 +1991,26 @@ impl Generator
     /// std::fs::remove_file("exam.docx").unwrap();
     /// ```
     pub fn save_shuffled_exams_in_docx(&self, path: &Path) -> Result<(), String>
+    {
+        let file = File::create(path).map_err(|e| e.to_string())?;
+        self.build_shuffled_exams_in_docx()
+            .build()
+            .pack(file)
+            .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub fn export_shuffled_exams_in_docx(&self) -> Result<Vec<u8>, String>
+    {
+        let mut buffer = Vec::new();
+        self.build_shuffled_exams_in_docx()
+            .build()
+            .pack(&mut buffer)
+            .map_err(|e| e.to_string())?;
+        Ok(buffer)
+    }
+
+    fn build_shuffled_exams_in_docx(&self) -> Docx
     {
         let pt_to_usize = |pt: f32| -> usize { (pt as usize) << 1 };
         let linespacing_to_twips = |linespacing: f32| -> i32 { (linespacing * 240.0) as i32 };
@@ -2067,11 +2141,9 @@ impl Generator
             docx = docx.add_paragraph(answers_paragraph);
             docx = docx.add_paragraph(Paragraph::new()); // Blank line
         }
-
-        let file = File::create(path).map_err(|e| e.to_string())?;
-        docx.build().pack(file).map_err(|e| e.to_string())?;
-        Ok(())
+        docx
     }
+
 
     // fn write_exam_content_to_docx(&self, docx: &mut Docx, student: &Student, qbank: &QBank) -> Result<(), String>
     /// Writes the formatted exam content for a single student to a DOCX document.
