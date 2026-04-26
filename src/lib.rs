@@ -47,6 +47,9 @@ pub mod shuffler;
 /// The `generator` module provides functionalities for generating various exam formats.
 pub mod generator;
 
+/// The `utils` module contains utility functions used across the library.
+pub mod utils;
+
 pub use database::SQLiteDB;
 pub use excel::Excel;
 pub use header::Header;
@@ -59,33 +62,4 @@ pub use student::{ Student, Students };
 pub use shuffler::{ ShuffledQuestion, ShuffledQuestions, ShuffledQSet, ShuffledQSets};
 pub use generator::Generator;
 
-
-// pub(crate) fn check_path(path: String, extention: &str) -> String
-/// Checks if the given path has the specified extension. If not, it appends the extension.
-///
-/// # Arguments
-/// * `path` - The original file path.
-/// * `extention` - The desired file extension (e.g., "txt", "docx").
-///
-/// # Output
-/// `String` - The path with the correct extension.
-///
-/// # Examples
-/// ```
-/// use qrate::check_path;
-///
-/// let path1 = "document.docx".to_string();
-/// let checked_path1 = check_path(path1, "docx");
-/// assert_eq!(checked_path1, "document.docx");
-///
-/// let path2 = "document".to_string();
-/// let checked_path2 = check_path(path2, "docx");
-/// assert_eq!(checked_path2, "document.docx");
-/// ```
-pub(crate) fn check_path(path: String, extention: &str) -> String
-{
-    if std::path::Path::new(&path).extension().and_then(|s| s.to_str()) == Some(extention)
-        { path }
-    else
-        { format!("{}.{}", path, extention) }
-}
+pub(crate) use utils::check_path;

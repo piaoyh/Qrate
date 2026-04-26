@@ -86,7 +86,6 @@ impl SQLiteDB
                 { return None; }
             unsafe { copy_nonoverlapping(data.as_ptr(), data_ptr, data.len()); }
 
-            // 4. sqlite3_deserialize 호출
             // SQLITE_DESERIALIZE_FREEONCLOSE(1) | SQLITE_DESERIALIZE_RESIZEABLE(2)
             let flags = 1 | 2;
             let result = unsafe { ffi::sqlite3_deserialize(db_handle, b"main\0".as_ptr() as *const i8, data_ptr as *mut u8, size, size, flags) };
@@ -96,6 +95,20 @@ impl SQLiteDB
         {
             None
         }
+    }
+
+    // pub fn open_empty_in_memory() -> Option<Self>
+    /// Opens a new connection to an empty SQLite database in memory.
+    /// 
+    /// # Returns
+    /// An `Option<Self>` which is `Some(SQLiteDB)` on successful connection,
+    /// or `None` on failure.
+    pub fn open_empty_in_memory() -> Option<Self>
+    {
+        if let Ok(conn) = Connection::open_in_memory()
+            { Some(Self { path: String::new(), conn }) }
+        else
+            { None }
     }
 
     // pub fn close(self) -> Result<(), (Connection, Error)>

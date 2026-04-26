@@ -8,6 +8,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 use std::fs::File;
+use std::io::Cursor;
 use std::io::Write;
 use std::path::Path;
 
@@ -1821,7 +1822,7 @@ impl Generator
     /// # Arguments
     /// * `path` - The file path where the text document will be saved.
     ///
-    /// # Output
+    /// # Returns
     /// `Result<(), String>` - Returns `Ok(())` on success, or an `Err` with a
     ///                        `String` describing the error on failure.
     ///
@@ -1904,7 +1905,17 @@ impl Generator
         Ok(())
     }
 
-    pub fn export_shuffled_exams_in_txt(&self) -> Result<Vec<u8>, String>
+    // pub fn export_shuffled_exams_in_txt(&self) -> Vec<u8>
+    /// Exports the shuffled exam sets to a Vec<u8> object.
+    ///
+    /// This function generates a Vec<u8> object containing
+    /// the shuffled exam sets for all students,
+    /// with each student's exam separated by a clear delimiter
+    /// in text format.
+    ///
+    /// # Returns
+    /// `Vec<u8>` that contains the contents of String object.
+    pub fn export_shuffled_exams_in_txt(&self) -> Vec<u8>
     {
         let mut content = String::new();
         let shuffled_qbanks = self.get_shuffled_qbanks();
@@ -1954,15 +1965,15 @@ impl Generator
             }
             content.push_str("\n"); // Blank line after each student
         }
-        let res: Vec<u8> = content.try_into().map_err(|e| e.to_string())?;
-        Ok(res)
+        content.into_bytes()
     }
 
     // pub fn save_shuffled_exams_in_docx(&self, path: &Path) -> Result<(), String>
     /// Saves the shuffled exam sets to a DOCX file.
     ///
-    /// This function generates a DOCX document containing the shuffled exam sets
-    /// for all students, applying specified page margins and a footer with page numbers.
+    /// This function generates a DOCX document containing the shuffled exam
+    /// sets for all students, applying specified page margins and a footer
+    /// with page numbers.
     ///
     /// # Arguments
     /// * `path` - The file path where the DOCX document will be saved.
@@ -1993,24 +2004,37 @@ impl Generator
     pub fn save_shuffled_exams_in_docx(&self, path: &Path) -> Result<(), String>
     {
         let file = File::create(path).map_err(|e| e.to_string())?;
-        self.build_shuffled_exams_in_docx()
+        self.build_shuffled_exams_in_docx()?
             .build()
             .pack(file)
             .map_err(|e| e.to_string())?;
         Ok(())
     }
 
+    // pub fn export_shuffled_exams_in_docx(&self) -> Result<Vec<u8>, String>
+    /// Exports the shuffled exam sets to a Vec<u8> object.
+    ///
+    /// This function generates a DOCX document containing the shuffled exam
+    /// sets for all students, applying specified page margins and a footer
+    /// with page numbers.
+    ///
+    /// # Arguments
+    /// * `path` - The file path where the DOCX document will be saved.
+    ///
+    /// # Output
+    /// `Result<(), String>` - Returns `Ok(())` on success, or an `Err` with a
+    ///                        `String` describing the error on failure.
     pub fn export_shuffled_exams_in_docx(&self) -> Result<Vec<u8>, String>
     {
-        let mut buffer = Vec::new();
-        self.build_shuffled_exams_in_docx()
+        let mut buffer = Cursor::new(Vec::new());
+        self.build_shuffled_exams_in_docx()?
             .build()
             .pack(&mut buffer)
             .map_err(|e| e.to_string())?;
-        Ok(buffer)
+        Ok(buffer.into_inner())
     }
 
-    fn build_shuffled_exams_in_docx(&self) -> Docx
+    fn build_shuffled_exams_in_docx(&self) -> Result<Docx, String>
     {
         let pt_to_usize = |pt: f32| -> usize { (pt as usize) << 1 };
         let linespacing_to_twips = |linespacing: f32| -> i32 { (linespacing * 240.0) as i32 };
@@ -2141,7 +2165,7 @@ impl Generator
             docx = docx.add_paragraph(answers_paragraph);
             docx = docx.add_paragraph(Paragraph::new()); // Blank line
         }
-        docx
+        Ok(docx)
     }
 
 

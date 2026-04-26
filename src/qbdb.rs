@@ -327,7 +327,12 @@ impl QBDB for SQLiteDB
     fn open(path: String) -> Option<Self>
     where Self: Sized
     {
-        SQLiteDB::open_with_ext(path, "qbdb")
+        if path.is_empty()
+            { return SQLiteDB::open_empty_in_memory(); }
+        else
+        {
+            SQLiteDB::open_with_ext(path, "qbdb")
+        }
     }
 
     // fn make_tables(&self, categories: u8, choices: u8) -> Result<(), String>

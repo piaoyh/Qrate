@@ -293,24 +293,98 @@ impl QBank
         false
     }
 
+    // pub fn get_max_choices(&self) -> usize
+    /// Gets the maximum number of choices among all questions in the bank.
+    /// 
+    /// # Returns
+    /// The maximum number of choices among all questions in the bank as `usize`.
+    /// If there are no questions, returns `0`.
+    /// 
+    /// # Examples
+    /// ```
+    /// use qrate::{ QBank, Question };
+    /// let mut qbank = QBank::new_empty();
+    /// qbank.push_question(Question::new(1, 1, 1, "Q1".to_string(), vec![("Choice A".to_string(), false), ("Choice B".to_string(), false)]));
+    /// qbank.push_question(Question::new(2, 1, 1, "Q2".to_string(), vec![("Choice A".to_string(), false)]));
+    /// assert_eq!(qbank.get_max_choices(), 2);
+    /// ```
     #[inline]
     pub fn get_max_choices(&self) -> usize
     {
         self.get_questions().iter().map(|q| q.get_choices().len()).max().unwrap_or(0)
     }
 
+    // pub fn get_length(&self) -> usize
+    /// Gets the total number of questions in the bank.
+    ///
+    /// # Returns
+    /// The total number of questions in the bank as `usize`.
+    /// If there are no questions, returns `0`.
+    ///
+    /// # Examples
+    /// ```
+    /// use qrate::{ QBank, Question };
+    /// let mut qbank = QBank::new_empty();
+    /// qbank.push_question(Question::new_empty());
+    /// qbank.push_question(Question::new_empty());
+    /// assert_eq!(qbank.get_length(), 2);
+    /// ```
     #[inline]
     pub fn get_length(&self) -> usize
     {
         self.get_questions().len()
     }
 
-    #[inline]
+    // pub fn get_choices_length(&self, question_number: usize) -> usize
+    /// Gets the number of choices for a specific question by its 1-based index.
+    /// 
+    /// # Arguments
+    /// * `question_number` - The 1-based index of the question to check.
+    /// 
+    /// # Returns
+    /// The number of choices for the specified question as `usize`.
+    /// If the question number is out of bounds, returns `0`.
+    /// 
+    /// # Examples
+    /// ```
+    /// use qrate::{ QBank, Question };
+    /// let mut qbank = QBank::new_empty();
+    /// qbank.push_question(Question::new(1, 1, 1, "Q1".to_string(), vec![("Choice A".to_string(), false), ("Choice B".to_string(), false)]));
+    /// assert_eq!(qbank.get_choices_length(1), 2);
+    /// assert_eq!(qbank.get_choices_length(2), 0);
+    /// ```
     pub fn get_choices_length(&self, question_number: usize) -> usize
     {
         match self.get_question(question_number)
         {
             Some(question) => question.get_choices().len(),
+            None => 0
+        }
+    }
+
+    // pub fn get_group(&self, question_number: usize) -> u16
+    /// Gets the group number of a specific question by its 1-based index.
+    /// 
+    /// # Arguments
+    /// * `question_number` - The 1-based index of the question to check.
+    /// 
+    /// # Returns
+    /// The group number of the specified question as `u16`.
+    /// If the question number is out of bounds, returns `0`.
+    /// 
+    /// # Examples
+    /// ```
+    /// use qrate::{ QBank, Question };
+    /// let mut qbank = QBank::new_empty();
+    /// qbank.push_question(Question::new(1, 1, 1, "Q1".to_string(), vec![("Choice A".to_string(), false), ("Choice B".to_string(), false)]));
+    /// assert_eq!(qbank.get_group(1), 1);
+    /// assert_eq!(qbank.get_group(2), 0);
+    /// ```
+    pub fn get_group(&self, question_number: usize) -> u16
+    {
+        match self.get_question(question_number)
+        {
+            Some(question) => question.get_group(),
             None => 0
         }
     }
