@@ -388,4 +388,36 @@ impl QBank
             None => 0
         }
     }
+
+    // pub fn set_group(&mut self, question_number: usize, group: u16) -> bool
+    /// Sets the group number of a specific question by its 1-based index.
+    /// 
+    /// # Arguments
+    /// * `question_number` - The 1-based index of the question to modify.
+    /// * `group` - The new group number to set for the specified question.
+    /// 
+    /// # Returns
+    /// * `true` if the group number was successfully set.
+    /// * `false` if the question number is out of bounds.
+    /// 
+    /// # Examples
+    /// ```
+    /// use qrate::{ QBank, Question };
+    /// let mut qbank = QBank::new_empty();
+    /// qbank.push_question(Question::new(1, 1, 1, "Q1".to_string(), vec![("Choice A".to_string(), false), ("Choice B".to_string(), false)]));
+    /// assert!(qbank.set_group(1, 2));
+    /// assert_eq!(qbank.get_group(1), 2);
+    /// assert!(!qbank.set_group(2, 1));
+    /// ```
+    pub fn set_group(&mut self, question_number: usize, group: u16) -> bool
+    {
+        match self.get_question_mut(question_number)
+        {
+            Some(question) => {
+                question.set_group(group);
+                true
+            }
+            None => false
+        }
+    }
 }

@@ -9,7 +9,9 @@
 
 
 use std::ptr::copy_nonoverlapping;
+use std::time::Duration;
 use rusqlite::{ Connection, ffi, Error };
+use rusqlite::backup::Backup;
 
 use crate::check_path;
 
@@ -109,6 +111,65 @@ impl SQLiteDB
             { Some(Self { path: String::new(), conn }) }
         else
             { None }
+    }
+
+    // pub fn save_to_file(&self, file_path: &str) -> Result<(), Error>
+    /// Saves the database to a file.
+    ///
+    /// # Arguments
+    /// * `file_path` - The path to the file where the database will be saved.
+    ///
+    /// # Output
+    /// `Ok(())` if the database is saved successfully, `Err(())` otherwise.
+    ///
+    /// # Examples
+    /// ```
+    /// use qrate::SQLiteDB;
+    ///
+    /// let db = SQLiteDB::open(":memory:".to_string(), ".db").unwrap();
+    /// let result = db.save_to_file("my_db.db");
+    /// assert!(result.is_ok());
+    /// ```
+    pub fn save_to_file(&self, file_path: &str) -> Result<(), Error>
+    {
+        let mut destination_conn = Connection::open(file_path)?;
+        let backup = Backup::new(&self.conn, &mut destination_conn)?;
+        backup.run_to_completion(-1, Duration::from_millis(100), None)?;
+        Ok(())
+    }
+
+    // pub fn save_in_memory(&self) -> Result<Vec<u8>, Error>
+    /// Saves the database to a byte vector in memory.
+    ///
+    /// # Returns
+    /// `Ok(Vec<u8>)` containing the serialized database if successful,
+    /// `Err(())` otherwise.
+    ///
+    /// # Examples
+    /// ```
+    /// use qrate::SQLiteDB;
+    ///
+    /// let db = SQLiteDB::open(":memory:".to_string(), ".db").unwrap();
+    /// let result = db.save_in_memory();
+    /// assert!(result.is_ok());
+    /// let data = result.unwrap();
+    /// assert!(!data.is_empty());
+    /// ```
+    pub fn save_in_memory(&self) -> Result<Vec<u8>, Error>
+    {
+        let db_handle = unsafe { self.conn.handle() };
+        let mut size: i64 = 0;
+        let data_ptr = unsafe { ffi::sqlite3_serialize(db_handle, b"main\0".as_ptr() as *const i8, &mut size as *mut i64, 0) };
+        if data_ptr.is_null()
+        {
+            Err(Error::SqliteFailure(ffi::Error::new(1), None))
+        }
+        else
+        {
+            let data = unsafe { std::slice::from_raw_parts(data_ptr as *const u8, size as usize).to_vec() };
+            unsafe { ffi::sqlite3_free(data_ptr as *mut std::ffi::c_void) };
+            Ok(data)
+        }
     }
 
     // pub fn close(self) -> Result<(), (Connection, Error)>

@@ -64,7 +64,7 @@ impl Student
         Student { name, id }
     }
 
-    // pub fn get_name(&self) -> &String
+    // pub fn get_name(&self) -> String
     /// Gets the student's name.
     ///
     /// # Output
@@ -76,9 +76,9 @@ impl Student
     /// let student = Student::new("Jane Doe".to_string(), "S456".to_string());
     /// assert_eq!(student.get_name(), "Jane Doe");
     /// ```
-    pub fn get_name(&self) -> &String
+    pub fn get_name(&self) -> String
     {
-        &self.name
+        self.name.clone()
     }
 
     // pub fn set_name(&mut self, name: String)
@@ -111,9 +111,9 @@ impl Student
     /// let student = Student::new("Jane Doe".to_string(), "S456".to_string());
     /// assert_eq!(student.get_id(), "S456");
     /// ```
-    pub fn get_id(&self) -> &String
+    pub fn get_id(&self) -> String
     {
-        &self.id
+        self.id.clone()
     }
 
     // pub fn set_id(&mut self, id: String)

@@ -12,7 +12,7 @@ repository = "https://github.com/piaoyh/qrate"
 
 [dependencies]
 cryptocol = "0.19"
-rusqlite = { version = "0.39", features = ["bundled", "serialize"] }
+rusqlite = { version = "0.39", features = ["bundled", "serialize", "backup"] }
 rust_xlsxwriter = "0.94"
 calamine = "0.34"
 docx-rs = "0.4"
