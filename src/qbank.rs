@@ -606,4 +606,53 @@ impl QBank
         else
             { false }
     }
+
+    // pub fn optimize(&mut self)
+    /// Optimizes the question bank by ensuring that question IDs are sequential
+    /// starting from 1, and that group numbers are consistent with the question
+    /// IDs.
+    /// 
+    /// The optimization process iterates through the questions and updates
+    /// their IDs to be sequential. It also checks the group numbers and updates
+    /// them to match the question IDs if necessary. This helps maintain a
+    /// consistent structure in the question bank.
+    /// 
+    /// # Examples
+    /// ```
+    /// use qrate::{ QBank, Question };
+    /// let mut qbank = QBank::new_empty();
+    /// qbank.push_question(Question::new(5, 10, 4, "Q1".to_string(), vec![]));
+    /// qbank.push_question(Question::new(3, 8, 4, "Q2".to_string(), vec![]));
+    /// qbank.push_question(Question::new(8, 10, 4, "Q3".to_string(), vec![]));
+    /// qbank.optimize();
+    /// assert_eq!(qbank.get_question(1).unwrap().get_id(), 1);
+    /// assert_eq!(qbank.get_question(2).unwrap().get_id(), 2);
+    /// assert_eq!(qbank.get_question(3).unwrap().get_id(), 3);
+    /// assert_eq!(qbank.get_group(1), 1);
+    /// assert_eq!(qbank.get_group(2), 2);
+    /// assert_eq!(qbank.get_group(3), 1);
+    /// ```
+    pub fn optimize(&mut self)
+    {
+        let len = self.get_length();
+        for id in 1..=len
+        {
+            let question = self.get_question_mut(id).unwrap();
+            question.set_id(id as u16);
+            let group = question.get_group();
+            if group <= id as u16
+                { continue; }
+
+            question.set_group(id as u16);
+            for jd in (id + 1)..=len
+            {
+                let next = self.get_question_mut(jd).unwrap();
+                let grp = next.get_group();
+                if grp == group
+                    { next.set_group(id as u16); }
+                else if grp == id as u16
+                    { next.set_group(group as u16); }
+            }
+        }
+    }
 }
