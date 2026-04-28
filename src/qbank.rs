@@ -577,4 +577,33 @@ impl QBank
             false
         }
     }
+
+    // pub fn remove_question(&mut self, question_number: usize) -> bool
+    /// Removes a question from the bank by its 1-based index.
+    /// 
+    /// # Arguments
+    /// * `question_number` - The 1-based index of the question to remove.
+    /// 
+    /// # Returns
+    /// * `true` if the question was successfully removed.
+    /// * `false` if the question number is out of bounds.
+    /// 
+    /// # Examples
+    /// ```
+    /// use qrate::{ QBank, Question };
+    /// let mut qbank = QBank::new_empty();
+    /// qbank.push_question(Question::new_empty());
+    /// qbank.push_question(Question::new_empty());
+    /// assert_eq!(qbank.get_length(), 2);
+    /// assert!(qbank.remove_question(1));
+    /// assert_eq!(qbank.get_length(), 1);
+    /// assert!(!qbank.remove_question(2)); // Out of bounds, so returns false
+    /// ```
+    pub fn remove_question(&mut self, question_number: usize) -> bool
+    {
+        if (question_number <= self.get_length()) && (question_number > 0)
+            { self.remove_question(question_number) }
+        else
+            { false }
+    }
 }
