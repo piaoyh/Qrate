@@ -18,9 +18,9 @@ pub struct Question
 {
     id: u16,        // 1-based unique identifier. Should be in order as class progress
     group: u16,     // The questions that belong to the same group will not appear in an exam set.
-    category: u8,   // 1-based category: 1 for single choice, 2 for multiple choice, 3 for short answer.
+    category: u8,   // 1-based category: 1 for single answer of multiple-choice, 2 for mutiple answers of multiple-choice, 3 for short answer, and 4 for essay.
     question: String,   // The text of the question
-    choices: Choices,   // For category 3, choice[0].0 or get_choice(1).0 is the answer.
+    choices: Choices,   // For categories 3 and 4, all choices.1 is set to true.
 }
 
 impl Question
@@ -28,7 +28,7 @@ impl Question
     // pub fn new_empty() -> Self
     /// Creates a new, empty `Question`.
     ///
-    /// # Output
+    /// # Returns
     /// `Self` - A new, empty `Question` instance.
     ///
     /// # Examples
@@ -55,13 +55,17 @@ impl Question
     /// Creates a new `Question` instance with the given properties.
     ///
     /// # Arguments
-    /// * `id` - The unique identifier for the question, 1-based.
-    /// * `group` - The questions that belong to the same group will not appear in an exam set.
-    /// * `category` - The category of the question (e.g., 1 for single choice, 2 for multiple choice), 1-based.
+    /// * `id` - The unique identifier for the question (1-based).
+    /// * `group` - The questions that belong to the same group will not appear in an exam set (1-based).
+    /// * `category` - The category of the question (1-based)
+    ///   -- 1: single answer of multiple-choice
+    ///   -- 2: multiple answers of multiple-choice
+    ///   -- 3: short answer
+    ///   -- 4: essay
     /// * `question` - The text of the question.
     /// * `choices` - A vector of `ChoiceAnswer` tuples for the question.
     ///
-    /// # Output
+    /// # Returns
     /// `Self` - A new `Question` instance.
     ///
     /// # Examples
@@ -80,7 +84,7 @@ impl Question
     // pub fn get_id(&self) -> u16
     /// Gets the ID of the question.
     ///
-    /// # Output
+    /// # Returns
     /// `u16` - The ID of the question, 1-based.
     ///
     /// # Examples
@@ -117,7 +121,7 @@ impl Question
     // pub fn get_group(&self) -> u16
     /// Gets the group of the question.
     ///
-    /// # Output
+    /// # Returns
     /// `u16` - The group of the question.
     ///
     /// # Examples
@@ -154,7 +158,7 @@ impl Question
     // pub fn get_category(&self) -> u8
     /// Gets the category of the question.
     ///
-    /// # Output
+    /// # Returns
     /// `u8` - The category of the question, 1-based.
     ///
     /// # Examples
@@ -191,7 +195,7 @@ impl Question
     // pub fn get_question(&self) -> &String
     /// Gets a reference to the question text.
     ///
-    /// # Output
+    /// # Returns
     /// `&String` - A reference to the question text.
     ///
     /// # Examples
@@ -231,7 +235,7 @@ impl Question
     /// # Arguments
     /// * `choice_number` - The 1-based index of the choice to retrieve.
     ///
-    /// # Output
+    /// # Returns
     /// `Option<&ChoiceAnswer>` - An optional reference to the `ChoiceAnswer` at the specified index.
     ///
     /// # Examples
@@ -249,6 +253,25 @@ impl Question
             { None }
     }
 
+    // pub fn set_choice(&mut self, choice_number: usize, choice_answer: ChoiceAnswer) -> bool
+    /// Sets a choice at a specific 1-based index.
+    ///
+    /// # Arguments
+    /// * `choice_number` - The 1-based index of the choice to set.
+    /// * `choice_answer` - The new `ChoiceAnswer` to set at the specified index.
+    ///
+    /// # Returns
+    /// `bool` - `true` if the choice was successfully set, `false`
+    /// if the index is out of bounds.
+    ///
+    /// # Examples
+    /// ```
+    /// use qrate::Question;
+    /// let mut question = Question::new(1, 1, 1, "Q".to_string(), vec![("Opt A".to_string(), false)]);
+    /// assert!(question.set_choice(1, ("Opt A Updated".to_string(), true)));
+    /// assert_eq!(question.get_choice(1).unwrap().0, "Opt A Updated");
+    /// assert!(!question.set_choice(2, ("Opt B".to_string(), false))); // Out of bounds
+    /// ```
     pub fn set_choice(&mut self, choice_number: usize, choice_answer: ChoiceAnswer) -> bool
     {
         if (choice_number <= self.choices.len()) && (choice_number > 0)
@@ -284,7 +307,7 @@ impl Question
     // pub fn get_choices(&self) -> &Choices
     /// Gets a reference to the vector of choices.
     ///
-    /// # Output
+    /// # Returns
     /// `&Choices` - A reference to the vector of `ChoiceAnswer`s.
     ///
     /// # Examples
@@ -316,5 +339,72 @@ impl Question
     pub fn set_choices(&mut self, choices: Choices)
     {
         self.choices = choices;
+    }
+
+    // pub fn determine_category(&mut self)
+    /// Determines the category of the question based on the number of choices
+    /// and their correctness.
+    /// 
+    /// The category is set as follows:
+    /// - If there are no choices, the category is set to 4 (essay).
+    /// - If there is one choice and the choice answer mark is false,
+    ///   the category is set to 4.
+    /// - If there is one choice and the choice answer mark is true,
+    ///   the category is set to 3.
+    /// - If there is multiple choices and there is multiple correct choices
+    ///   less than the total number of choices, the category is set to 2.
+    /// - If there is multiple choices and there is multiple correct choices
+    ///   equal to the total number of choices, the category is set to 3.
+    /// - If there is multiple choices and there is exactly one correct choice,
+    ///   the category is set to 1.
+    /// 
+    /// # Examples
+    /// ```
+    /// use qrate::Question;
+    /// let mut question = Question::new_empty();
+    /// 
+    /// question.determine_category();
+    /// assert_eq!(question.get_category(), 4); // No choices, so category is 4 (essay)
+    /// 
+    /// question.push_choice(("Option A".to_string(), false));
+    /// question.determine_category();
+    /// assert_eq!(question.get_category(), 4); // One incorrect choice, so category is 4 (essay)
+    /// 
+    /// question.set_choice(0, ("Option B".to_string(), true));
+    /// question.determine_category();
+    /// assert_eq!(question.get_category(), 3); // One correct choice, so category is 3 (short answer)
+    /// 
+    /// question.push_choice(("Option C".to_string(), false));
+    /// question.determine_category();
+    /// assert_eq!(question.get_category(), 1); // Multiple choices with one correct, so category is 1 (single answer of multiple-choice)
+    /// 
+    /// question.push_choice(("Option D".to_string(), true));
+    /// question.determine_category();
+    /// assert_eq!(question.get_category(), 2); // Multiple choices with multiple correct, so category is 2 (multiple answers of multiple-choice)
+    /// 
+    /// question.set_choice(0, ("Option A".to_string(), true));
+    /// question.set_choice(1, ("Option B".to_string(), true));
+    /// question.set_choice(2, ("Option C".to_string(), true));
+    /// question.set_choice(3, ("Option D".to_string(), true));
+    /// question.determine_category();
+    /// assert_eq!(question.get_category(), 3); // Multiple choices with all correct, so category is 3 (short answer)
+    /// ```
+    pub fn determine_category(&mut self)
+    {
+        let choice_count = self.choices.len();
+        if choice_count == 0
+            { self.category = 4; }
+        else if choice_count == 1
+            { self.category = 4 - self.choices[0].1 as u8; }
+        else
+        {
+            let correct_count = self.choices.iter().filter(|c| c.1).count();
+            if correct_count == 1
+                { self.category = 1; }
+            else if correct_count == choice_count
+                { self.category = 3; }
+            else
+                { self.category = 2; }
+        }
     }
 }
