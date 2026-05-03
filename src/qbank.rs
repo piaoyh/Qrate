@@ -1,4 +1,4 @@
-// Copyright 2026 PARK Youngho.
+// Copyright 2026. PARK Youngho. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 // https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -610,7 +610,8 @@ impl QBank
     // pub fn optimize(&mut self)
     /// Optimizes the question bank by ensuring that question IDs are sequential
     /// starting from 1, and that group numbers are consistent with the question
-    /// IDs.
+    /// IDs, and that any questions that have empty question sentences and no
+    /// choices are removed from the bank.
     /// 
     /// The optimization process iterates through the questions and updates
     /// their IDs to be sequential. It also checks the group numbers and updates
@@ -634,6 +635,28 @@ impl QBank
     /// ```
     pub fn optimize(&mut self)
     {
+        let len = self.get_length();
+        for id in (1..=len).rev()
+        {
+            let question = self.get_question(id).unwrap();
+            if question.get_question().is_empty()
+            {
+                if question.get_choices().is_empty()
+                {
+                    self.questions.remove(id - 1);
+                }
+                else
+                {
+                    for choice in question.get_choices()
+                    {
+                        if !choice.0.is_empty()
+                            { return; }
+                    }
+                    self.questions.remove(id - 1);
+                }
+            }
+        }
+
         let len = self.get_length();
         for id in 1..=len
         {

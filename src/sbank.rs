@@ -1,4 +1,4 @@
-// Copyright 2026 PARK Youngho.
+// Copyright 2026. PARK Youngho. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 // https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -116,6 +116,27 @@ pub trait SBankHelper
     /// assert_eq!(sbank.get_length(), 1);
     /// ```
     fn get_length(&self) -> usize;
+
+    // fn optimize(&mut self)
+    /// Optimizes the student bank by ensuring that any students that have empty
+    /// names and IDs are removed from the bank.
+    /// 
+    /// The optimization process iterates through the students in reverse order and removes
+    /// any students that have empty names and IDs. This helps to clean up the bank
+    /// and ensure that it only contains valid student entries.
+    /// 
+    /// # Examples
+    /// ```
+    /// use qrate::{SBank, SBankHelper, Student};
+    /// let mut sbank = SBank::new();
+    /// sbank.push_student(Student::new("".to_string(), "".to_string())); // Invalid student
+    /// sbank.push_student(Student::new("Eve".to_string(), "s345".to_string())); // Valid student
+    /// assert_eq!(sbank.get_length(), 2);
+    /// sbank.optimize();
+    /// assert_eq!(sbank.get_length(), 1);
+    /// assert_eq!(sbank.get_student(1).unwrap().get_name(), "Eve");
+    /// ```
+    fn optimize(&mut self);
 }
 
 impl SBankHelper for SBank
@@ -164,6 +185,17 @@ impl SBankHelper for SBank
     fn get_length(&self) -> usize
     {
         self.len()
+    }
+
+    fn optimize(&mut self)
+    {
+        let len = self.get_length();
+        for number in (1..=len).rev()
+        {
+            let student = self.get_student(number).unwrap();
+            if student.get_name().is_empty() && student.get_id().is_empty()
+                { self.remove_student(number); }
+        }
     }
 }
 

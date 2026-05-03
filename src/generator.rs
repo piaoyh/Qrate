@@ -1,4 +1,4 @@
-// Copyright 2026 PARK Youngho.
+// Copyright 2026. PARK Youngho. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 // https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -14,6 +14,13 @@ use std::path::Path;
 
 use docx_rs::{ Docx, Paragraph, Run, BreakType, PageMargin, AlignmentType,
                 Footer, InstrText, InstrPAGE, InstrNUMPAGES, FieldCharType };
+
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
+use hwpers::{HwpWriter, HwpxWriter};
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
+use hwpers::style::TextStyle;
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
+use hwpers::hwpx::{HwpxTextStyle, StyledText};
 
 #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 use genpdfi::error::Error;
@@ -1742,6 +1749,10 @@ impl Generator
             Some("txt") => self.save_shuffled_exams_in_txt(file_path),
             Some("docx") => self.save_shuffled_exams_in_docx(file_path),
             #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
+            Some("hwpx") => self.save_shuffled_exams_in_hwpx(file_path),
+            #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
+            Some("hwp") => self.save_shuffled_exams_in_hwp(file_path),
+            #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
             Some("pdf") => self.save_shuffled_exams_in_pdf(file_path),
             _ => Err("Unsupported file format. Please use .txt, .docx, or .pdf.".to_string()),
         }
@@ -2250,6 +2261,426 @@ impl Generator
             }
             // Blank line after each question
             *docx = docx.clone().add_paragraph(blank_line.clone());
+        }
+        Ok(())
+    }
+    
+    // pub fn save_shuffled_exams_in_hwpx(&self, path: &Path) -> Result<(), String>
+    /// Saves the shuffled exam sets to a HWPX file.
+    ///
+    /// This function generates a HWPX document containing the shuffled exam
+    /// sets for all students, with specified page margins and a footer
+    /// with page numbers.
+    /// 
+    /// # Arguments
+    /// * `path` - The file path where the HWPX document will be saved.
+    /// 
+    /// # Output
+    /// `Result<(), String>` - Returns `Ok(())` on success, or an `Err` with a
+    ///                        `String` describing the error on failure.
+    ///
+    /// # Examples
+    /// ```no_run
+    /// use qrate::{ QBank, Generator, Student, Students, Question };
+    /// use std::fs;
+    /// use std::path::Path;
+    /// let mut qbank = QBank::new_empty();
+    /// qbank.add_question(Question::new(1, 1, 1, "Question 1".to_string(), vec![]));
+    /// qbank.add_question(Question::new(2, 2, 1, "Question 2".to_string(), vec![]));
+    /// let student1 = Student::new_from_name("Alice".to_string());
+    /// let students = Students::new(vec![student1]);
+    /// let generator = Generator::new(&qbank, 1, 2, 1, &students).unwrap();
+    /// let result = generator.save_shuffled_exams_in_hwpx(Path::new("exam.hwpx"));
+    /// assert!(result.is_ok());
+    /// std::fs::remove_file("exam.hwpx").unwrap();
+    /// ```
+    #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
+    pub fn save_shuffled_exams_in_hwpx(&self, path: &Path) -> Result<(), String>
+    {
+        self.build_shuffled_exams_in_hwpx()?
+            .save_to_file(path)
+            .map_err(|e| e.to_string())
+    }
+
+    // pub fn export_shuffled_exams_in_hwpx(&self) -> Result<Vec<u8>, String>
+    /// Exports the shuffled exam sets to a Vec<u8> object.
+    ///
+    /// This function generates a HWPX document containing the shuffled exam
+    /// sets for all students, with specified page margins and a footer
+    /// with page numbers, and returns the document as a Vec<u8> object.
+    /// 
+    /// # Output
+    /// `Result<Vec<u8>, String>` - Returns `Ok(Vec<u8>)` containing the HWPX
+    ///                             document on success, or an `Err` with a
+    ///                             `String` describing the error on failure.
+    ///
+    /// # Examples
+    /// ```no_run
+    /// use qrate::{ QBank, Generator, Student, Students, Question };
+    /// use std::fs;
+    /// use std::path::Path;
+    /// let mut qbank = QBank::new_empty();
+    /// qbank.add_question(Question::new(1, 1, 1, "Question 1".to_string(), vec![]));
+    /// qbank.add_question(Question::new(2, 2, 1, "Question 2".to_string(), vec![]));
+    /// let student1 = Student::new_from_name("Alice".to_string());
+    /// let students = Students::new(vec![student1]);
+    /// let generator = Generator::new(&qbank, 1, 2, 1, &students).unwrap();
+    /// let result = generator.export_shuffled_exams_in_hwpx();
+    /// assert!(result.is_ok());
+    /// std::fs::write("exam_exported.hwpx", result.unwrap()).unwrap();
+    /// std::fs::remove_file("exam_exported.hwpx").unwrap();
+    /// ```
+    #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
+    pub fn export_shuffled_exams_in_hwpx(&self) -> Result<Vec<u8>, String>
+    {
+        self.build_shuffled_exams_in_hwpx()?
+            .to_bytes()
+            .map_err(|e| e.to_string())
+    }
+
+    #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
+    fn build_shuffled_exams_in_hwpx(&self) -> Result<HwpxWriter, String>
+    {
+        let mut hwpx = HwpxWriter::new();
+        hwpx.add_footer_with_page_number(" ");
+        let shuffled_qbanks = self.get_shuffled_qbanks();
+
+        for (student, qbank) in &shuffled_qbanks
+        {
+            self.write_exam_content_to_hwpx(&mut hwpx, student, qbank)?;
+        }
+
+        // Add answer sheet
+        let title_style = HwpxTextStyle::new()
+            .size(self.title_font_size.round() as u32);
+        let title_style = if self.is_title_bold() { title_style.bold() } else { title_style };
+        let title_style = if self.is_title_italic() { title_style.italic() } else { title_style };
+        let title_style = if self.is_title_underline() { title_style.underline() } else { title_style };
+        let title_style = if self.is_title_strike() { title_style.strikethrough() } else { title_style };
+
+        hwpx.add_mixed_styled_paragraph(vec![StyledText {
+            text: self.answer_sheet_title.clone(),
+            style: title_style,
+        }]).map_err(|e| e.to_string())?;
+
+        hwpx.add_paragraph("").map_err(|e| e.to_string())?;
+
+        let answer_sheet_style = HwpxTextStyle::new()
+            .size(self.answer_sheet_font_size.round() as u32);
+        let answer_sheet_style = if self.is_answer_sheet_bold() { answer_sheet_style.bold() } else { answer_sheet_style };
+        let answer_sheet_style = if self.is_answer_sheet_italic() { answer_sheet_style.italic() } else { answer_sheet_style };
+        let answer_sheet_style = if self.is_answer_sheet_underline() { answer_sheet_style.underline() } else { answer_sheet_style };
+        let answer_sheet_style = if self.is_answer_sheet_strike() { answer_sheet_style.strikethrough() } else { answer_sheet_style };
+
+        let header = self.origin.get_header();
+        for (student, qbank) in &shuffled_qbanks
+        {
+            let student_info_text = format!("{}: {}        {}: {}",
+                header.get_name(), student.get_name(), header.get_id(), student.get_id()
+            );
+            hwpx.add_mixed_styled_paragraph(vec![StyledText {
+                text: student_info_text,
+                style: answer_sheet_style.clone(),
+            }]).map_err(|e| e.to_string())?;
+
+            let mut answers_text = String::new();
+            for (i, question) in qbank.get_questions().iter().enumerate() {
+                let correct_choices: Vec<String> = question.get_choices()
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, (_, is_correct))| *is_correct)
+                    .map(|(j, _)| ((b'a' + j as u8) as char).to_string())
+                    .collect();
+                let answer_string = correct_choices.join(", ");
+                answers_text.push_str(&format!("{}. {}    ", i + 1, answer_string));
+            }
+            hwpx.add_mixed_styled_paragraph(vec![StyledText {
+                text: answers_text,
+                style: answer_sheet_style.clone(),
+            }]).map_err(|e| e.to_string())?;
+            hwpx.add_paragraph("").map_err(|e| e.to_string())?;
+        }
+        Ok(hwpx)
+    }
+
+    // fn write_exam_content_to_hwpx(&self, hwpx: &mut HwpxWriter, student: &Student, qbank: &QBank) -> Result<(), String>
+    /// Writes the formatted exam content for a single student to a HWPX document.
+    ///
+    /// This private helper function takes a mutable HWPX `HwpxWriter` object and
+    /// appends the exam content for the given student and their shuffled
+    /// question bank, applying HWPX-specific formatting such as font sizes.
+    ///
+    /// # Arguments
+    /// * `hwpx` - A mutable reference to the `hwpers::HwpxWriter` object.
+    /// * `student` - A reference to the `Student` for whom the exam content is
+    ///               being written.
+    /// * `qbank` - A reference to the `QBank` containing the shuffled questions
+    ///             for this student.
+    ///
+    /// # Output
+    /// `Result<(), String>` - Returns `Ok(())` on success, or an `Err` with a
+    ///                        `String` describing the error on failure.
+    #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
+    fn write_exam_content_to_hwpx(&self, hwpx: &mut HwpxWriter, student: &Student, qbank: &QBank) -> Result<(), String>
+    {
+        let header = qbank.get_header();
+        let title_style = HwpxTextStyle::new()
+            .size(self.title_font_size.round() as u32);
+        let title_style = if self.is_title_bold() { title_style.bold() } else { title_style };
+        let title_style = if self.is_title_italic() { title_style.italic() } else { title_style };
+        let title_style = if self.is_title_underline() { title_style.underline() } else { title_style };
+        let title_style = if self.is_title_strike() { title_style.strikethrough() } else { title_style };
+
+        hwpx.add_mixed_styled_paragraph(vec![StyledText {
+            text: header.get_title().to_string(),
+            style: title_style,
+        }]).map_err(|e| e.to_string())?;
+
+        let body_style = HwpxTextStyle::new()
+            .size(self.body_font_size.round() as u32);
+        let body_style = if self.is_body_bold() { body_style.bold() } else { body_style };
+        let body_style = if self.is_body_italic() { body_style.italic() } else { body_style };
+        let body_style = if self.is_body_underline() { body_style.underline() } else { body_style };
+        let body_style = if self.is_body_strike() { body_style.strikethrough() } else { body_style };
+
+        let student_info = format!("{}: {}        {}: {}", 
+            header.get_name(), student.get_name(), header.get_id(), student.get_id());
+        hwpx.add_mixed_styled_paragraph(vec![StyledText {
+            text: student_info,
+            style: body_style.clone(),
+        }]).map_err(|e| e.to_string())?;
+
+        hwpx.add_paragraph("").map_err(|e| e.to_string())?;
+
+        for (i, question) in qbank.get_questions().iter().enumerate()
+        {
+            let modum = header.get_category(question.get_category()).unwrap();
+            let q_text = format!("{}. [{}]   {}", i + 1, modum, question.get_question());
+            hwpx.add_mixed_styled_paragraph(vec![StyledText {
+                text: q_text,
+                style: body_style.clone(),
+            }]).map_err(|e| e.to_string())?;
+
+            for (j, (choice_text, _)) in question.get_choices().iter().enumerate()
+            {
+                let choice_char = (b'A' + j as u8) as char;
+                let c_text = format!("    ({}) {}", choice_char, choice_text);
+                hwpx.add_mixed_styled_paragraph(vec![StyledText {
+                    text: c_text,
+                    style: body_style.clone(),
+                }]).map_err(|e| e.to_string())?;
+            }
+            hwpx.add_paragraph("").map_err(|e| e.to_string())?;
+        }
+        Ok(())
+    }
+
+    // pub fn save_shuffled_exams_in_hwp(&self, path: &Path) -> Result<(), String>
+    /// Saves the shuffled exam sets to a HWP file.
+    ///
+    /// This function generates a HWP document containing the shuffled exam
+    /// sets for all students, with specified page margins and a footer
+    /// with page numbers.
+    /// 
+    /// # Arguments
+    /// * `path` - The file path where the HWP document will be saved.
+    /// 
+    /// # Output
+    /// `Result<(), String>` - Returns `Ok(())` on success, or an `Err` with a
+    ///                        `String` describing the error on failure.
+    ///
+    /// # Examples
+    /// ```no_run
+    /// use qrate::{ QBank, Generator, Student, Students, Question };
+    /// use std::fs;
+    /// use std::path::Path;
+    /// let mut qbank = QBank::new_empty();
+    /// qbank.add_question(Question::new(1, 1, 1, "Question 1".to_string(), vec![]));
+    /// qbank.add_question(Question::new(2, 2, 1, "Question 2".to_string(), vec![]));
+    /// let student1 = Student::new_from_name("Alice".to_string());
+    /// let students = Students::new(vec![student1]);
+    /// let generator = Generator::new(&qbank, 1, 2, 1, &students).unwrap();
+    /// let result = generator.save_shuffled_exams_in_hwp(Path::new("exam.hwp"));
+    /// assert!(result.is_ok());
+    /// std::fs::remove_file("exam.hwp").unwrap();
+    /// ```
+    #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
+    pub fn save_shuffled_exams_in_hwp(&self, path: &Path) -> Result<(), String>
+    {
+        self.build_shuffled_exams_in_hwp()?
+            .save_to_file(path)
+            .map_err(|e| e.to_string())
+    }
+
+    // pub fn export_shuffled_exams_in_hwp(&self) -> Result<Vec<u8>, String>
+    /// Exports the shuffled exam sets to a Vec<u8> object.
+    ///
+    /// This function generates a HWP document containing the shuffled exam
+    /// sets for all students, with specified page margins and a footer
+    /// with page numbers, and returns the document as a Vec<u8> object.
+    /// 
+    /// # Output
+    /// `Result<Vec<u8>, String>` - Returns `Ok(Vec<u8>)` containing the HWP
+    ///                             document on success, or an `Err` with a
+    ///                             `String` describing the error on failure.
+    ///
+    /// # Examples
+    /// ```no_run
+    /// use qrate::{ QBank, Generator, Student, Students, Question };
+    /// use std::fs;
+    /// use std::path::Path;
+    /// let mut qbank = QBank::new_empty();
+    /// qbank.add_question(Question::new(1, 1, 1, "Question 1".to_string(), vec![]));
+    /// qbank.add_question(Question::new(2, 2, 1, "Question 2".to_string(), vec![]));
+    /// let student1 = Student::new_from_name("Alice".to_string());
+    /// let students = Students::new(vec![student1]);
+    /// let generator = Generator::new(&qbank, 1, 2, 1, &students).unwrap();
+    /// let result = generator.export_shuffled_exams_in_hwp();
+    /// assert!(result.is_ok());
+    /// std::fs::write("exam_exported.hwp", result.unwrap()).unwrap();
+    /// std::fs::remove_file("exam_exported.hwp").unwrap();
+    /// ```
+    #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
+    pub fn export_shuffled_exams_in_hwp(&self) -> Result<Vec<u8>, String>
+    {
+        self.build_shuffled_exams_in_hwp()?
+            .to_bytes()
+            .map_err(|e| e.to_string())
+    }
+
+    #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
+    fn build_shuffled_exams_in_hwp(&self) -> Result<HwpWriter, String>
+    {
+        let mut hwp = HwpWriter::new();
+        hwp.set_page_margins_mm(
+            self.margin_left_in_mm,
+            self.margin_right_in_mm,
+            self.margin_top_in_mm,
+            self.margin_buttom_in_mm,
+        );
+        hwp.add_footer_with_page_number(" ", hwpers::model::PageNumberFormat::Numeric);
+        let shuffled_qbanks = self.get_shuffled_qbanks();
+
+        for (student, qbank) in &shuffled_qbanks
+        {
+            self.write_exam_content_to_hwp(&mut hwp, student, qbank)?;
+        }
+
+        // Add answer sheet
+        let title_style = TextStyle::new()
+            .size(self.title_font_size.round() as u32);
+        let title_style = if self.is_title_bold() { title_style.bold() } else { title_style };
+        let title_style = if self.is_title_italic() { title_style.italic() } else { title_style };
+        let title_style = if self.is_title_underline() { title_style.underline() } else { title_style };
+        let title_style = if self.is_title_strike() { title_style.strikethrough() } else { title_style };
+
+        let mut title_styled = hwpers::writer::style::StyledText::new(self.answer_sheet_title.clone());
+        title_styled = title_styled.add_range(0, self.answer_sheet_title.len(), title_style);
+        hwp.add_styled_paragraph(&title_styled).map_err(|e| e.to_string())?;
+
+        hwp.add_paragraph("").map_err(|e| e.to_string())?;
+
+        let answer_sheet_style = TextStyle::new()
+            .size(self.answer_sheet_font_size.round() as u32);
+        let answer_sheet_style = if self.is_answer_sheet_bold() { answer_sheet_style.bold() } else { answer_sheet_style };
+        let answer_sheet_style = if self.is_answer_sheet_italic() { answer_sheet_style.italic() } else { answer_sheet_style };
+        let answer_sheet_style = if self.is_answer_sheet_underline() { answer_sheet_style.underline() } else { answer_sheet_style };
+        let answer_sheet_style = if self.is_answer_sheet_strike() { answer_sheet_style.strikethrough() } else { answer_sheet_style };
+
+        let header = self.origin.get_header();
+        for (student, qbank) in &shuffled_qbanks
+        {
+            let student_info_text = format!("{}: {}        {}: {}",
+                header.get_name(), student.get_name(), header.get_id(), student.get_id()
+            );
+            let mut student_info_styled = hwpers::writer::style::StyledText::new(student_info_text.clone());
+            student_info_styled = student_info_styled.add_range(0, student_info_text.len(), answer_sheet_style.clone());
+            hwp.add_styled_paragraph(&student_info_styled).map_err(|e| e.to_string())?;
+
+            let mut answers_text = String::new();
+            for (i, question) in qbank.get_questions().iter().enumerate() {
+                let correct_choices: Vec<String> = question.get_choices()
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, (_, is_correct))| *is_correct)
+                    .map(|(j, _)| ((b'a' + j as u8) as char).to_string())
+                    .collect();
+                let answer_string = correct_choices.join(", ");
+                answers_text.push_str(&format!("{}. {}    ", i + 1, answer_string));
+            }
+            let mut answers_styled = hwpers::writer::style::StyledText::new(answers_text.clone());
+            answers_styled = answers_styled.add_range(0, answers_text.len(), answer_sheet_style.clone());
+            hwp.add_styled_paragraph(&answers_styled).map_err(|e| e.to_string())?;
+            hwp.add_paragraph("").map_err(|e| e.to_string())?;
+        }
+        Ok(hwp)
+    }
+
+    // fn write_exam_content_to_hwp(&self, hwp: &mut HwpWriter, student: &Student, qbank: &QBank) -> Result<(), String>
+    /// Writes the formatted exam content for a single student to a HWP document.
+    ///
+    /// This private helper function takes a mutable HWP `HwpWriter` object and
+    /// appends the exam content for the given student and their shuffled
+    /// question bank, applying HWP-specific formatting such as font sizes.
+    ///
+    /// # Arguments
+    /// * `hwp` - A mutable reference to the `hwpers::HwpWriter` object.
+    /// * `student` - A reference to the `Student` for whom the exam content is
+    ///               being written.
+    /// * `qbank` - A reference to the `QBank` containing the shuffled questions
+    ///             for this student.
+    ///
+    /// # Output
+    /// `Result<(), String>` - Returns `Ok(())` on success, or an `Err` with a
+    ///                        `String` describing the error on failure.
+    #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
+    fn write_exam_content_to_hwp(&self, hwp: &mut HwpWriter, student: &Student, qbank: &QBank) -> Result<(), String>
+    {
+        let header = qbank.get_header();
+        let title_style = TextStyle::new()
+            .size(self.title_font_size.round() as u32);
+        let title_style = if self.is_title_bold() { title_style.bold() } else { title_style };
+        let title_style = if self.is_title_italic() { title_style.italic() } else { title_style };
+        let title_style = if self.is_title_underline() { title_style.underline() } else { title_style };
+        let title_style = if self.is_title_strike() { title_style.strikethrough() } else { title_style };
+
+        let title_text = header.get_title();
+        let mut title_styled = hwpers::writer::style::StyledText::new(title_text.to_string());
+        title_styled = title_styled.add_range(0, title_text.len(), title_style);
+        hwp.add_styled_paragraph(&title_styled).map_err(|e| e.to_string())?;
+
+        let body_style = TextStyle::new()
+            .size(self.body_font_size.round() as u32);
+        let body_style = if self.is_body_bold() { body_style.bold() } else { body_style };
+        let body_style = if self.is_body_italic() { body_style.italic() } else { body_style };
+        let body_style = if self.is_body_underline() { body_style.underline() } else { body_style };
+        let body_style = if self.is_body_strike() { body_style.strikethrough() } else { body_style };
+
+        let student_info = format!("{}: {}        {}: {}", 
+            header.get_name(), student.get_name(), header.get_id(), student.get_id());
+        let mut student_info_styled = hwpers::writer::style::StyledText::new(student_info.clone());
+        student_info_styled = student_info_styled.add_range(0, student_info.len(), body_style.clone());
+        hwp.add_styled_paragraph(&student_info_styled).map_err(|e| e.to_string())?;
+
+        hwp.add_paragraph("").map_err(|e| e.to_string())?;
+
+        for (i, question) in qbank.get_questions().iter().enumerate()
+        {
+            let modum = header.get_category(question.get_category()).unwrap();
+            let q_text = format!("{}. [{}]   {}", i + 1, modum, question.get_question());
+            let mut q_styled = hwpers::writer::style::StyledText::new(q_text.clone());
+            q_styled = q_styled.add_range(0, q_text.len(), body_style.clone());
+            hwp.add_styled_paragraph(&q_styled).map_err(|e| e.to_string())?;
+
+            for (j, (choice_text, _)) in question.get_choices().iter().enumerate()
+            {
+                let choice_char = (b'A' + j as u8) as char;
+                let c_text = format!("    ({}) {}", choice_char, choice_text);
+                let mut c_styled = hwpers::writer::style::StyledText::new(c_text.clone());
+                c_styled = c_styled.add_range(0, c_text.len(), body_style.clone());
+                hwp.add_styled_paragraph(&c_styled).map_err(|e| e.to_string())?;
+            }
+            hwp.add_paragraph("").map_err(|e| e.to_string())?;
         }
         Ok(())
     }
