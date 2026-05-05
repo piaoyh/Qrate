@@ -110,6 +110,17 @@ impl QBank
         &self.header
     }
 
+    // pub fn get_header_mut(&mut self) -> &mut Header
+    /// Gets a mutable reference to the `Header`.
+    ///
+    /// # Output
+    /// `&mut Header` - A mutable reference to the `Header` of the question bank.
+    #[inline]
+    pub fn get_header_mut(&mut self) -> &mut Header
+    {
+        &mut self.header
+    }
+
     // pub fn set_header(&mut self, header: Header)
     /// Sets the `Header`.
     ///
@@ -148,6 +159,38 @@ impl QBank
     pub fn get_questions(&self) -> &Vec<Question>
     {
         &self.questions
+    }
+
+    // pub fn select_questions(&self, start: u16, end: u16) -> QBank
+    /// Selects a subset of questions from the bank based on
+    /// a specified range of question IDs to create the smaller QBank.
+    /// 
+    /// # Arguments
+    /// * `start` - The starting question ID (inclusive) for selection.
+    /// * `end` - The ending question ID (inclusive) for selection.
+    /// 
+    /// # Returns
+    /// `QBank` - A smaller QBank object containing the original header and the
+    /// selected questions.
+    /// If no questions fall within the specified range, returns an empty vector.
+    /// 
+    /// # Examples
+    /// ```
+    /// use qrate::{ QBank, Question };
+    /// let mut qbank = QBank::new_empty();
+    /// qbank.push_question(Question::new(1, 1, 1, "Test Q1".to_string(), vec![]));
+    /// qbank.push_question(Question::new(2, 1, 1, "Test Q2".to_string(), vec![]));
+    /// qbank.push_question(Question::new(3, 1, 1, "Test Q2".to_string(), vec![]));
+    /// let selected = qbank.select_questions(1, 2);
+    /// assert_eq!(selected.get_length(), 2);
+    /// ```
+    pub fn select_questions(&self, start: u16, end: u16) -> QBank
+    {
+        QBank
+        {
+            header: self.get_header().clone(),
+            questions: self.get_questions().iter().filter(|q| q.get_id() >= start && q.get_id() <= end).cloned().collect(),
+        }
     }
 
     // pub fn set_questions(&mut self, questions: Vec<Question>)
@@ -359,6 +402,33 @@ impl QBank
     pub fn get_length(&self) -> usize
     {
         self.get_questions().len()
+    }
+
+    // pub fn get_number_of_groups(&mut self) -> usize
+    /// Gets the total number of groups in the bank.
+    ///
+    /// # Returns
+    /// The total number of groups in the bank as `usize`.
+    /// If there are no questions, returns `0`.
+    ///
+    /// # Examples
+    /// ```
+    /// use qrate::{ QBank, Question };
+    /// let mut qbank = QBank::new_empty();
+    /// qbank.push_question(Question::new_empty());
+    /// qbank.push_question(Question::new_empty());
+    /// assert_eq!(qbank.get_number_of_groups(), 1);
+    /// ```
+    pub fn get_number_of_groups(&mut self) -> usize
+    {
+        self.optimize();
+        let mut len = self.get_length();
+        for q in self.get_questions()
+        {
+            if q.get_group() < q.get_id()
+                { len -= 1; }
+        }
+        len
     }
 
     // pub fn get_choices_length(&self, question_number: usize) -> usize

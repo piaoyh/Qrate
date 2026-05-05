@@ -341,6 +341,24 @@ impl Question
         self.choices = choices;
     }
 
+    // pub fn get_number_of_choices(&self) -> usize
+    /// Returns the number of choices for the question.
+    /// 
+    /// # Returns
+    /// `usize` - The number of choices for the question.
+    /// 
+    /// # Examples
+    /// ```
+    /// use qrate::Question;
+    /// let question = Question::new(1, 1, 1, "Q".to_string(), vec![("A".to_string(), false), ("B".to_string(), true)]);
+    /// assert_eq!(question.get_number_of_choices(), 2);
+    /// ```
+    #[inline]
+    pub fn get_number_of_choices(&self) -> usize
+    {
+        self.choices.len()
+    }
+
     // pub fn determine_category(&mut self)
     /// Determines the category of the question based on the number of choices
     /// and their correctness.

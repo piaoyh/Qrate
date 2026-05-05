@@ -1557,7 +1557,8 @@ impl Generator
             for i in 0..self.shuffled_qsets[idx].get_shuffled_questions().len()
             {
                 let qn = self.shuffled_qsets[idx].get_shuffled_questions()[i].get_question();
-                let question = self.origin.get_question(qn as usize)?;
+                // Find question by actual ID, not by index
+                let question = self.origin.get_questions().iter().find(|q| q.get_id() == qn)?;
                 questions.push(question.clone());
             }
             qbank.set_questions(questions);
@@ -1603,8 +1604,8 @@ impl Generator
         let mut shuffled_qbanks = Vec::new();
         for i in 0..self.shuffled_qsets.len()
         {
-            let shuffled_qbank = self.get_shuffled_qbank(i).unwrap();
-            shuffled_qbanks.push(shuffled_qbank);
+            if let Some(shuffled_qbank) = self.get_shuffled_qbank(i)
+                { shuffled_qbanks.push(shuffled_qbank); }
         }
         shuffled_qbanks
     }
@@ -2022,19 +2023,18 @@ impl Generator
         Ok(())
     }
 
-    // pub fn export_shuffled_exams_in_docx(&self) -> Result<Vec<u8>, String>
+    // pub fn export_shuffled_exams_in_docx(&self) -> Result<Vec<u8>
     /// Exports the shuffled exam sets to a Vec<u8> object.
     ///
     /// This function generates a DOCX document containing the shuffled exam
     /// sets for all students, applying specified page margins and a footer
-    /// with page numbers.
-    ///
-    /// # Arguments
-    /// * `path` - The file path where the DOCX document will be saved.
+    /// with page numbers. The resulting DOCX content is returned as a
+    /// `Vec<u8>`, which can be used for in-memory operations or further
+    /// processing without writing to disk.
     ///
     /// # Output
-    /// `Result<(), String>` - Returns `Ok(())` on success, or an `Err` with a
-    ///                        `String` describing the error on failure.
+    /// `Vec<u8>` - Returns `Vec<u8>` which is binary dataon success,
+    /// or .
     pub fn export_shuffled_exams_in_docx(&self) -> Result<Vec<u8>, String>
     {
         let mut buffer = Cursor::new(Vec::new());
@@ -2104,7 +2104,7 @@ impl Generator
         {
             if idx > 0
                 { docx = docx.add_paragraph(Paragraph::new().add_run(Run::new().add_break(BreakType::Page))); } // Page break for subsequent students
-            self.write_exam_content_to_docx(&mut docx, &student, &qbank)?;
+            docx = self.write_exam_content_to_docx(docx, &student, &qbank)?;
         }
 
         // Add answer sheet
@@ -2180,22 +2180,22 @@ impl Generator
     }
 
 
-    // fn write_exam_content_to_docx(&self, docx: &mut Docx, student: &Student, qbank: &QBank) -> Result<(), String>
+    // fn write_exam_content_to_docx(&self, docx: Docx, student: &Student, qbank: &QBank) -> Result<Docx, String>
     /// Writes the formatted exam content for a single student to a DOCX document.
     ///
-    /// This private helper function takes a mutable DOCX `Docx` object and appends
+    /// This private helper function takes a DOCX `Docx` object and appends
     /// the exam content for the given student and their shuffled question bank,
-    /// applying DOCX-specific formatting such as font sizes.
+    /// returning the modified `Docx` object.
     ///
     /// # Arguments
-    /// * `docx` - A mutable reference to the `docx_rs::Docx` object.
+    /// * `docx` - The `docx_rs::Docx` object.
     /// * `student` - A reference to the `Student` for whom the exam content is being written.
     /// * `qbank` - A reference to the `QBank` containing the shuffled questions for this student.
     ///
     /// # Output
-    /// `Result<(), String>` - Returns `Ok(())` on success, or an `Err` with a
+    /// `Result<Docx, String>` - Returns `Ok(Docx)` on success, or an `Err` with a
     ///                        `String` describing the error on failure.
-    fn write_exam_content_to_docx(&self, docx: &mut Docx, student: &Student, qbank: &QBank) -> Result<(), String>
+    fn write_exam_content_to_docx(&self, mut docx: Docx, student: &Student, qbank: &QBank) -> Result<Docx, String>
     {
         let pt_to_usize = |pt: f32| -> usize { (pt as usize) << 1 };
         
@@ -2238,31 +2238,30 @@ impl Generator
         };
 
         // Student Information
-        let st = paragraph(body_run.clone(), format!("{}: {}        {}: {}\n\n", header.get_name(), student.get_name(), header.get_id(), student.get_id()), body_font_size);
+        let st = paragraph(body_run.clone(), format!("{}: {}        {}: {}", header.get_name(), student.get_name(), header.get_id(), student.get_id()), body_font_size);
 
         // Blank line
-        let blank_line = paragraph(body_run.clone(), format!(""), body_font_size);
+        let blank_line = Paragraph::new();
 
-        // Clone to prevent move, then reassign
-        *docx = docx.clone().add_paragraph(ex).add_paragraph(st).add_paragraph(blank_line.clone());
+        docx = docx.add_paragraph(ex);
+        docx = docx.add_paragraph(st);
+        docx = docx.add_paragraph(blank_line.clone());
 
         for (i, question) in qbank.get_questions().iter().enumerate()
         {
-            let modum = header.get_category(question.get_category()).unwrap();
-            let para = paragraph(body_run.clone(), format!("{}. [{}]   {}\n", i + 1, modum, question.get_question()), body_font_size);
-            // Clone to prevent move, then reassign
-            *docx = docx.clone().add_paragraph(para);
+            let modum = header.get_category(question.get_category()).map(|s| s.as_str()).unwrap_or("");
+            let para = paragraph(body_run.clone(), format!("{}. [{}]   {}", i + 1, modum, question.get_question()), body_font_size);
+            docx = docx.add_paragraph(para);
             for (j, (choice_text, _is_correct)) in question.get_choices().iter().enumerate()
             {
                 let choice_char = (b'A' + j as u8) as char;
                 let para = paragraph(body_run.clone(), format!("    ({}) {}", choice_char, choice_text), body_font_size);
-                // Clone to prevent move, then reassign
-                *docx = docx.clone().add_paragraph(para);
+                docx = docx.add_paragraph(para);
             }
             // Blank line after each question
-            *docx = docx.clone().add_paragraph(blank_line.clone());
+            docx = docx.add_paragraph(blank_line.clone());
         }
-        Ok(())
+        Ok(docx)
     }
     
     // pub fn save_shuffled_exams_in_hwpx(&self, path: &Path) -> Result<(), String>

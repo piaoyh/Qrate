@@ -41,7 +41,12 @@ pub mod sbdb;
 /// The `student` module defines the `Student` structure.
 pub mod student;
 
-/// The `shuffler` module provides functionalities for shuffling questions and creating shuffled sets.
+/// The `shuffled_qset` module provides the `ShuffledQSet` structure and related functionalities.
+pub mod shuffled_qset;
+
+/// The `shuffled_question` module provides the `ShuffledQuestion` structure and related functionalities.
+pub mod shuffled_question;
+
 pub mod shuffler;
 
 /// The `generator` module provides functionalities for generating various exam formats.
@@ -59,7 +64,9 @@ pub use question::{ ChoiceAnswer, Choices, Question, Questions };
 pub use sbank::{ SBank, SBankHelper };
 pub use sbdb::SBDB;
 pub use student::{ Student, Students };
-pub use shuffler::{ ShuffledQuestion, ShuffledQuestions, ShuffledQSet, ShuffledQSets};
+pub use shuffled_question::{ ShuffledQuestion, ShuffledQuestions };
+pub use shuffled_qset::{ ShuffledQSet, ShuffledQSets};
+pub use shuffler::Shuffler;
 pub use generator::Generator;
 
 pub(crate) use utils::check_path;
