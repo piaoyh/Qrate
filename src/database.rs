@@ -132,11 +132,14 @@ impl SQLiteDB
     /// ```
     pub fn save_to_file(&self, file_path: &str) -> Result<(), Error>
     {
-        let mut destination_conn = Connection::open(file_path)?;
-        let backup = Backup::new(&self.conn, &mut destination_conn)?;
-        backup.run_to_completion(-1, Duration::from_millis(100), None)?;
-        let mut destination_conn = Connection::open(file_path)?;
-        #[allow(unused_must_use)] destination_conn.execute("VACUUM", []);
+        let sql = format!("VACUUM INTO '{}'", file_path);
+        self.conn.execute(sql.as_str(), [])?;
+
+        // let mut destination_conn = Connection::open(file_path)?;
+        // let backup = Backup::new(&self.conn, &mut destination_conn)?;
+        // backup.run_to_completion(-1, Duration::from_millis(100), None)?;
+        // let mut destination_conn = Connection::open(file_path)?;
+        // #[allow(unused_must_use)] destination_conn.execute("VACUUM", []);
         Ok(())
     }
 
@@ -157,7 +160,7 @@ impl SQLiteDB
     /// let data = result.unwrap();
     /// assert!(!data.is_empty());
     /// ```
-    pub fn save_in_memory(&self) -> Result<Vec<u8>, Error>
+    pub fn save_in_memory(&mut self) -> Result<Vec<u8>, Error>
     {
         let db_handle = unsafe { self.conn.handle() };
         let mut size: i64 = 0;

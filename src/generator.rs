@@ -1812,7 +1812,7 @@ impl Generator
 
         for (i, question) in qbank.get_questions().iter().enumerate()
         {
-            let modum = header.get_category(question.get_category()).unwrap();
+            let modum = header.get_category(question.get_category()).map(|s| s.as_str()).unwrap_or("");
             content.push_str(&format!("{}. [{}]   {}\n", i + 1, modum, question.get_question()));
             for (j, (choice_text, _is_correct)) in question.get_choices().iter().enumerate()
             {
@@ -2450,7 +2450,7 @@ impl Generator
 
         for (i, question) in qbank.get_questions().iter().enumerate()
         {
-            let modum = header.get_category(question.get_category()).unwrap();
+            let modum = header.get_category(question.get_category()).map(|s| s.as_str()).unwrap_or("");
             let q_text = format!("{}. [{}]   {}", i + 1, modum, question.get_question());
             hwpx.add_mixed_styled_paragraph(vec![StyledText {
                 text: q_text,
@@ -2662,7 +2662,7 @@ impl Generator
 
         for (i, question) in qbank.get_questions().iter().enumerate()
         {
-            let modum = header.get_category(question.get_category()).unwrap();
+            let modum = header.get_category(question.get_category()).map(|s| s.as_str()).unwrap_or("");
             let q_text = format!("{}. [{}]   {}", i + 1, modum, question.get_question());
             let mut q_styled = hwpers::writer::style::StyledText::new(q_text.clone());
             q_styled = q_styled.add_range(0, q_text.len(), body_style.clone());
@@ -2847,7 +2847,7 @@ impl Generator
 
         for (i, question) in qbank.get_questions().iter().enumerate()
         {
-            let modum = header.get_category(question.get_category()).unwrap();
+            let modum = header.get_category(question.get_category()).map(|s| s.as_str()).unwrap_or("");
             doc.push(elements::Paragraph::new(format!("{}. [{}]   {}", i + 1, modum, question.get_question())).styled(body_style));
             for (j, (choice_text, _is_correct)) in question.get_choices().iter().enumerate()
             {
