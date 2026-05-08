@@ -194,6 +194,7 @@ impl SBDB for SQLiteDB
     ///
     /// # Output
     /// `Option<SQLiteDB>` - An optional `SQLiteDB` instance if the connection is successful.
+    #[inline]
     fn open(path: String) -> Option<SQLiteDB>
     {
         SQLiteDB::open_with_ext(path, "sbdb")

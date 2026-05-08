@@ -8,8 +8,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 use std::fs::File;
-use std::io::Cursor;
-use std::io::Write;
+use std::io::{ Cursor, Write };
 use std::path::Path;
 
 use docx_rs::{ Docx, Paragraph, Run, BreakType, PageMargin, AlignmentType,
@@ -1913,7 +1912,6 @@ impl Generator
             }
             writeln!(file, "").map_err(|e| e.to_string())?; // Blank line after each student
         }
-
         Ok(())
     }
 
@@ -1935,7 +1933,7 @@ impl Generator
         for (student, qbank) in &shuffled_qbanks
         {
             let exam_content = self.format_exam_for_student(&student, &qbank);
-            content.push_str(&exam_content);
+            content.push_str(exam_content.as_str());
             // Add a separator for multiple students, if applicable
             if self.shuffled_qsets.len() > 1
                 { content.push_str("-------X------- CUT -------X------- 자르기 -------X------- резать -------X-------\n\n"); }
@@ -1944,13 +1942,12 @@ impl Generator
         //content.push_str("\n\u{000C}\n"); // Form feed for page break
 
         let header = self.origin.get_header(); // Need the original header for titles
-        content.push_str(&format!("{}{}\n", self.answer_sheet_title, "\n"));
+        content.push_str(format!("{}{}\n", self.answer_sheet_title, "\n").as_str());
         for (student, qbank) in &shuffled_qbanks
         {
             // Student Info
-            content.push_str(&format!("{}: {}        {}: {}\n",
-                header.get_name(), student.get_name(), header.get_id(), student.get_id()
-            ));
+            content.push_str(format!("{}: {}        {}: {}\n",
+                header.get_name(), student.get_name(), header.get_id(), student.get_id()).as_str());
 
             // Answers
             let mut answer_line = String::new();
@@ -1967,13 +1964,13 @@ impl Generator
 
                 // Simple line wrapping logic
                 if answer_line.len() + entry.len() > 80 && !answer_line.is_empty() {
-                    content.push_str(&format!("{}\n", answer_line));
+                    content.push_str(format!("{}\n", answer_line).as_str());
                     answer_line.clear();
                 }
-                answer_line.push_str(&entry);
+                answer_line.push_str(entry.as_str());
             }
             if !answer_line.is_empty() {
-                content.push_str(&format!("{}\n", answer_line));
+                content.push_str(format!("{}\n", answer_line).as_str());
             }
             content.push_str("\n"); // Blank line after each student
         }

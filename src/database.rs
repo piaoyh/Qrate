@@ -135,6 +135,8 @@ impl SQLiteDB
         let mut destination_conn = Connection::open(file_path)?;
         let backup = Backup::new(&self.conn, &mut destination_conn)?;
         backup.run_to_completion(-1, Duration::from_millis(100), None)?;
+        let mut destination_conn = Connection::open(file_path)?;
+        #[allow(unused_must_use)] destination_conn.execute("VACUUM", []);
         Ok(())
     }
 
@@ -193,6 +195,15 @@ impl SQLiteDB
             Ok(_) => Ok(()),
             Err(e) => Err(e),
         }
+    }
+
+    // pub fn vacuum(&mut self) -> Result<usize>
+    /// Vacuum database
+    #[allow(unused_must_use)]
+    #[inline]
+    pub fn vacuum(&mut self)
+    {
+        self.conn.execute("VACUUM", []);
     }
 
     // pub fn set_path(&mut self, path: String)
