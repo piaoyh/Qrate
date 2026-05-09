@@ -26,16 +26,16 @@ use genpdfi::error::Error;
 #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 use genpdfi::{ Document, elements, fonts, style, Element, SimplePageDecorator, Alignment };
 
+use cryptocol::random::Random_PRNG_Creator;
+
 use crate::{ Choices, QBank, Questions, check_path };
 use crate::{ Students, Student };
-use crate::{ ShuffledQSet, ShuffledQSets };
+use crate::{ Shuffler, ShuffledQSet, ShuffledQSets };
 
 
-#[derive(Debug, Clone)]
 pub struct Generator
 {
-    origin: QBank,
-    shuffled_qsets: ShuffledQSets,
+    shuffler: Shuffler,
     current_question_number: u16,
     body_font_size: f32,
     title_font_size: f32,
@@ -107,18 +107,19 @@ impl Generator
     /// ```
     pub fn new(qbank: &QBank, start: u16, end: u16, selected: usize, students: &Students) -> Option<Self>
     {
+        let shuffler = Shuffler::new(qbank, start, end, students);
+        let mut prng = Random_PRNG_Creator::create();
         let mut shuffled_qsets = ShuffledQSets::new();
         for i in 0..students.len()
         {
-            let mut shuffled_qset = ShuffledQSet::new(qbank, start, end, selected, &students[i])?;
-            shuffled_qset.shuffle();
+            let mut shuffled_qset = ShuffledQSet::new(qbank, selected, students[i].clone(), &mut prng)?;
+            shuffled_qset.shuffle(&mut prng);
             shuffled_qsets.push(shuffled_qset);
         }
         Some(
             Self
             {
-                origin: qbank.clone(),
-                shuffled_qsets,
+                shuffler,
                 current_question_number: 0,
                 title_font_size: 14.0,
                 body_font_size: 11.0,
@@ -157,8 +158,7 @@ impl Generator
     {
         Self
         {
-            origin: QBank::new_empty(),
-            shuffled_qsets: ShuffledQSets::new(),
+            shuffler: Shuffler::new(&QBank::new_empty(), 1, 1, &Students::new()),
             current_question_number: 0,
             title_font_size: 14.0,
             body_font_size: 11.0,
@@ -1548,20 +1548,20 @@ impl Generator
     /// ```
     pub fn get_shuffled_qbank(&self, idx: usize) -> Option<(Student, QBank)>
     {
-        if idx < self.shuffled_qsets.len()
+        if idx < self.shuffler.get_sbank_length()
         {
-            let header = self.origin.get_header().clone();
+            let header = self.shuffler.get_header().clone();
             let mut qbank = QBank::new_with_header(header);
             let mut questions = Questions::new();
-            for i in 0..self.shuffled_qsets[idx].get_shuffled_questions().len()
+            for i in 0..self.shuffler.get_length_of_shuffled_questions(idx)
             {
-                let qn = self.shuffled_qsets[idx].get_shuffled_questions()[i].get_question();
+                let qn = self.shuffler.get_shuffled_question(idx, i);
                 // Find question by actual ID, not by index
-                let question = self.origin.get_questions().iter().find(|q| q.get_id() == qn)?;
+                let question = self.shuffler.get_qbank().get_question(qn as usize)?;
                 questions.push(question.clone());
             }
             qbank.set_questions(questions);
-            Some((self.shuffled_qsets[idx].get_student().clone(), qbank))
+            Some((self.shuffler.get_student(idx).unwrap(), qbank))
         }
         else
         {
@@ -1601,7 +1601,7 @@ impl Generator
     pub fn get_shuffled_qbanks(&self) -> Vec::<(Student, QBank)>
     {
         let mut shuffled_qbanks = Vec::new();
-        for i in 0..self.shuffled_qsets.len()
+        for i in 0..self.shuffler.get_qbank_length()
         {
             if let Some(shuffled_qbank) = self.get_shuffled_qbank(i)
                 { shuffled_qbanks.push(shuffled_qbank); }
@@ -1634,7 +1634,7 @@ impl Generator
     #[inline]
     pub fn get_notice(&self) -> String
     {
-        self.origin.get_header().get_notice().clone()
+        self.shuffler.get_header().get_notice().clone()
     }
 
     // pub fn next(&mut self) -> Option<(u16, String, String, Choices)>
@@ -1680,7 +1680,7 @@ impl Generator
     {
         self.current_question_number += 1;
 
-        let shuffled_qset = self.shuffled_qsets.get(0)?;
+        let shuffled_qset = self.shuffler.get_shuffled_qsets().get(0)?;
         if self.current_question_number as usize > shuffled_qset.get_shuffled_questions().len()
             { return None; }
 
@@ -1688,8 +1688,8 @@ impl Generator
         let real_question_number = shuffled_question.get_question();
         let shuffled_indices = shuffled_question.get_choices();
 
-        let origin_question = self.origin.get_question(real_question_number as usize)?;
-        let category = self.origin.get_header().get_category(origin_question.get_category())?.clone();
+        let origin_question = self.shuffler.get_qbank().get_question(real_question_number as usize)?;
+        let category = self.shuffler.get_header().get_category(origin_question.get_category())?.clone();
         let question_text = origin_question.get_question().clone();
         let origin_choices = origin_question.get_choices();
 
@@ -1810,13 +1810,13 @@ impl Generator
         // Student Information
         content.push_str(&format!("{}: {}        {}: {}\n\n", header.get_name(), student.get_name(), header.get_id(), student.get_id()));
 
-        for (i, question) in qbank.get_questions().iter().enumerate()
+        for (question_index, question) in qbank.get_questions().iter().enumerate()
         {
-            let modum = header.get_category(question.get_category()).map(|s| s.as_str()).unwrap_or("");
-            content.push_str(&format!("{}. [{}]   {}\n", i + 1, modum, question.get_question()));
-            for (j, (choice_text, _is_correct)) in question.get_choices().iter().enumerate()
+            let category = header.get_category(question.get_category()).map(|s| s.as_str()).unwrap_or("");
+            content.push_str(&format!("{}. [{}]   {}\n", question_index + 1, category, question.get_question()));
+            for (choice_index, (choice_text, _is_correct)) in question.get_choices().iter().enumerate()
             {
-                let choice_char = (b'A' + j as u8) as char;
+                let choice_char = (b'A' + choice_index as u8) as char;
                 content.push_str(&format!("    ({}) {}\n", choice_char, choice_text));
             }
             content.push_str("\n"); // Blank line after each question
@@ -1872,13 +1872,13 @@ impl Generator
             let content = self.format_exam_for_student(&student, &qbank);
             writeln!(file, "{}", content).map_err(|e| e.to_string())?;
             // Add a separator for multiple students, if applicable
-            if self.shuffled_qsets.len() > 1
+            if self.shuffler.get_sbank_length() > 1
                 { writeln!(file, "-------X------- CUT -------X------- 자르기 -------X------- резать -------X-------\n\n").map_err(|e| e.to_string())?; }
         }
         // Add a separator for the answer sheet
         //write!(file, "\n\u{000C}\n").map_err(|e| e.to_string())?; // Form feed for page break
 
-        let header = self.origin.get_header(); // Need the original header for titles
+        let header = self.shuffler.get_header(); // Need the original header for titles
         writeln!(file, "{}{}", self.answer_sheet_title, "\n").map_err(|e| e.to_string())?;
         for (student, qbank) in &shuffled_qbanks
         {
@@ -1935,13 +1935,13 @@ impl Generator
             let exam_content = self.format_exam_for_student(&student, &qbank);
             content.push_str(exam_content.as_str());
             // Add a separator for multiple students, if applicable
-            if self.shuffled_qsets.len() > 1
+            if self.shuffler.get_sbank_length() > 1
                 { content.push_str("-------X------- CUT -------X------- 자르기 -------X------- резать -------X-------\n\n"); }
         }
         // Add a separator for the answer sheet
         //content.push_str("\n\u{000C}\n"); // Form feed for page break
 
-        let header = self.origin.get_header(); // Need the original header for titles
+        let header = self.shuffler.get_header(); // Need the original header for titles
         content.push_str(format!("{}{}\n", self.answer_sheet_title, "\n").as_str());
         for (student, qbank) in &shuffled_qbanks
         {
@@ -2135,7 +2135,7 @@ impl Generator
         if self.is_answer_sheet_strike()
             { answer_sheet_run = answer_sheet_run.strike(); }
         
-        let header = self.origin.get_header();
+        let header = self.shuffler.get_header();
         let line_spacing = linespacing_to_twips(self.line_spacing);
         for (student, qbank) in &shuffled_qbanks
         {
@@ -2244,14 +2244,14 @@ impl Generator
         docx = docx.add_paragraph(st);
         docx = docx.add_paragraph(blank_line.clone());
 
-        for (i, question) in qbank.get_questions().iter().enumerate()
+        for (question_index, question) in qbank.get_questions().iter().enumerate()
         {
-            let modum = header.get_category(question.get_category()).map(|s| s.as_str()).unwrap_or("");
-            let para = paragraph(body_run.clone(), format!("{}. [{}]   {}", i + 1, modum, question.get_question()), body_font_size);
+            let category = header.get_category(question.get_category()).map(|s| s.as_str()).unwrap_or("");
+            let para = paragraph(body_run.clone(), format!("{}. [{}]   {}", question_index + 1, category, question.get_question()), body_font_size);
             docx = docx.add_paragraph(para);
-            for (j, (choice_text, _is_correct)) in question.get_choices().iter().enumerate()
+            for (choice_index, (choice_text, _is_correct)) in question.get_choices().iter().enumerate()
             {
-                let choice_char = (b'A' + j as u8) as char;
+                let choice_char = (b'A' + choice_index as u8) as char;
                 let para = paragraph(body_run.clone(), format!("    ({}) {}", choice_char, choice_text), body_font_size);
                 docx = docx.add_paragraph(para);
             }
@@ -2368,7 +2368,7 @@ impl Generator
         let answer_sheet_style = if self.is_answer_sheet_underline() { answer_sheet_style.underline() } else { answer_sheet_style };
         let answer_sheet_style = if self.is_answer_sheet_strike() { answer_sheet_style.strikethrough() } else { answer_sheet_style };
 
-        let header = self.origin.get_header();
+        let header = self.shuffler.get_header();
         for (student, qbank) in &shuffled_qbanks
         {
             let student_info_text = format!("{}: {}        {}: {}",
@@ -2448,18 +2448,18 @@ impl Generator
 
         hwpx.add_paragraph("").map_err(|e| e.to_string())?;
 
-        for (i, question) in qbank.get_questions().iter().enumerate()
+        for (question_index, question) in qbank.get_questions().iter().enumerate()
         {
-            let modum = header.get_category(question.get_category()).map(|s| s.as_str()).unwrap_or("");
-            let q_text = format!("{}. [{}]   {}", i + 1, modum, question.get_question());
+            let category = header.get_category(question.get_category()).map(|s| s.as_str()).unwrap_or("");
+            let q_text = format!("{}. [{}]   {}", question_index + 1, category, question.get_question());
             hwpx.add_mixed_styled_paragraph(vec![StyledText {
                 text: q_text,
                 style: body_style.clone(),
             }]).map_err(|e| e.to_string())?;
 
-            for (j, (choice_text, _)) in question.get_choices().iter().enumerate()
+            for (choice_index, (choice_text, _)) in question.get_choices().iter().enumerate()
             {
-                let choice_char = (b'A' + j as u8) as char;
+                let choice_char = (b'A' + choice_index as u8) as char;
                 let c_text = format!("    ({}) {}", choice_char, choice_text);
                 hwpx.add_mixed_styled_paragraph(vec![StyledText {
                     text: c_text,
@@ -2583,7 +2583,7 @@ impl Generator
         let answer_sheet_style = if self.is_answer_sheet_underline() { answer_sheet_style.underline() } else { answer_sheet_style };
         let answer_sheet_style = if self.is_answer_sheet_strike() { answer_sheet_style.strikethrough() } else { answer_sheet_style };
 
-        let header = self.origin.get_header();
+        let header = self.shuffler.get_header();
         for (student, qbank) in &shuffled_qbanks
         {
             let student_info_text = format!("{}: {}        {}: {}",
@@ -2660,17 +2660,17 @@ impl Generator
 
         hwp.add_paragraph("").map_err(|e| e.to_string())?;
 
-        for (i, question) in qbank.get_questions().iter().enumerate()
+        for (question_index, question) in qbank.get_questions().iter().enumerate()
         {
-            let modum = header.get_category(question.get_category()).map(|s| s.as_str()).unwrap_or("");
-            let q_text = format!("{}. [{}]   {}", i + 1, modum, question.get_question());
+            let category = header.get_category(question.get_category()).map(|s| s.as_str()).unwrap_or("");
+            let q_text = format!("{}. [{}]   {}", question_index + 1, category, question.get_question());
             let mut q_styled = hwpers::writer::style::StyledText::new(q_text.clone());
             q_styled = q_styled.add_range(0, q_text.len(), body_style.clone());
             hwp.add_styled_paragraph(&q_styled).map_err(|e| e.to_string())?;
 
-            for (j, (choice_text, _)) in question.get_choices().iter().enumerate()
+            for (choice_index, (choice_text, _)) in question.get_choices().iter().enumerate()
             {
-                let choice_char = (b'A' + j as u8) as char;
+                let choice_char = (b'A' + choice_index as u8) as char;
                 let c_text = format!("    ({}) {}", choice_char, choice_text);
                 let mut c_styled = hwpers::writer::style::StyledText::new(c_text.clone());
                 c_styled = c_styled.add_range(0, c_text.len(), body_style.clone());
@@ -2767,7 +2767,7 @@ impl Generator
         doc.push(title_paragraph.styled(answer_title_style));
         doc.push(elements::Paragraph::new("")); // Blank line
 
-        let header = self.origin.get_header();
+        let header = self.shuffler.get_header();
 
         for (student, qbank) in &shuffled_qbanks {
             // Student Info
@@ -2845,13 +2845,13 @@ impl Generator
         doc.push(elements::Paragraph::new(format!("{}: {}        {}: {}", header.get_name(), student.get_name(), header.get_id(), student.get_id())).styled(body_style));
         doc.push(elements::Paragraph::new("")); // Blank line
 
-        for (i, question) in qbank.get_questions().iter().enumerate()
+        for (question_index, question) in qbank.get_questions().iter().enumerate()
         {
-            let modum = header.get_category(question.get_category()).map(|s| s.as_str()).unwrap_or("");
-            doc.push(elements::Paragraph::new(format!("{}. [{}]   {}", i + 1, modum, question.get_question())).styled(body_style));
-            for (j, (choice_text, _is_correct)) in question.get_choices().iter().enumerate()
+            let category = header.get_category(question.get_category()).map(|s| s.as_str()).unwrap_or("");
+            doc.push(elements::Paragraph::new(format!("{}. [{}]   {}", question_index + 1, category, question.get_question())).styled(body_style));
+            for (choice_index, (choice_text, _is_correct)) in question.get_choices().iter().enumerate()
             {
-                let choice_char = (b'A' + j as u8) as char;
+                let choice_char = (b'A' + choice_index as u8) as char;
                 doc.push(elements::Paragraph::new(format!("    ({}) {}", choice_char, choice_text)).styled(body_style));
             }
             doc.push(elements::Paragraph::new("")); // Blank line after each question

@@ -72,20 +72,17 @@ impl Header
         Self
         {
             title: "Examination".to_string(),
-            name: "Name".to_string(),
-            id: "ID".to_string(),
-            categories: vec!["Type A".to_string(), "Type B".to_string()],
-            notice: r#"Notice:
-* All the questions should be considered, understood and interpreted in the context of the software engineering course you learned. Otherwise, the questions may or may not make sense.
-* Type A: Multiple Choice 1 – you have to choose one answer from the list.
-    # If your answer is correct, you will get 3 points.
-    # If your answer is incorrect, you will lose 1 point.
-    # If you choose nothing from the list, you will get 0 points.
-* Type B: Multiple Choice 2 – you have to choose two answers from the list.
-    # If both answers that you chose are correct, you will get 3 points.
-    # If one answer you chose is correct and the other one you chose is incorrect, you will get 0 points.
-    # If both answers that you chose are incorrect, you will lose 3 points.
-    # If you choose one answer or nothing from the list, you will get 0 points."#.to_string(),
+            name: "Full Name".to_string(),
+            id: "Student ID Number".to_string(),
+            categories: vec!["Type A".to_string(), "Type B".to_string(), "Type C".to_string(), "Type D".to_string()],
+            notice: r##"Examination Guidelines:
+# General Instructions
+Contextual Understanding: All questions must be interpreted and answered within the specific context of the Information Security course. Failure to do so may lead to incorrect interpretations.
+# Question Types & Scoring
+* Type A: Single-Choice Questions - Select one best answer from the given options. Full points are awarded for the correct answer. You will receive 0 points if no answer is selected or if multiple options are chosen.
+* Type B: Multiple-Choice Questions - Select all applicable answers from the given options. Full points are awarded only if all selected answers are correct. No partial credit is given; any incorrect or missing selection will result in 0 points.
+* Type C: Short-Answer Questions - Provide the correct word, phrase, or brief expression as required.
+* Type D: Essay Questions - Provide a comprehensive written response to the prompt."##.to_string(),
         }
     }
 
@@ -114,6 +111,7 @@ impl Header
     /// );
     /// assert_eq!(header.get_title(), "Math Quiz");
     /// ```
+    #[inline]
     pub fn new(title: String, name: String, id: String, categories: Vec<String>, notice: String) -> Self
     {
         Self { title, name, id, categories, notice }
@@ -131,6 +129,7 @@ impl Header
     /// let header = Header::new_with_default();
     /// assert_eq!(header.get_title(), "Examination");
     /// ```
+    #[inline]
     pub fn get_title(&self) -> &String
     {
         &self.title
@@ -149,6 +148,7 @@ impl Header
     /// header.set_title("New Title".to_string());
     /// assert_eq!(header.get_title(), "New Title");
     /// ```
+    #[inline]
     pub fn set_title(&mut self, title: String)
     {
         self.title = title;
@@ -166,6 +166,7 @@ impl Header
     /// let header = Header::new_with_default();
     /// assert_eq!(header.get_name(), "Name");
     /// ```
+    #[inline]
     pub fn get_name(&self) -> &String
     {
         &self.name
@@ -184,6 +185,7 @@ impl Header
     /// header.set_name("New Name".to_string());
     /// assert_eq!(header.get_name(), "New Name");
     /// ```
+    #[inline]
     pub fn set_name(&mut self, name: String)
     {
         self.name = name;
@@ -201,6 +203,7 @@ impl Header
     /// let header = Header::new_with_default();
     /// assert_eq!(header.get_id(), "ID");
     /// ```
+    #[inline]
     pub fn get_id(&self) -> &String
     {
         &self.id
@@ -219,6 +222,7 @@ impl Header
     /// header.set_id("New ID".to_string());
     /// assert_eq!(header.get_id(), "New ID");
     /// ```
+    #[inline]
     pub fn set_id(&mut self, id: String)
     {
         self.id = id;
@@ -236,6 +240,7 @@ impl Header
     /// let header = Header::new_with_default();
     /// assert_eq!(header.get_categories().len(), 2);
     /// ```
+    #[inline]
     pub fn get_categories(&self) -> &Vec<String>
     {
         &self.categories
@@ -278,6 +283,7 @@ impl Header
     /// header.set_categories(vec!["Category A".to_string()]);
     /// assert_eq!(header.get_categories().len(), 1);
     /// ```
+    #[inline]
     pub fn set_categories(&mut self, categories: Vec<String>)
     {
         self.categories = categories;
@@ -296,6 +302,7 @@ impl Header
     /// header.push_category("New Category".to_string());
     /// assert_eq!(header.get_categories().len(), 1);
     /// ```
+    #[inline]
     pub fn push_category(&mut self, q_type: String)
     {
         self.categories.push(q_type);
@@ -313,6 +320,7 @@ impl Header
     /// let header = Header::new_with_default();
     /// assert!(header.get_notice().starts_with("Notice:"));
     /// ```
+    #[inline]
     pub fn get_notice(&self) -> &String
     {
         &self.notice
@@ -331,6 +339,7 @@ impl Header
     /// header.set_notice("Important information.".to_string());
     /// assert_eq!(header.get_notice(), "Important information.");
     /// ```
+    #[inline]
     pub fn set_notice(&mut self, notice: String)
     {
         self.notice = notice;

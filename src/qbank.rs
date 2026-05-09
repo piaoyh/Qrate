@@ -419,11 +419,12 @@ impl QBank
     /// qbank.push_question(Question::new_empty());
     /// assert_eq!(qbank.get_number_of_groups(), 1);
     /// ```
-    pub fn get_number_of_groups(&mut self) -> usize
+    pub fn get_number_of_groups(&self) -> usize
     {
-        self.optimize();
-        let mut len = self.get_length();
-        for q in self.get_questions()
+        let mut qb = self.clone();
+        qb.optimize();
+        let mut len = qb.get_length();
+        for q in qb.get_questions()
         {
             if q.get_group() < q.get_id()
                 { len -= 1; }

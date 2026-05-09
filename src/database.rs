@@ -9,9 +9,9 @@
 
 
 use std::ptr::copy_nonoverlapping;
-use std::time::Duration;
+// use std::time::Duration;
 use rusqlite::{ Connection, ffi, Error };
-use rusqlite::backup::Backup;
+// use rusqlite::backup::Backup;
 
 use crate::check_path;
 

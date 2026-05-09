@@ -8,7 +8,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 
-use cryptocol::random::Random_PRNG_Creator;
+use cryptocol::random::Random;
 
 /// A type alias for a vector of `ShuffledQuestion`s, representing a set of shuffled questions.
 pub type ShuffledQuestions = Vec<ShuffledQuestion>;
@@ -196,18 +196,19 @@ impl ShuffledQuestion
     /// 
     /// # Examples
     /// ```
+    /// use cryptocol::random::Random_PRNG_Creator;
     /// use qrate::shuffler::ShuffledQuestion;
+    /// 
     /// let mut sq = ShuffledQuestion::new(1, 4);
     /// let original_choices = sq.get_choices().clone();
-    /// sq.shuffle();
+    /// sq.shuffle(&mut Random_PRNG_Creator::create());
     /// // The order is random, so we just check that the elements are the same
     /// let mut shuffled_choices = sq.get_choices().clone();
     /// shuffled_choices.sort();
     /// assert_eq!(original_choices, shuffled_choices);
     /// ```
-    pub fn shuffle(&mut self)
+    pub fn shuffle(&mut self, prng: &mut Random)
     {
-        let mut prng = Random_PRNG_Creator::create();
         let max = self.how_many_choices();
         for last in (1..max).rev()
         {
