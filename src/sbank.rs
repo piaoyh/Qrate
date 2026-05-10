@@ -192,6 +192,7 @@ impl SBankHelper for SBank
         let len = self.get_length();
         for number in (1..=len).rev()
         {
+            // Because number is within the reange 1..=len, .unwrap() does not cause panic.
             let student = self.get_student(number).unwrap();
             if student.get_name().is_empty() && student.get_id().is_empty()
                 { self.remove_student(number); }

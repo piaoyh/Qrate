@@ -26,11 +26,9 @@ use genpdfi::error::Error;
 #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 use genpdfi::{ Document, elements, fonts, style, Element, SimplePageDecorator, Alignment };
 
-use cryptocol::random::Random_PRNG_Creator;
-
 use crate::{ Choices, QBank, Questions, check_path };
 use crate::{ Students, Student };
-use crate::{ Shuffler, ShuffledQSet, ShuffledQSets };
+use crate::Shuffler;
 
 
 pub struct Generator
@@ -72,22 +70,27 @@ impl Generator
     const FOOTER_UNDERLINE: u16 = 0b_100_0000_0000_0000;
     const FOOTER_STRIKE: u16 = 0b_1000_0000_0000_0000;
 
-    // pub fn new(qbank: &QBank, start: u16, end: u16, selected: usize, students: &Students) -> Option<Self>
-    /// Creates a new `Generator` instance for multiple shuffled sets, one for each student.
+    // pub fn new(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, students: &Students) -> Option<Self>
+    /// Creates a new `Generator` instance for multiple shuffled sets,
+    /// one for each student.
     ///
-    /// This function generates shuffled question sets for each student based on the
-    /// provided question bank, considering a specified range and number of randomly selected questions.
+    /// This function generates shuffled question sets for each student based
+    /// on the provided question bank, considering a specified range and number
+    /// of randomly selected questions.
     ///
     /// # Arguments
     /// * `qbank` - A reference to the `QBank` containing the original questions.
     /// * `start` - The 1-based starting index of questions to consider (inclusive).
     /// * `end` - The 1-based ending index of questions to consider (inclusive).
-    /// * `selected` - The number of questions to be randomly selected for each student.
-    /// * `students` - A slice of `Student` instances for whom shuffled sets will be generated.
+    /// * `number_of_questions` - The number of questions to be randomly
+    ///   selected for each student.
+    /// * `students` - A slice of `Student` instances for whom shuffled sets
+    ///    will be generated.
     ///
     /// # Output
-    /// An `Option<Self>` which is `Some(Generator)` if successful, or `None` if
-    /// the generation fails (e.g., invalid question range, insufficient questions, or selected count).
+    /// An `Option<Self>` which is `Some(Generator)` if successful, or
+    /// `None` if the generation fails (e.g., invalid question range,
+    /// insufficient questions, or selected count).
     ///
     /// # Examples
     /// ```
@@ -105,17 +108,10 @@ impl Generator
     /// let generator = Generator::new(&qbank, 1, 2, 2, &students);
     /// assert!(generator.is_some());
     /// ```
-    pub fn new(qbank: &QBank, start: u16, end: u16, selected: usize, students: &Students) -> Option<Self>
+    pub fn new(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, students: &Students) -> Option<Self>
     {
-        let shuffler = Shuffler::new(qbank, start, end, students);
-        let mut prng = Random_PRNG_Creator::create();
-        let mut shuffled_qsets = ShuffledQSets::new();
-        for i in 0..students.len()
-        {
-            let mut shuffled_qset = ShuffledQSet::new(qbank, selected, students[i].clone(), &mut prng)?;
-            shuffled_qset.shuffle(&mut prng);
-            shuffled_qsets.push(shuffled_qset);
-        }
+        let mut shuffler = Shuffler::new(qbank, start, end, students);
+        shuffler.make_exams(number_of_questions);
         Some(
             Self
             {
@@ -206,6 +202,154 @@ impl Generator
         let student = Student::new_empty();
         let students = vec![student];
         Self::new(qbank, start, end, selected, &students)
+    }
+
+    // pub fn new_with_seeds(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, students: &Students, seeds: [u64; 16]) -> Option<Self>
+    /// Creates a new `Generator` instance for multiple shuffled sets,
+    /// one for each student.
+    ///
+    /// This function generates shuffled question sets for each student based
+    /// on the provided question bank, considering a specified range and number
+    /// of randomly selected questions.
+    ///
+    /// # Arguments
+    /// * `qbank` - A reference to the `QBank` containing the original questions.
+    /// * `start` - The 1-based starting index of questions to consider (inclusive).
+    /// * `end` - The 1-based ending index of questions to consider (inclusive).
+    /// * `number_of_questions` - The number of questions to be randomly
+    ///   selected for each student.
+    /// * `students` - A slice of `Student` instances for whom shuffled sets
+    ///    will be generated.
+    /// * `seeds` - A seed array, each element of which is of u64.
+    ///
+    /// # Returns
+    /// An `Option<Self>` which is `Some(Generator)` if successful, or
+    /// `None` if the generation fails (e.g., invalid question range,
+    /// insufficient questions, or selected count).
+    ///
+    /// # Examples
+    /// ```
+    /// use qrate::{ QBank, Generator, Student, Students };
+    ///
+    /// let mut qbank = QBank::new_empty();
+    /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
+    /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
+    ///
+    /// let student1 = Student::new_from_name("Alice".to_string());
+    /// let student2 = Student::new_from_name("Bob".to_string());
+    /// let students = Students::new(vec![student1, student2]);
+    /// let seeds = [0_u64, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+    /// 
+    /// // Generate exams with 2 questions selected for each student
+    /// let generator = Generator::new_with_seeds(&qbank, 1, 2, 2, &students, seed);
+    /// assert!(generator.is_some());
+    /// ```
+    pub fn new_with_seeds(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, students: &Students, seeds: [u64; 16]) -> Option<Self>
+    {
+        let mut shuffler = Shuffler::new_with_seeds(qbank, start, end, students, seeds);
+        shuffler.make_exams(number_of_questions);
+        Some(
+            Self
+            {
+                shuffler,
+                current_question_number: 0,
+                title_font_size: 14.0,
+                body_font_size: 11.0,
+                answer_sheet_font_size: 12.0,
+                footer_font_size: 9.0,
+                attributes: Self::TITLE_BOLD,
+                margin_left_in_mm: 10.0,
+                margin_right_in_mm: 10.0,
+                margin_top_in_mm: 10.0,
+                margin_buttom_in_mm: 10.0,
+                line_spacing: 1.0,
+                answer_sheet_title: "Answer Sheet        정답지        Ответы".to_string()
+             }
+        )
+    }
+
+    // pub fn new_empty_with_seeds(seeds: [u64; 16]) -> Self
+    /// Creates a new, empty `Generator` instance with default values.
+    ///
+    /// This function initializes all fields of the `Generator` struct to their
+    /// default empty or initial states, such as an empty `QBank` and
+    /// `ShuffledQSets`, and predefined font sizes and margins.
+    /// 
+    /// # Arguments
+    /// * `seeds` - A seed array, each element of which is of u64.
+    ///
+    /// # Returns
+    /// `Self` - A new `Generator` instance, ready for configuration.
+    ///
+    /// # Examples
+    /// ```
+    /// use qrate::Generator;
+    ///
+    /// let seeds = [0_u64, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+    /// let generator = Generator::new_empty_with_seeds(seeds);
+    /// // Verify that the generator's internal qbank is empty.
+    /// assert!(generator.origin.get_questions().is_empty());
+    /// ```
+    pub fn new_empty_with_seeds(seeds: [u64; 16]) -> Self
+    {
+        Self
+        {
+            shuffler: Shuffler::new_with_seeds(&QBank::new_empty(), 1, 1, &Students::new(), seeds),
+            current_question_number: 0,
+            title_font_size: 14.0,
+            body_font_size: 11.0,
+            answer_sheet_font_size: 12.0,
+            footer_font_size: 9.0,
+            attributes: Self::TITLE_BOLD,
+            margin_left_in_mm: 10.0,
+            margin_right_in_mm: 10.0,
+            margin_top_in_mm: 10.0,
+            margin_buttom_in_mm: 10.0,
+            line_spacing: 1.0,
+            answer_sheet_title: "Answer Sheet        정답지        Ответы".to_string()
+        }
+    }
+
+    // pub fn new_one_set(qbank: &QBank, start: u16, end: u16, selected: usize, seeds: [u64; 16]) -> Option<Self>
+    /// Creates a new `Generator` instance for a single shuffled set.
+    ///
+    /// This function generates a single shuffled question set based on the provided
+    /// question bank, starting and ending question numbers.
+    ///
+    /// # Arguments
+    /// * `qbank` - A reference to the `QBank` containing the original questions.
+    /// * `start` - The starting number of the questions to include (inclusive).
+    /// * `end` - The ending number of the questions to include (inclusive).
+    /// * `selected` - The number of questions to be randomly selected.
+    /// * `seeds` - A seed array, each element of which is of u64.
+    ///
+    /// # Output
+    /// An `Option<Self>` which is `Some(Generator)` if successful, or `None` if
+    /// the generation fails (e.g., invalid question range).
+    ///
+    /// # Examples
+    /// ```
+    /// use qrate::{ QBank, Generator, Student };
+    ///
+    /// let mut qbank = QBank::new_empty();
+    /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
+    /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
+    ///
+    /// let seeds = [0_u64, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+    /// let generator = Generator::new_one_set_with_seeds(&qbank, 1, 2, 2, seeds);
+    /// assert!(generator.is_some());
+    /// ```
+    pub fn new_one_set_with_seeds(qbank: &QBank, start: u16, end: u16, selected: usize, seeds: [u64; 16]) -> Option<Self>
+    {
+        let student = Student::new_empty();
+        let students = vec![student];
+        Self::new_with_seeds(qbank, start, end, selected, &students, seeds)
+    }
+
+    #[inline]
+    pub fn make_exams(&mut self, number_of_questions: usize)
+    {
+        self.shuffler.make_exams(number_of_questions);
     }
 
     // pub fn get_title_font_size(&self) -> f32

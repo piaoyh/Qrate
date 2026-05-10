@@ -672,10 +672,10 @@ impl QBank
     /// ```
     pub fn remove_question(&mut self, question_number: usize) -> bool
     {
-        if (question_number <= self.get_length()) && (question_number > 0)
-            { self.remove_question(question_number) }
-        else
-            { false }
+        let res = (question_number <= self.get_length()) && (question_number > 0);
+        if res
+            { self.questions.remove(question_number-1); }
+        res
     }
 
     // pub fn optimize(&mut self)
@@ -706,24 +706,33 @@ impl QBank
     /// ```
     pub fn optimize(&mut self)
     {
+        // If there is no question and there are no choices or empty choices,
+        // it will be removed from QBank.
         let len = self.get_length();
         for id in (1..=len).rev()
         {
+            // Because id is within the reange 1..=len, .unwrap() does not cause panic.
             let question = self.get_question(id).unwrap();
             if question.get_question().is_empty()
             {
+                let idx = id - 1;
                 if question.get_choices().is_empty()
                 {
-                    self.questions.remove(id - 1);
+                    self.questions.remove(idx);
                 }
                 else
                 {
+                    let mut is_all_empty = true;
                     for choice in question.get_choices()
                     {
                         if !choice.0.is_empty()
-                            { return; }
+                        {
+                            is_all_empty = false;
+                            break;
+                        }
                     }
-                    self.questions.remove(id - 1);
+                    if is_all_empty
+                        { self.questions.remove(idx); }
                 }
             }
         }
@@ -731,13 +740,14 @@ impl QBank
         let len = self.get_length();
         for id in 1..=len
         {
+            // Because id is within the reange 1..=len, .unwrap() does not cause panic.
             let question = self.get_question_mut(id).unwrap();
             question.set_id(id as u16);
             let group = question.get_group();
             if group <= id as u16
                 { continue; }
-
             question.set_group(id as u16);
+
             for jd in (id + 1)..=len
             {
                 let next = self.get_question_mut(jd).unwrap();
