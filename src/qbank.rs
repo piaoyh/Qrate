@@ -708,14 +708,14 @@ impl QBank
     {
         // If there is no question and there are no choices or empty choices,
         // it will be removed from QBank.
-        let len = self.get_length();
+        let mut len = self.get_length();
         for id in (1..=len).rev()
         {
+            let idx = id - 1;
             // Because id is within the reange 1..=len, .unwrap() does not cause panic.
             let question = self.get_question(id).unwrap();
             if question.get_question().is_empty()
             {
-                let idx = id - 1;
                 if question.get_choices().is_empty()
                 {
                     self.questions.remove(idx);
@@ -737,16 +737,32 @@ impl QBank
             }
         }
 
-        let len = self.get_length();
+        // In order to make the index of groups be same as id.
+        let mut groups = vec![0];
+        len = self.get_length();
         for id in 1..=len
         {
             // Because id is within the reange 1..=len, .unwrap() does not cause panic.
             let question = self.get_question_mut(id).unwrap();
             question.set_id(id as u16);
             let group = question.get_group();
-            if group <= id as u16
-                { continue; }
+            groups.push(group);
+            if group < id as u16
+            {
+                let mut need_skip = false;
+                for jd in 1..id
+                {
+                    if group == groups[jd]
+                    {
+                        need_skip = true;
+                        break;
+                    }
+                }
+                if need_skip
+                    { continue; }
+            }
             question.set_group(id as u16);
+            groups[id] = id as u16;
 
             for jd in (id + 1)..=len
             {
@@ -755,7 +771,7 @@ impl QBank
                 if grp == group
                     { next.set_group(id as u16); }
                 else if grp == id as u16
-                    { next.set_group(group as u16); }
+                    { next.set_group(group); }
             }
         }
     }
