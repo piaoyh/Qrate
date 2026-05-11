@@ -1954,6 +1954,10 @@ impl Generator
         // Student Information
         content.push_str(&format!("{}: {}        {}: {}\n\n", header.get_name(), student.get_name(), header.get_id(), student.get_id()));
 
+        // Instructions
+        content.push_str(&format!("{}\n\n", header.get_notice()));
+
+        // Questions
         for (question_index, question) in qbank.get_questions().iter().enumerate()
         {
             let category = header.get_category(question.get_category()).map(|s| s.as_str()).unwrap_or("");
