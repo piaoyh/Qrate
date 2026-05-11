@@ -2385,11 +2385,16 @@ impl Generator
         // Student Information
         let st = paragraph(body_run.clone(), format!("{}: {}        {}: {}", header.get_name(), student.get_name(), header.get_id(), student.get_id()), body_font_size);
 
+        // Instructions
+        let notice = paragraph(body_run.clone(), format!("{}", header.get_notice()), body_font_size);
+
         // Blank line
         let blank_line = Paragraph::new();
 
         docx = docx.add_paragraph(ex);
         docx = docx.add_paragraph(st);
+        docx = docx.add_paragraph(blank_line.clone());
+        docx = docx.add_paragraph(notice);
         docx = docx.add_paragraph(blank_line.clone());
 
         for (question_index, question) in qbank.get_questions().iter().enumerate()
