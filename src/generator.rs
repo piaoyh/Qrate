@@ -2042,9 +2042,9 @@ impl Generator
                     .iter()
                     .enumerate()
                     .filter(|(_, (_, is_correct))| *is_correct)
-                    .map(|(j, _)| format!("({})", j + 1))
+                    .map(|(j, _)| (j + 1).to_string())
                     .collect();
-                let answer_string = correct_choices.join(", ");
+                let answer_string = format!("({})", correct_choices.join(", "));
 
                 let entry = format!("{}. {}    ", i + 1, answer_string);
 
@@ -2104,9 +2104,9 @@ impl Generator
                     .iter()
                     .enumerate()
                     .filter(|(_, (_, is_correct))| *is_correct)
-                    .map(|(j, _)| format!("({})", j + 1))
+                    .map(|(j, _)| (j + 1).to_string())
                     .collect();
-                let answer_string = correct_choices.join(", ");
+                let answer_string = format!("({})", correct_choices.join(", "));
 
                 let entry = format!("{}. {}    ", i + 1, answer_string);
 
@@ -2306,9 +2306,9 @@ impl Generator
                     .iter()
                     .enumerate()
                     .filter(|(_, (_, is_correct))| *is_correct)
-                    .map(|(j, _)| format!("({})", j + 1))
+                    .map(|(j, _)| (j + 1).to_string())
                     .collect();
-                let answer_string = correct_choices.join(", ");
+                let answer_string = format!("({})", correct_choices.join(", "));
                 answers_text.push_str(&format!("{}. {}    ", i + 1, answer_string));
             }
 
@@ -2408,8 +2408,7 @@ impl Generator
             docx = docx.add_paragraph(para);
             for (choice_index, (choice_text, _is_correct)) in question.get_choices().iter().enumerate()
             {
-                let choice_char = (b'A' + choice_index as u8) as char;
-                let para = paragraph(body_run.clone(), format!("    ({}) {}", choice_char, choice_text), body_font_size);
+                let para = paragraph(body_run.clone(), format!("    ({}) {}", choice_index + 1, choice_text), body_font_size);
                 docx = docx.add_paragraph(para);
             }
             // Blank line after each question
@@ -2542,9 +2541,9 @@ impl Generator
                     .iter()
                     .enumerate()
                     .filter(|(_, (_, is_correct))| *is_correct)
-                    .map(|(j, _)| format!("({})", j + 1))
+                    .map(|(j, _)| (j + 1).to_string())
                     .collect();
-                let answer_string = correct_choices.join(", ");
+                let answer_string = format!("({})", correct_choices.join(", "));
                 answers_text.push_str(&format!("{}. {}    ", i + 1, answer_string));
             }
             hwpx.add_mixed_styled_paragraph(vec![StyledText {
@@ -2626,8 +2625,7 @@ impl Generator
 
             for (choice_index, (choice_text, _)) in question.get_choices().iter().enumerate()
             {
-                let choice_char = (b'A' + choice_index as u8) as char;
-                let c_text = format!("    ({}) {}", choice_char, choice_text);
+                let c_text = format!("    ({}) {}", choice_index + 1, choice_text);
                 hwpx.add_mixed_styled_paragraph(vec![StyledText {
                     text: c_text,
                     style: body_style.clone(),
@@ -2766,9 +2764,9 @@ impl Generator
                     .iter()
                     .enumerate()
                     .filter(|(_, (_, is_correct))| *is_correct)
-                    .map(|(j, _)| format!("({})", j + 1))
+                    .map(|(j, _)| (j + 1).to_string())
                     .collect();
-                let answer_string = correct_choices.join(", ");
+                let answer_string = format!("({})", correct_choices.join(", "));
                 answers_text.push_str(&format!("{}. {}    ", i + 1, answer_string));
             }
             let mut answers_styled = hwpers::writer::style::StyledText::new(answers_text.clone());
@@ -2846,8 +2844,7 @@ impl Generator
 
             for (choice_index, (choice_text, _)) in question.get_choices().iter().enumerate()
             {
-                let choice_char = (b'A' + choice_index as u8) as char;
-                let c_text = format!("    ({}) {}", choice_char, choice_text);
+                let c_text = format!("    ({}) {}", choice_index + 1, choice_text);
                 let mut c_styled = hwpers::writer::style::StyledText::new(c_text.clone());
                 c_styled = c_styled.add_range(0, c_text.len(), body_style.clone());
                 hwp.add_styled_paragraph(&c_styled).map_err(|e| e.to_string())?;
@@ -2959,9 +2956,9 @@ impl Generator
                     .iter()
                     .enumerate()
                     .filter(|(_, (_, is_correct))| *is_correct)
-                    .map(|(j, _)| format!("({})", j + 1))
+                    .map(|(j, _)| (j + 1).to_string())
                     .collect();
-                let answer_string = correct_choices.join(", ");
+                let answer_string = format!("({})", correct_choices.join(", "));
                 answers_text.push_str(&format!("{}. {}    ", i + 1, answer_string));
             }
             doc.push(elements::Paragraph::new(answers_text).styled(answer_style));
