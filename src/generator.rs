@@ -2385,16 +2385,20 @@ impl Generator
         // Student Information
         let st = paragraph(body_run.clone(), format!("{}: {}        {}: {}", header.get_name(), student.get_name(), header.get_id(), student.get_id()), body_font_size);
 
-        // Instructions
-        let notice = paragraph(body_run.clone(), format!("{}", header.get_notice()), body_font_size);
-
         // Blank line
         let blank_line = Paragraph::new();
 
         docx = docx.add_paragraph(ex);
         docx = docx.add_paragraph(st);
         docx = docx.add_paragraph(blank_line.clone());
-        docx = docx.add_paragraph(notice);
+
+        // Instructions (Handle multi-line notice)
+        for line in header.get_notice().lines()
+        {
+            let notice_para = paragraph(body_run.clone(), format!("{}", line), body_font_size);
+            docx = docx.add_paragraph(notice_para);
+        }
+
         docx = docx.add_paragraph(blank_line.clone());
 
         for (question_index, question) in qbank.get_questions().iter().enumerate()
@@ -2599,6 +2603,16 @@ impl Generator
             style: body_style.clone(),
         }]).map_err(|e| e.to_string())?;
 
+        hwpx.add_paragraph("").map_err(|e| e.to_string())?;
+
+        // Instructions (Handle multi-line notice)
+        for line in header.get_notice().lines()
+        {
+            hwpx.add_mixed_styled_paragraph(vec![StyledText {
+                text: line.to_string(),
+                style: body_style.clone(),
+            }]).map_err(|e| e.to_string())?;
+        }
         hwpx.add_paragraph("").map_err(|e| e.to_string())?;
 
         for (question_index, question) in qbank.get_questions().iter().enumerate()
@@ -2813,6 +2827,15 @@ impl Generator
 
         hwp.add_paragraph("").map_err(|e| e.to_string())?;
 
+        // Instructions (Handle multi-line notice)
+        for line in header.get_notice().lines()
+        {
+            let mut line_styled = hwpers::writer::style::StyledText::new(line.to_string());
+            line_styled = line_styled.add_range(0, line.len(), body_style.clone());
+            hwp.add_styled_paragraph(&line_styled).map_err(|e| e.to_string())?;
+        }
+        hwp.add_paragraph("").map_err(|e| e.to_string())?;
+
         for (question_index, question) in qbank.get_questions().iter().enumerate()
         {
             let category = header.get_category(question.get_category()).map(|s| s.as_str()).unwrap_or("");
@@ -2997,6 +3020,13 @@ impl Generator
         // Student Information
         doc.push(elements::Paragraph::new(format!("{}: {}        {}: {}", header.get_name(), student.get_name(), header.get_id(), student.get_id())).styled(body_style));
         doc.push(elements::Paragraph::new("")); // Blank line
+
+        // Instructions (Handle multi-line notice)
+        for line in header.get_notice().lines()
+        {
+            doc.push(elements::Paragraph::new(format!("{}", line)).styled(body_style));
+        }
+        doc.push(elements::Paragraph::new("")); // Blank line after notice
 
         for (question_index, question) in qbank.get_questions().iter().enumerate()
         {
