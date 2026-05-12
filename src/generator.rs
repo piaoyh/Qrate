@@ -1964,7 +1964,7 @@ impl Generator
             content.push_str(&format!("{}. [{}]   {}\n", question_index + 1, category, question.get_question()));
             for (choice_index, (choice_text, _is_correct)) in question.get_choices().iter().enumerate()
             {
-                let choice_char = (b'A' + choice_index as u8) as char;
+                let choice_char = (choice_index + 1).to_string();
                 content.push_str(&format!("    ({}) {}\n", choice_char, choice_text));
             }
             content.push_str("\n"); // Blank line after each question
@@ -2042,7 +2042,7 @@ impl Generator
                     .iter()
                     .enumerate()
                     .filter(|(_, (_, is_correct))| *is_correct)
-                    .map(|(j, _)| ((b'a' + j as u8) as char).to_string())
+                    .map(|(j, _)| format!("({})", j + 1))
                     .collect();
                 let answer_string = correct_choices.join(", ");
 
@@ -2104,7 +2104,7 @@ impl Generator
                     .iter()
                     .enumerate()
                     .filter(|(_, (_, is_correct))| *is_correct)
-                    .map(|(j, _)| ((b'a' + j as u8) as char).to_string())
+                    .map(|(j, _)| format!("({})", j + 1))
                     .collect();
                 let answer_string = correct_choices.join(", ");
 
@@ -2306,7 +2306,7 @@ impl Generator
                     .iter()
                     .enumerate()
                     .filter(|(_, (_, is_correct))| *is_correct)
-                    .map(|(j, _)| ((b'a' + j as u8) as char).to_string())
+                    .map(|(j, _)| format!("({})", j + 1))
                     .collect();
                 let answer_string = correct_choices.join(", ");
                 answers_text.push_str(&format!("{}. {}    ", i + 1, answer_string));
@@ -2542,7 +2542,7 @@ impl Generator
                     .iter()
                     .enumerate()
                     .filter(|(_, (_, is_correct))| *is_correct)
-                    .map(|(j, _)| ((b'a' + j as u8) as char).to_string())
+                    .map(|(j, _)| format!("({})", j + 1))
                     .collect();
                 let answer_string = correct_choices.join(", ");
                 answers_text.push_str(&format!("{}. {}    ", i + 1, answer_string));
@@ -2766,7 +2766,7 @@ impl Generator
                     .iter()
                     .enumerate()
                     .filter(|(_, (_, is_correct))| *is_correct)
-                    .map(|(j, _)| ((b'a' + j as u8) as char).to_string())
+                    .map(|(j, _)| format!("({})", j + 1))
                     .collect();
                 let answer_string = correct_choices.join(", ");
                 answers_text.push_str(&format!("{}. {}    ", i + 1, answer_string));
@@ -2956,11 +2956,11 @@ impl Generator
             let mut answers_text = String::new();
             for (i, question) in qbank.get_questions().iter().enumerate() {
                 let correct_choices: Vec<String> = question.get_choices()
-                                                            .iter()
-                                                            .enumerate()
-                                                            .filter(|(_, (_, is_correct))| *is_correct)
-                                                            .map(|(j, _)| ((b'a' + j as u8) as char).to_string())
-                                                            .collect();
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, (_, is_correct))| *is_correct)
+                    .map(|(j, _)| format!("({})", j + 1))
+                    .collect();
                 let answer_string = correct_choices.join(", ");
                 answers_text.push_str(&format!("{}. {}    ", i + 1, answer_string));
             }
@@ -3034,7 +3034,7 @@ impl Generator
             doc.push(elements::Paragraph::new(format!("{}. [{}]   {}", question_index + 1, category, question.get_question())).styled(body_style));
             for (choice_index, (choice_text, _is_correct)) in question.get_choices().iter().enumerate()
             {
-                let choice_char = (b'A' + choice_index as u8) as char;
+                let choice_char = (choice_index + 1).to_string();
                 doc.push(elements::Paragraph::new(format!("    ({}) {}", choice_char, choice_text)).styled(body_style));
             }
             doc.push(elements::Paragraph::new("")); // Blank line after each question
