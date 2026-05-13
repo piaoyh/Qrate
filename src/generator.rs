@@ -2168,7 +2168,7 @@ impl Generator
         Ok(())
     }
 
-    // pub fn export_shuffled_exams_in_docx(&self) -> Result<Vec<u8>
+    // pub fn export_shuffled_exams_in_docx(&self) -> Result<Vec<u8>, String>
     /// Exports the shuffled exam sets to a Vec<u8> object.
     ///
     /// This function generates a DOCX document containing the shuffled exam
@@ -2404,12 +2404,33 @@ impl Generator
         for (question_index, question) in qbank.get_questions().iter().enumerate()
         {
             let category = header.get_category(question.get_category()).map(|s| s.as_str()).unwrap_or("");
-            let para = paragraph(body_run.clone(), format!("{}. [{}]   {}", question_index + 1, category, question.get_question()), body_font_size);
-            docx = docx.add_paragraph(para);
+            let mut q_para = Paragraph::new();
+            let mut lines = question.get_question().lines().peekable();
+            let mut is_first_line = true;
+            while let Some(line) = lines.next()
+            {
+                let mut run = body_run.clone().add_text(if is_first_line { format!("{}. [{}]   {}", question_index + 1, category, line) } else { line.to_string() }).size(body_font_size);
+                if lines.peek().is_some()
+                    { run = run.add_break(docx_rs::BreakType::TextWrapping); }
+                q_para = q_para.add_run(run);
+                is_first_line = false;
+            }
+            docx = docx.add_paragraph(q_para);
+
             for (choice_index, (choice_text, _is_correct)) in question.get_choices().iter().enumerate()
             {
-                let para = paragraph(body_run.clone(), format!("    ({}) {}", choice_index + 1, choice_text), body_font_size);
-                docx = docx.add_paragraph(para);
+                let mut c_para = Paragraph::new();
+                let mut lines = choice_text.lines().peekable();
+                let mut is_first_line = true;
+                while let Some(line) = lines.next()
+                {
+                    let mut run = body_run.clone().add_text(if is_first_line { format!("    ({}) {}", choice_index + 1, line) } else { line.to_string() }).size(body_font_size);
+                    if lines.peek().is_some()
+                        { run = run.add_break(docx_rs::BreakType::TextWrapping); }
+                    c_para = c_para.add_run(run);
+                    is_first_line = false;
+                }
+                docx = docx.add_paragraph(c_para);
             }
             // Blank line after each question
             docx = docx.add_paragraph(blank_line.clone());
@@ -3037,5 +3058,139 @@ impl Generator
             doc.push(elements::Paragraph::new("")); // Blank line after each question
         }
         Ok(())
+    }
+
+    // pub fn export_shuffled_exams_in_pdf(&self) -> Result<Vec<u8>, String>
+    /// Exports the shuffled exam sets as a PDF-compatible JSON byte vector.
+    ///
+    /// This function generates a JSON structure that can be used with the `pdfmake`
+    /// library ot javascript to create a PDF document.
+    /// It includes the shuffled exam sets for all students and an answer sheet.
+    ///
+    /// # Returns
+    /// `Result<Vec<u8>, String>` - Returns a byte vector containing the JSON string
+    ///                            on success, or an `Err` with a `String`
+    ///                            describing the error on failure.
+    #[cfg(any(target_arch = "wasm32", target_arch = "wasm64"))]
+    pub fn export_shuffled_exams_in_pdf(&self) -> Result<Vec<u8>, String>
+    {
+        use serde_json::json;
+        let shuffled_qsets: Vec<(Student, QBank)> = self.get_shuffled_qbanks();
+        let mut content = Vec::new();
+
+        let title_font_size = self.title_font_size;
+        let body_font_size = self.body_font_size;
+        let answer_sheet_font_size = self.answer_sheet_font_size;
+
+        let title_style = json!({
+            "fontSize": title_font_size,
+            "bold": self.is_title_bold(),
+            "italics": self.is_title_italic(),
+            "decoration": if self.is_title_underline() { Some("underline") } else if self.is_title_strike() { Some("lineThrough") } else { None },
+            "alignment": "center",
+            "margin": [0, 0, 0, 10]
+        });
+
+        let body_style = json!({
+            "fontSize": body_font_size,
+            "bold": self.is_body_bold(),
+            "italics": self.is_body_italic(),
+            "decoration": if self.is_body_underline() { Some("underline") } else if self.is_body_strike() { Some("lineThrough") } else { None },
+            "margin": [0, 2, 0, 2]
+        });
+
+        let answer_sheet_style = json!({
+            "fontSize": answer_sheet_font_size,
+            "bold": self.is_answer_sheet_bold(),
+            "italics": self.is_answer_sheet_italic(),
+            "decoration": if self.is_answer_sheet_underline() { Some("underline") } else if self.is_answer_sheet_strike() { Some("lineThrough") } else { None },
+            "margin": [0, 2, 0, 2]
+        });
+
+        for (idx, (student, qbank)) in shuffled_qsets.iter().enumerate()
+        {
+            let student: &Student = student;
+            let qbank: &QBank = qbank;
+            if idx > 0
+                { content.push(json!({"text": "", "pageBreak": "before"})); }
+
+            let header = qbank.get_header();
+            
+            // Title
+            content.push(json!({"text": header.get_title(), "style": "title"}));
+
+            // Student Info
+            content.push(json!({
+                "text": format!("{}: {}        {}: {}", header.get_name(), student.get_name(), header.get_id(), student.get_id()),
+                "style": "body"
+            }));
+            content.push(json!({"text": "\n"}));
+
+            // Notice
+            for line in header.get_notice().lines()
+            {
+                content.push(json!({"text": line, "style": "body"}));
+            }
+            content.push(json!({"text": "\n"}));
+
+            // Questions
+            for (question_index, question) in qbank.get_questions().iter().enumerate()
+            {
+                let category = header.get_category(question.get_category()).map(|s: &String| s.as_str()).unwrap_or("");
+                content.push(json!({
+                    "text": format!("{}. [{}]   {}", question_index + 1, category, question.get_question()),
+                    "style": "body"
+                }));
+                for (choice_index, (choice_text, _)) in question.get_choices().iter().enumerate()
+                {
+                    content.push(json!({
+                        "text": format!("    ({}) {}", choice_index + 1, choice_text),
+                        "style": "body"
+                    }));
+                }
+                content.push(json!({"text": "\n"}));
+            }
+        }
+
+        // Answer Sheet
+        content.push(json!({"text": "", "pageBreak": "before"}));
+        content.push(json!({"text": self.answer_sheet_title.as_str(), "style": "title"}));
+
+        let header = self.shuffler.get_header();
+        for (student, qbank) in &shuffled_qsets
+        {
+            let student: &Student = student;
+            let qbank: &QBank = qbank;
+            content.push(json!({
+                "text": format!("{}: {}        {}: {}", header.get_name(), student.get_name(), header.get_id(), student.get_id()),
+                "style": "answer_sheet"
+            }));
+
+            let mut answers_text = String::new();
+            for (i, question) in qbank.get_questions().iter().enumerate()
+            {
+                let correct_choices: Vec<String> = question.get_choices()
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, (_, is_correct)): &(usize, &(String, bool))| *is_correct)
+                    .map(|(j, _): (usize, &(String, bool))| (j + 1).to_string())
+                    .collect();
+                let answer_string = format!("({})", correct_choices.join(", "));
+                answers_text.push_str(&format!("{}. {}    ", i + 1, answer_string));
+            }
+            content.push(json!({"text": answers_text, "style": "answer_sheet"}));
+            content.push(json!({"text": "\n"}));
+        }
+
+        let doc_definition = json!({
+            "content": content,
+            "styles": {
+                "title": title_style,
+                "body": body_style,
+                "answer_sheet": answer_sheet_style
+            }
+        });
+
+        serde_json::to_vec(&doc_definition).map_err(|e| e.to_string())
     }
 }
