@@ -247,25 +247,31 @@ impl Generator
     pub fn new_with_seeds(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, students: &Students, seeds: [u64; 16]) -> Option<Self>
     {
         let mut shuffler = Shuffler::new_with_seeds(qbank, start, end, students, seeds);
-        shuffler.make_exams(number_of_questions);
-        Some(
-            Self
-            {
-                shuffler,
-                current_question_number: 0,
-                title_font_size: 14.0,
-                body_font_size: 11.0,
-                answer_sheet_font_size: 12.0,
-                footer_font_size: 9.0,
-                attributes: Self::TITLE_BOLD,
-                margin_left_in_mm: 10.0,
-                margin_right_in_mm: 10.0,
-                margin_top_in_mm: 10.0,
-                margin_buttom_in_mm: 10.0,
-                line_spacing: 1.0,
-                answer_sheet_title: "Answer Sheet        정답지        Ответы".to_string()
-            }
-        )
+        if shuffler.make_exams(number_of_questions)
+        {
+            Some(
+                Self
+                {
+                    shuffler,
+                    current_question_number: 0,
+                    title_font_size: 14.0,
+                    body_font_size: 11.0,
+                    answer_sheet_font_size: 12.0,
+                    footer_font_size: 9.0,
+                    attributes: Self::TITLE_BOLD,
+                    margin_left_in_mm: 10.0,
+                    margin_right_in_mm: 10.0,
+                    margin_top_in_mm: 10.0,
+                    margin_buttom_in_mm: 10.0,
+                    line_spacing: 1.0,
+                    answer_sheet_title: "Answer Sheet        정답지        Ответы".to_string()
+                }
+            )
+        }
+        else
+        {
+            None
+        }
     }
 
     // pub fn new_empty_with_seeds(seeds: [u64; 16]) -> Self

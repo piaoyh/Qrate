@@ -189,7 +189,13 @@ impl QBank
         QBank
         {
             header: self.get_header().clone(),
-            questions: self.get_questions().iter().filter(|q| q.get_id() >= start && q.get_id() <= end).cloned().collect(),
+            questions: self.questions.iter().enumerate()
+                .filter(|(idx, _)| {
+                    let pos = (idx + 1) as u16;
+                    pos >= start && pos <= end
+                })
+                .map(|(_, q)| q.clone())
+                .collect(),
         }
     }
 

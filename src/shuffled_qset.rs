@@ -104,7 +104,7 @@ impl ShuffledQSet
             let question_indices = &groups[&group_id];
             let chosen_idx = question_indices[prng.random_under_uint_(question_indices.len())];
             let question = qbank.get_question(chosen_idx + 1).unwrap();
-            let mut shuffled_question = ShuffledQuestion::new(question.get_id(), question.get_number_of_choices() as u8);
+            let mut shuffled_question = ShuffledQuestion::new((chosen_idx + 1) as u16, question.get_number_of_choices() as u8);
             shuffled_question.shuffle(prng);
             questions.push(shuffled_question);
         }
