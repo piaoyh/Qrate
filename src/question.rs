@@ -447,6 +447,8 @@ impl Question
             let correct_count = self.choices.iter().filter(|c| c.1).count();
             if correct_count == 0
                 { self.category = 4; }
+            else if correct_count == 1
+                { self.category = 1; }
             else if correct_count == choice_count
                 { self.category = 3; }
             else
