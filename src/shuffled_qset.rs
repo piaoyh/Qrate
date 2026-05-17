@@ -60,25 +60,26 @@ impl ShuffledQSet
     /// 
     /// let mut rand = Random_PRNG_Creator::create();
     /// let mut qbank = QBank::new_with_default();
-    /// qbank.push_question(Question::new(1, 1, 1, "Q1".to_string(), vec![])); // id 1, group 1
-    /// qbank.push_question(Question::new(2, 1, 1, "Q2".to_string(), vec![])); // id 2, group 1
-    /// qbank.push_question(Question::new(3, 2, 1, "Q3".to_string(), vec![])); // id 3, group 2
-    /// qbank.push_question(Question::new(4, 3, 1, "Q4".to_string(), vec![])); // id 4, group 3
-    /// qbank.push_question(Question::new(5, 4, 1, "Q5".to_string(), vec![])); // id 5, group 4
+    /// // Add questions with specific groups.
+    /// qbank.push_question(Question::new(1, 1, 1, "Q1".to_string(), vec![]));
+    /// qbank.push_question(Question::new(2, 1, 1, "Q2".to_string(), vec![]));
+    /// qbank.push_question(Question::new(3, 2, 1, "Q3".to_string(), vec![]));
+    /// qbank.push_question(Question::new(4, 3, 1, "Q4".to_string(), vec![]));
+    /// qbank.push_question(Question::new(5, 4, 1, "Q5".to_string(), vec![]));
     ///
     /// let student = Student::new("Test".to_string(), "123".to_string());
-    /// // Select 3 questions from unique groups between ID 1 and 5
+    /// // Select 3 questions from unique groups within the bank.
     /// let qset = ShuffledQSet::new(&qbank, 3, student.clone(), &mut rand).unwrap();
     /// assert_eq!(qset.get_student().get_name(), "Test");
     /// assert_eq!(qset.get_shuffled_questions().len(), 3);
     ///
-    /// // Try to select more questions than available unique groups (4 unique groups total)
+    /// // Try to select more than available unique groups (4 groups total).
     /// let qset_none = ShuffledQSet::new(&qbank, 5, student.clone(), &mut rand);
     /// assert!(qset_none.is_none());
     ///
-    /// // Selected count is 0
-    /// let qset_zero_selected = ShuffledQSet::new(&qbank, 0, student, &mut rand);
-    /// assert!(qset_zero_selected.is_none());
+    /// // Selection count is 0.
+    /// let qset_zero = ShuffledQSet::new(&qbank, 0, student, &mut rand);
+    /// assert!(qset_zero.is_none());
     /// ```
     pub fn new(qbank: &QBank, number_of_questions: usize, student: Student, prng: &mut Random) -> Option<Self>
     {

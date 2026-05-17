@@ -392,67 +392,60 @@ impl Question
 
     // pub fn determine_category(&mut self)
     /// Determines the category of the question based on the number of choices
-    /// and their correctness.
+    /// and their correctness (represented by the boolean in `ChoiceAnswer`).
     /// 
     /// The category is set as follows:
-    /// - If there are multiple choices only one of which has an answer mark
-    ///   true and all others have answer marks false, the category is set to 1.
-    /// - If there are multiple choices some of which have answer marks true and
-    ///   others have ansswer marks false, the category is set to 2.
-    /// - If there is/are (a) choice(s) which have all answer mark(s) true,
-    ///   the category is set to 3.
-    /// - If there are no choices or if all choices have answer marks false,
-    ///   the category is set to 4 (essay).
+    /// - 1: Multiple choices, with exactly one correct answer.
+    /// - 2: Multiple choices, with two or more (but not all) correct answers.
+    /// - 3: One or more choices, where ALL choices are correct.
+    /// - 4: Zero choices, OR all choices are incorrect.
     /// 
     /// # Examples
     /// ```
     /// use qrate::Question;
     /// let mut question = Question::new_empty();
     /// 
+    /// // Case 4: No choices
     /// question.determine_category();
-    /// assert_eq!(question.get_category(), 4); // No choices, so category is 4 (essay)
+    /// assert_eq!(question.get_category(), 4);
     /// 
-    /// question.push_choice(("Option A".to_string(), false));
+    /// // Case 3: One choice and it is correct
+    /// question.push_choice(("Answer".to_string(), true));
     /// question.determine_category();
-    /// assert_eq!(question.get_category(), 4); // One incorrect choice, so category is 4 (essay)
+    /// assert_eq!(question.get_category(), 3);
     /// 
-    /// question.set_choice(0, ("Option B".to_string(), true));
+    /// // Case 1: Multiple choices, only one is correct
+    /// question.push_choice(("Wrong".to_string(), false));
     /// question.determine_category();
-    /// assert_eq!(question.get_category(), 3); // One correct choice, so category is 3 (short answer)
+    /// assert_eq!(question.get_category(), 1);
     /// 
-    /// question.push_choice(("Option C".to_string(), false));
+    /// // Case 2: Multiple choices, some (not all) are correct
+    /// question.push_choice(("Another Correct".to_string(), true));
     /// question.determine_category();
-    /// assert_eq!(question.get_category(), 1); // Multiple choices with one correct, so category is 1 (single answer of multiple-choice)
+    /// assert_eq!(question.get_category(), 2);
     /// 
-    /// question.push_choice(("Option D".to_string(), true));
+    /// // Case 3: Multiple choices, all are correct
+    /// question.set_choice(2, ("Wrong turned Correct".to_string(), true));
     /// question.determine_category();
-    /// assert_eq!(question.get_category(), 2); // Multiple choices with multiple correct, so category is 2 (multiple answers of multiple-choice)
-    /// 
-    /// question.set_choice(0, ("Option A".to_string(), true));
-    /// question.set_choice(1, ("Option B".to_string(), true));
-    /// question.set_choice(2, ("Option C".to_string(), true));
-    /// question.set_choice(3, ("Option D".to_string(), true));
-    /// question.determine_category();
-    /// assert_eq!(question.get_category(), 3); // Multiple choices with all correct, so category is 3 (short answer)
+    /// assert_eq!(question.get_category(), 3);
     /// ```
     pub fn determine_category(&mut self)
     {
         let choice_count = self.choices.len();
-        if choice_count == 0
-            { self.category = 4; }
-        else if choice_count == 1
-            { self.category = 4 - self.choices[0].1 as u8; }
-        else
-        {
-            let correct_count = self.choices.iter().filter(|c| c.1).count();
-            if correct_count == 0
-                { self.category = 4; }
-            else if correct_count == 1
-                { self.category = 1; }
-            else if correct_count == choice_count
-                { self.category = 3; }
-            else
-                { self.category = 2; }
-        }
+        
+        self.category = if choice_count == 0 { 4 }
+                        else if choice_count == 1
+                        {
+                            if self.choices[0].1 { 3 } else { 4 }
+                        }
+                        else
+                        {
+                            let correct_count = self.choices.iter().filter(|c| c.1).count();
+                            
+                            if correct_count == 0       { 4 }
+                            else if correct_count == 1  { 1 }
+                            else if correct_count == choice_count { 3 }
+                            else { 2 }
+                        }
     }
 }

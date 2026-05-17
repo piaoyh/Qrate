@@ -163,29 +163,31 @@ impl QBank
 
     // pub fn select_questions(&self, start: u16, end: u16) -> QBank
     /// Selects a subset of questions from the bank based on
-    /// a specified range of question IDs to create the smaller QBank.
-    /// 
+    /// a specified range of 1-based indices to create the smaller QBank.
+    ///
     /// # Arguments
-    /// * `start` - The starting question ID (inclusive) for selection.
-    /// * `end` - The ending question ID (inclusive) for selection.
-    /// 
+    /// * `start` - The starting 1-based index (inclusive) for selection.
+    /// * `end` - The ending 1-based index (inclusive) for selection.
+    ///
     /// # Returns
     /// `QBank` - A smaller QBank object containing the original header and the
     /// selected questions.
-    /// If no questions fall within the specified range, returns an empty vector.
-    /// 
+    /// If no questions fall within the specified range, returns an empty bank.
+    ///
     /// # Examples
     /// ```
     /// use qrate::{ QBank, Question };
     /// let mut qbank = QBank::new_empty();
-    /// qbank.push_question(Question::new(1, 1, 1, "Test Q1".to_string(), vec![]));
-    /// qbank.push_question(Question::new(2, 1, 1, "Test Q2".to_string(), vec![]));
-    /// qbank.push_question(Question::new(3, 1, 1, "Test Q2".to_string(), vec![]));
+    /// // Add three questions. Their IDs don't affect selection order here.
+    /// qbank.push_question(Question::new(101, 1, 1, "Test Q1".to_string(), vec![]));
+    /// qbank.push_question(Question::new(202, 1, 1, "Test Q2".to_string(), vec![]));
+    /// qbank.push_question(Question::new(303, 1, 1, "Test Q3".to_string(), vec![]));
+    /// // Select 1st and 2nd questions by their order.
     /// let selected = qbank.select_questions(1, 2);
     /// assert_eq!(selected.get_length(), 2);
+    /// assert_eq!(selected.get_question(1).unwrap().get_id(), 101);
     /// ```
-    pub fn select_questions(&self, start: u16, end: u16) -> QBank
-    {
+    pub fn select_questions(&self, start: u16, end: u16) -> QBank    {
         QBank
         {
             header: self.get_header().clone(),
@@ -650,6 +652,43 @@ impl QBank
         {
             false
         }
+    }
+
+    // pub fn determine_categories(&mut self)
+    /// Determines the categories of the questions based on the number of choices
+    /// and their correctness.
+    /// 
+    /// The category is set as follows:
+    /// - If there are multiple choices only one of which has an answer mark
+    ///   true and all others have answer marks false, the category is set to 1.
+    /// - If there are multiple choices some of which have answer marks true and
+    ///   others have ansswer marks false, the category is set to 2.
+    /// - If there is/are (a) choice(s) which have all answer mark(s) true,
+    ///   the category is set to 3.
+    /// - If there are no choices or if all choices have answer marks false,
+    ///   the category is set to 4 (essay).
+    /// 
+    /// # Examples
+    /// ```
+    /// use qrate::QBank;
+    /// let mut qbank = QBank::new_empty();
+    /// qbank.push_question(Question::new(1, 1, 1, "Q1".to_string(), vec![]));
+    /// qbank.push_question(Question::new(1, 1, 1, "Q2".to_string(), vec![("Option A".to_string(), false)]));
+    /// qbank.set_choice(2, 1, ("Option B".to_string(), true));
+    /// qbank.push_choice(2, ("Option C".to_string(), false));
+    /// qbank.push_choice(2, ("Option D".to_string(), true));
+    /// qbank.set_choice(2, 1, ("Option A".to_string(), true));
+    /// qbank.set_choice(2, 2, ("Option B".to_string(), true));
+    /// qbank.set_choice(2, 3, ("Option C".to_string(), true));
+    /// qbank.set_choice(2, 4, ("Option D".to_string(), true));
+    /// qbank.determine_categories();
+    /// assert_eq!(qbank.get_category(1), 4); // No choices, so category is 4 (essay)
+    /// assert_eq!(qbank.get_category(2), 3); // Multiple choices with all correct, so category is 3 (short answer)
+    /// ```
+    pub fn determine_categories(&mut self)
+    {
+        for question in self.questions.iter_mut()
+            { question.determine_category(); }
     }
 
     // pub fn remove_question(&mut self, question_number: usize) -> bool
