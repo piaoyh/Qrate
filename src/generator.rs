@@ -264,7 +264,7 @@ impl Generator
                 margin_buttom_in_mm: 10.0,
                 line_spacing: 1.0,
                 answer_sheet_title: "Answer Sheet        정답지        Ответы".to_string()
-             }
+            }
         )
     }
 
@@ -341,11 +341,27 @@ impl Generator
     /// ```
     pub fn new_one_set_with_seeds(qbank: &QBank, start: u16, end: u16, selected: usize, seeds: [u64; 16]) -> Option<Self>
     {
-        let student = Student::new_empty();
+        let student = Student::new("Self Study".to_string(), "-".to_string());
         let students = vec![student];
         Self::new_with_seeds(qbank, start, end, selected, &students, seeds)
     }
 
+    // pub fn make_exams(&mut self, number_of_questions: usize)
+    /// Generates a set of exams based on the specified number of questions.
+    ///
+    /// # Arguments
+    /// * `number_of_questions` - The number of questions to be randomly
+    ///   selected for each student.
+    ///
+    /// # Examples
+    /// ```
+    /// use qrate::Generator;
+    ///
+    /// let mut generator = Generator::new_empty();
+    /// generator.make_exams(5);
+    /// // Verify that the generator's internal qbank is empty.
+    /// assert!(generator.origin.get_questions().is_empty());
+    /// ```
     #[inline]
     pub fn make_exams(&mut self, number_of_questions: usize)
     {
@@ -1697,7 +1713,7 @@ impl Generator
             let header = self.shuffler.get_header().clone();
             let mut qbank = QBank::new_with_header(header);
             let mut questions = Questions::new();
-            for i in 0..self.shuffler.get_length_of_shuffled_questions(idx)
+            for i in 0..self.shuffler.get_qbank_length()
             {
                 let qn = self.shuffler.get_shuffled_question(idx, i);
                 // Find question by actual ID, not by index
@@ -1782,18 +1798,20 @@ impl Generator
     }
 
     // pub fn next(&mut self) -> Option<(u16, String, String, Choices)>
-    /// Advances to the next question in the shuffled set and returns its details.
+    /// Advances to the next question in the shuffled set
+    /// and returns its details.
     ///
-    /// This function acts as an iterator for the generated question set. Each call
-    /// increments the internal question counter and provides the details of the
-    /// next question, including the category, the question text, and the choices
-    /// in their shuffled order.
+    /// This function acts as an iterator for the generated question set. Each
+    /// call increments the internal question counter and provides the details
+    /// of the next question, including the category, the question text,
+    /// and the choices in their shuffled order.
     ///
-    /// It is primarily used for self-testing scenarios, suchs as in the `exam()`
-    /// function found in `src/examples/prep.rs`.
+    /// It is primarily used for self-testing scenarios,
+    /// suchs as in the `exam()` function found in `src/examples/prep.rs`.
     ///
     /// # Output
-    /// `Option<(u16, String, String, Choices)>` - An `Option` containing a tuple with:
+    /// `Option<(u16, String, String, Choices)>` - An `Option` containing
+    /// a tuple with:
     ///   - `u16`: The current question number within the shuffled set.
     ///   - `String`: The category of the current question.
     ///   - `String`: The text of the current question.
@@ -1817,23 +1835,115 @@ impl Generator
     ///
     /// if let Some((num, cat, q_text, choices)) = generator.next()
     ///     { assert_eq!(num, 2); }
-    ///
     /// assert!(generator.next().is_none());
     /// ```
-    pub fn next(&mut self) -> Option<(u16, String, String, Choices)>
+    pub fn next(&mut self) -> Option<(u16, u8, String, String, Choices)>
     {
         self.current_question_number += 1;
+        self.get_question_by_number(self.current_question_number)
+    }
 
+    // pub fn prev(&mut self) -> Option<(u16, String, String, Choices)>
+    /// Withdraws to the previous question in the shuffled set
+    /// and returns its details.
+    ///
+    /// This function acts as an iterator for the generated question set. Each
+    /// call decrements the internal question counter and provides the details
+    /// of the previous question, including the category, the question text,
+    /// and the choices in their shuffled order.
+    ///
+    /// It is primarily used for self-testing scenarios,
+    /// suchs as in the `exam()` function found in `src/examples/prep.rs`.
+    ///
+    /// # Output
+    /// `Option<(u16, String, String, Choices)>` - An `Option` containing
+    /// a tuple with:
+    ///   - `u16`: The current question number within the shuffled set.
+    ///   - `String`: The category of the current question.
+    ///   - `String`: The text of the current question.
+    ///   - `Choices`: A vector of tuples `(String, bool)` representing the
+    ///                shuffled choices and whether each is a correct answer.
+    ///
+    /// Returns `None` if there are no more questions in the set.
+    ///
+    /// # Examples
+    /// ```
+    /// use qrate::{ QBank, Generator, Student, Students };
+    ///
+    /// let mut qbank = QBank::new_empty();
+    /// qbank.add_question_with_choices("Question 1".to_string(), vec![("A".to_string(), true)]);
+    /// qbank.add_question_with_choices("Question 2".to_string(), vec![("B".to_string(), true)]);
+    ///
+    /// let mut generator = Generator::new_one_set(&qbank, 1, 2).unwrap();
+    ///
+    /// if let Some((num, cat, q_text, choices)) = generator.next()
+    ///     { assert_eq!(num, 1); }  // The actual question text depends on the shuffled order.
+    ///
+    /// if let Some((num, cat, q_text, choices)) = generator.next()
+    ///     { assert_eq!(num, 2); }  // The actual question text depends on the shuffled order.
+    ///
+    /// if let Some((num, cat, q_text, choices)) = generator.prev()
+    ///     { assert_eq!(num, 1); }
+    /// assert!(generator.prev().is_none());
+    /// ```
+    pub fn prev(&mut self) -> Option<(u16, u8, String, String, Choices)>
+    {
+        self.current_question_number -= 1;
+        self.get_question_by_number(self.current_question_number)
+    }
+
+    // pub fn get_question_by_number(&self, num: u16) -> Option<(u16, u8, String, String, Choices)>
+    /// Retrieves a specific question by its number within the shuffled set.
+    /// 
+    /// This function returns a tuple containing the question number, category,
+    /// question text, and the choices in their shuffled order.
+    /// 
+    /// # Arguments
+    /// * `num` - The number of the question to retrieve.
+    /// 
+    /// # Returns
+    /// `Option<(u16, String, String, Choices)>` - An `Option` containing
+    /// a tuple with:
+    ///   - `u16`: The current question number within the shuffled set.
+    ///   - `u8`: The category ID of the current question.
+    ///   - `String`: The category string of the current question.
+    ///   - `String`: The text of the current question.
+    ///   - `Choices`: A vector of tuples `(String, bool)` representing the
+    ///                shuffled choices and whether each is a correct answer.
+    /// 
+    /// Returns `None` if the question with the given number is not found.
+    /// 
+    /// # Examples
+    /// ```
+    /// use qrate::{ QBank, Generator, Student, Students };
+    /// 
+    /// let mut qbank = QBank::new_empty();
+    /// qbank.add_question_with_choices("Question 1".to_string(), vec![("A".to_string(), true)]);
+    /// qbank.add_question_with_choices("Question 2".to_string(), vec![("B".to_string(), true)]);
+    /// 
+    /// let mut generator = Generator::new_one_set(&qbank, 1, 2).unwrap();
+    /// 
+    /// if let Some((num, cat_id, cat_str, q_text, choices)) = generator.get_question_by_number(1)
+    ///     { assert_eq!(num, 1); }  // The actual question text depends on the shuffled order.
+    /// 
+    /// if let Some((num, cat_id, cat_str, q_text, choices)) = generator.get_question_by_number(2)
+    ///     { assert_eq!(num, 2); }
+    /// assert!(generator.get_question_by_number(3).is_none());
+    /// ```
+    pub fn get_question_by_number(&mut self, num: u16) -> Option<(u16, u8, String, String, Choices)>
+    {
+        self.current_question_number = num;
         let shuffled_qset = self.shuffler.get_shuffled_qsets().get(0)?;
-        if self.current_question_number as usize > shuffled_qset.get_shuffled_questions().len()
+        if num as usize > shuffled_qset.get_shuffled_questions().len() || num == 0
             { return None; }
 
-        let shuffled_question = shuffled_qset.get_shuffled_question(self.current_question_number)?;
+        let shuffled_question = shuffled_qset.get_shuffled_question(num)?;
         let real_question_number = shuffled_question.get_question();
         let shuffled_indices = shuffled_question.get_choices();
 
         let origin_question = self.shuffler.get_qbank().get_question(real_question_number as usize)?;
-        let category = self.shuffler.get_header().get_category(origin_question.get_category())?.clone();
+        let category_id = origin_question.get_category();
+        let category_str = self.shuffler.get_header().get_category(category_id)?.clone();
         let question_text = origin_question.get_question().clone();
         let origin_choices = origin_question.get_choices();
 
@@ -1846,7 +1956,86 @@ impl Generator
                 { return None; }
         }
 
-        Some((self.current_question_number, category, question_text, choices))
+        Some((num, category_id, category_str, question_text, choices))
+    }
+
+    // pub fn get_number_of_questions(&self) -> usize
+    /// Returns the total number of shuffled questions for the first set (self-study).
+    /// 
+    /// # Returns
+    /// `usize` - The total number of shuffled questions for the first set.
+    /// 
+    /// # Examples
+    /// ```
+    /// use qrate::{ QBank, Generator, Student, Students };
+    /// 
+    /// let mut qbank = QBank::new_empty();
+    /// qbank.add_question_with_choices("Question 1".to_string(), vec![("A".to_string(), true)]);
+    /// qbank.add_question_with_choices("Question 2".to_string(), vec![("B".to_string(), true)]);
+    /// 
+    /// let mut generator = Generator::new_one_set(&qbank, 1, 2).unwrap();
+    /// assert_eq!(generator.get_number_of_questions(), 2);
+    /// ```
+    #[inline]
+    pub fn get_number_of_questions(&self) -> usize
+    {
+        self.shuffler.get_qbank_length()
+    }
+
+    // pub fn get_current_question_number(&self) -> u16
+    /// Retrieves the current question number within the shuffled set.
+    /// 
+    /// # Returns
+    /// `u16` - The current question number within the shuffled set.
+    /// 
+    /// # Examples
+    /// ```
+    /// use qrate::{ QBank, Generator, Student, Students };
+    /// 
+    /// let mut qbank = QBank::new_empty();
+    /// qbank.add_question_with_choices("Question 1".to_string(), vec![("A".to_string(), true)]);
+    /// qbank.add_question_with_choices("Question 2".to_string(), vec![("B".to_string(), true)]);
+    /// 
+    /// let mut generator = Generator::new_one_set(&qbank, 1, 2).unwrap();
+    /// assert_eq!(generator.get_current_question_number(), 0);
+    /// 
+    /// if let Some((num, cat, q_text, choices)) = generator.next()
+    ///     { assert_eq!(num, 1); }
+    /// assert_eq!(generator.get_current_question_number(), 1);
+    /// 
+    /// if let Some((num, cat, q_text, choices)) = generator.next()
+    ///     { assert_eq!(num, 2); }
+    /// assert_eq!(generator.get_current_question_number(), 2);
+    /// assert!(generator.next().is_none());
+    /// ```
+    pub fn get_current_question_number(&self) -> u16
+    {
+        self.current_question_number
+    }
+
+    // pub fn set_current_question_number(&mut self, num: u16)
+    /// Sets the current question number within the shuffled set.
+    /// 
+    /// # Arguments
+    /// * `num` - The new question number to set.
+    /// 
+    /// # Examples
+    /// ```
+    /// use qrate::{ QBank, Generator, Student, Students };
+    /// 
+    /// let mut qbank = QBank::new_empty();
+    /// qbank.add_question_with_choices("Question 1".to_string(), vec![("A".to_string(), true)]);
+    /// qbank.add_question_with_choices("Question 2".to_string(), vec![("B".to_string(), true)]);
+    /// 
+    /// let mut generator = Generator::new_one_set(&qbank, 1, 2).unwrap();
+    /// assert_eq!(generator.get_current_question_number(), 0);
+    /// 
+    /// generator.set_current_question_number(1);
+    /// assert_eq!(generator.get_current_question_number(), 1);
+    /// ```
+    pub fn set_current_question_number(&mut self, num: u16)
+    {
+        self.current_question_number = num;
     }
 
     // pub fn save_shuffled_exams(&self, path: String, extention: &str) -> Result<(), String>
@@ -1960,12 +2149,27 @@ impl Generator
         // Questions
         for (question_index, question) in qbank.get_questions().iter().enumerate()
         {
-            let category = header.get_category(question.get_category()).map(|s| s.as_str()).unwrap_or("");
-            content.push_str(&format!("{}. [{}]   {}\n", question_index + 1, category, question.get_question()));
-            for (choice_index, (choice_text, _is_correct)) in question.get_choices().iter().enumerate()
-            {
-                let choice_char = (choice_index + 1).to_string();
-                content.push_str(&format!("    ({}) {}\n", choice_char, choice_text));
+            let category_id = question.get_category();
+            let category_text = header.get_category(category_id).map(|s| s.as_str()).unwrap_or("");
+            content.push_str(&format!("{}. [{}]   {}\n", question_index + 1, category_text, question.get_question()));
+            
+            if category_id == 3 {
+                // Short answer: ( space * 3 * max_choice_len )
+                let max_len = question.get_choices().iter().map(|(t, _)| t.len()).max().unwrap_or(0);
+                let spaces = " ".repeat(max_len * 3);
+                content.push_str(&format!("    ({})\n", spaces));
+            } else if category_id == 4 {
+                // Essay: 15 blank lines
+                for _ in 0..15 {
+                    content.push_str("\n");
+                }
+            } else {
+                // Category 1, 2: Standard choices
+                for (choice_index, (choice_text, _is_correct)) in question.get_choices().iter().enumerate()
+                {
+                    let choice_char = (choice_index + 1).to_string();
+                    content.push_str(&format!("    ({}) {}\n", choice_char, choice_text));
+                }
             }
             content.push_str("\n"); // Blank line after each question
         }
@@ -2038,13 +2242,21 @@ impl Generator
             // Answers
             let mut answer_line = String::new();
             for (i, question) in qbank.get_questions().iter().enumerate() {
-                let correct_choices: Vec<String> = question.get_choices()
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, (_, is_correct))| *is_correct)
-                    .map(|(j, _)| (j + 1).to_string())
-                    .collect();
-                let answer_string = format!("({})", correct_choices.join(", "));
+                let category_id = question.get_category();
+                let answer_string = if category_id == 3 {
+                    let answers: Vec<String> = question.get_choices().iter().map(|(t, _)| t.clone()).collect();
+                    format!("({})", answers.join(", "))
+                } else if category_id == 4 {
+                    "(---)".to_string()
+                } else {
+                    let correct_choices: Vec<String> = question.get_choices()
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, (_, is_correct))| *is_correct)
+                        .map(|(j, _)| (j + 1).to_string())
+                        .collect();
+                    format!("({})", correct_choices.join(", "))
+                };
 
                 let entry = format!("{}. {}    ", i + 1, answer_string);
 
@@ -2100,13 +2312,21 @@ impl Generator
             // Answers
             let mut answer_line = String::new();
             for (i, question) in qbank.get_questions().iter().enumerate() {
-                let correct_choices: Vec<String> = question.get_choices()
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, (_, is_correct))| *is_correct)
-                    .map(|(j, _)| (j + 1).to_string())
-                    .collect();
-                let answer_string = format!("({})", correct_choices.join(", "));
+                let category_id = question.get_category();
+                let answer_string = if category_id == 3 {
+                    let answers: Vec<String> = question.get_choices().iter().map(|(t, _)| t.clone()).collect();
+                    format!("({})", answers.join(", "))
+                } else if category_id == 4 {
+                    "(---)".to_string()
+                } else {
+                    let correct_choices: Vec<String> = question.get_choices()
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, (_, is_correct))| *is_correct)
+                        .map(|(j, _)| (j + 1).to_string())
+                        .collect();
+                    format!("({})", correct_choices.join(", "))
+                };
 
                 let entry = format!("{}. {}    ", i + 1, answer_string);
 
@@ -2302,13 +2522,21 @@ impl Generator
             // Answers
             let mut answers_text = String::new();
             for (i, question) in qbank.get_questions().iter().enumerate() {
-                let correct_choices: Vec<String> = question.get_choices()
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, (_, is_correct))| *is_correct)
-                    .map(|(j, _)| (j + 1).to_string())
-                    .collect();
-                let answer_string = format!("({})", correct_choices.join(", "));
+                let category_id = question.get_category();
+                let answer_string = if category_id == 3 {
+                    let answers: Vec<String> = question.get_choices().iter().map(|(t, _)| t.clone()).collect();
+                    format!("({})", answers.join(", "))
+                } else if category_id == 4 {
+                    "(---)".to_string()
+                } else {
+                    let correct_choices: Vec<String> = question.get_choices()
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, (_, is_correct))| *is_correct)
+                        .map(|(j, _)| (j + 1).to_string())
+                        .collect();
+                    format!("({})", correct_choices.join(", "))
+                };
                 answers_text.push_str(&format!("{}. {}    ", i + 1, answer_string));
             }
 
@@ -2417,20 +2645,35 @@ impl Generator
             }
             docx = docx.add_paragraph(q_para);
 
-            for (choice_index, (choice_text, _is_correct)) in question.get_choices().iter().enumerate()
-            {
-                let mut c_para = Paragraph::new();
-                let mut lines = choice_text.lines().peekable();
-                let mut is_first_line = true;
-                while let Some(line) = lines.next()
-                {
-                    let mut run = body_run.clone().add_text(if is_first_line { format!("    ({}) {}", choice_index + 1, line) } else { line.to_string() }).size(body_font_size);
-                    if lines.peek().is_some()
-                        { run = run.add_break(docx_rs::BreakType::TextWrapping); }
-                    c_para = c_para.add_run(run);
-                    is_first_line = false;
-                }
+            let category_id = question.get_category();
+            if category_id == 3 {
+                // Short answer: ( space * 3 * max_choice_len )
+                let max_len = question.get_choices().iter().map(|(t, _)| t.len()).max().unwrap_or(0);
+                let spaces = " ".repeat(max_len * 3);
+                let c_para = paragraph(body_run.clone(), format!("    ({})", spaces), body_font_size);
                 docx = docx.add_paragraph(c_para);
+            } else if category_id == 4 {
+                // Essay: 15 blank lines
+                for _ in 0..15 {
+                    docx = docx.add_paragraph(blank_line.clone());
+                }
+            } else {
+                // Category 1, 2: Standard choices
+                for (choice_index, (choice_text, _is_correct)) in question.get_choices().iter().enumerate()
+                {
+                    let mut c_para = Paragraph::new();
+                    let mut lines = choice_text.lines().peekable();
+                    let mut is_first_line = true;
+                    while let Some(line) = lines.next()
+                    {
+                        let mut run = body_run.clone().add_text(if is_first_line { format!("    ({}) {}", choice_index + 1, line) } else { line.to_string() }).size(body_font_size);
+                        if lines.peek().is_some()
+                            { run = run.add_break(docx_rs::BreakType::TextWrapping); }
+                        c_para = c_para.add_run(run);
+                        is_first_line = false;
+                    }
+                    docx = docx.add_paragraph(c_para);
+                }
             }
             // Blank line after each question
             docx = docx.add_paragraph(blank_line.clone());
@@ -2558,13 +2801,21 @@ impl Generator
 
             let mut answers_text = String::new();
             for (i, question) in qbank.get_questions().iter().enumerate() {
-                let correct_choices: Vec<String> = question.get_choices()
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, (_, is_correct))| *is_correct)
-                    .map(|(j, _)| (j + 1).to_string())
-                    .collect();
-                let answer_string = format!("({})", correct_choices.join(", "));
+                let category_id = question.get_category();
+                let answer_string = if category_id == 3 {
+                    let answers: Vec<String> = question.get_choices().iter().map(|(t, _)| t.clone()).collect();
+                    format!("({})", answers.join(", "))
+                } else if category_id == 4 {
+                    "(---)".to_string()
+                } else {
+                    let correct_choices: Vec<String> = question.get_choices()
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, (_, is_correct))| *is_correct)
+                        .map(|(j, _)| (j + 1).to_string())
+                        .collect();
+                    format!("({})", correct_choices.join(", "))
+                };
                 answers_text.push_str(&format!("{}. {}    ", i + 1, answer_string));
             }
             hwpx.add_mixed_styled_paragraph(vec![StyledText {
@@ -2637,20 +2888,37 @@ impl Generator
 
         for (question_index, question) in qbank.get_questions().iter().enumerate()
         {
-            let category = header.get_category(question.get_category()).map(|s| s.as_str()).unwrap_or("");
-            let q_text = format!("{}. [{}]   {}", question_index + 1, category, question.get_question());
+            let category_id = question.get_category();
+            let category_text = header.get_category(category_id).map(|s| s.as_str()).unwrap_or("");
+            let q_text = format!("{}. [{}]   {}", question_index + 1, category_text, question.get_question());
             hwpx.add_mixed_styled_paragraph(vec![StyledText {
                 text: q_text,
                 style: body_style.clone(),
             }]).map_err(|e| e.to_string())?;
 
-            for (choice_index, (choice_text, _)) in question.get_choices().iter().enumerate()
-            {
-                let c_text = format!("    ({}) {}", choice_index + 1, choice_text);
+            if category_id == 3 {
+                // Short answer: ( space * 3 * max_choice_len )
+                let max_len = question.get_choices().iter().map(|(t, _)| t.len()).max().unwrap_or(0);
+                let spaces = " ".repeat(max_len * 3);
                 hwpx.add_mixed_styled_paragraph(vec![StyledText {
-                    text: c_text,
+                    text: format!("    ({})", spaces),
                     style: body_style.clone(),
                 }]).map_err(|e| e.to_string())?;
+            } else if category_id == 4 {
+                // Essay: 15 blank lines
+                for _ in 0..15 {
+                    hwpx.add_paragraph("").map_err(|e| e.to_string())?;
+                }
+            } else {
+                // Category 1, 2: Standard choices
+                for (choice_index, (choice_text, _)) in question.get_choices().iter().enumerate()
+                {
+                    let c_text = format!("    ({}) {}", choice_index + 1, choice_text);
+                    hwpx.add_mixed_styled_paragraph(vec![StyledText {
+                        text: c_text,
+                        style: body_style.clone(),
+                    }]).map_err(|e| e.to_string())?;
+                }
             }
             hwpx.add_paragraph("").map_err(|e| e.to_string())?;
         }
@@ -2781,13 +3049,21 @@ impl Generator
 
             let mut answers_text = String::new();
             for (i, question) in qbank.get_questions().iter().enumerate() {
-                let correct_choices: Vec<String> = question.get_choices()
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, (_, is_correct))| *is_correct)
-                    .map(|(j, _)| (j + 1).to_string())
-                    .collect();
-                let answer_string = format!("({})", correct_choices.join(", "));
+                let category_id = question.get_category();
+                let answer_string = if category_id == 3 {
+                    let answers: Vec<String> = question.get_choices().iter().map(|(t, _)| t.clone()).collect();
+                    format!("({})", answers.join(", "))
+                } else if category_id == 4 {
+                    "(---)".to_string()
+                } else {
+                    let correct_choices: Vec<String> = question.get_choices()
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, (_, is_correct))| *is_correct)
+                        .map(|(j, _)| (j + 1).to_string())
+                        .collect();
+                    format!("({})", correct_choices.join(", "))
+                };
                 answers_text.push_str(&format!("{}. {}    ", i + 1, answer_string));
             }
             let mut answers_styled = hwpers::writer::style::StyledText::new(answers_text.clone());
@@ -2857,18 +3133,35 @@ impl Generator
 
         for (question_index, question) in qbank.get_questions().iter().enumerate()
         {
-            let category = header.get_category(question.get_category()).map(|s| s.as_str()).unwrap_or("");
-            let q_text = format!("{}. [{}]   {}", question_index + 1, category, question.get_question());
+            let category_id = question.get_category();
+            let category_text = header.get_category(category_id).map(|s| s.as_str()).unwrap_or("");
+            let q_text = format!("{}. [{}]   {}", question_index + 1, category_text, question.get_question());
             let mut q_styled = hwpers::writer::style::StyledText::new(q_text.clone());
             q_styled = q_styled.add_range(0, q_text.len(), body_style.clone());
             hwp.add_styled_paragraph(&q_styled).map_err(|e| e.to_string())?;
 
-            for (choice_index, (choice_text, _)) in question.get_choices().iter().enumerate()
-            {
-                let c_text = format!("    ({}) {}", choice_index + 1, choice_text);
+            if category_id == 3 {
+                // Short answer: ( space * 3 * max_choice_len )
+                let max_len = question.get_choices().iter().map(|(t, _)| t.len()).max().unwrap_or(0);
+                let spaces = " ".repeat(max_len * 3);
+                let c_text = format!("    ({})", spaces);
                 let mut c_styled = hwpers::writer::style::StyledText::new(c_text.clone());
                 c_styled = c_styled.add_range(0, c_text.len(), body_style.clone());
                 hwp.add_styled_paragraph(&c_styled).map_err(|e| e.to_string())?;
+            } else if category_id == 4 {
+                // Essay: 15 blank lines
+                for _ in 0..15 {
+                    hwp.add_paragraph("").map_err(|e| e.to_string())?;
+                }
+            } else {
+                // Category 1, 2: Standard choices
+                for (choice_index, (choice_text, _)) in question.get_choices().iter().enumerate()
+                {
+                    let c_text = format!("    ({}) {}", choice_index + 1, choice_text);
+                    let mut c_styled = hwpers::writer::style::StyledText::new(c_text.clone());
+                    c_styled = c_styled.add_range(0, c_text.len(), body_style.clone());
+                    hwp.add_styled_paragraph(&c_styled).map_err(|e| e.to_string())?;
+                }
             }
             hwp.add_paragraph("").map_err(|e| e.to_string())?;
         }
@@ -2973,13 +3266,21 @@ impl Generator
             // Answers
             let mut answers_text = String::new();
             for (i, question) in qbank.get_questions().iter().enumerate() {
-                let correct_choices: Vec<String> = question.get_choices()
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, (_, is_correct))| *is_correct)
-                    .map(|(j, _)| (j + 1).to_string())
-                    .collect();
-                let answer_string = format!("({})", correct_choices.join(", "));
+                let category_id = question.get_category();
+                let answer_string = if category_id == 3 {
+                    let answers: Vec<String> = question.get_choices().iter().map(|(t, _)| t.clone()).collect();
+                    format!("({})", answers.join(", "))
+                } else if category_id == 4 {
+                    "(---)".to_string()
+                } else {
+                    let correct_choices: Vec<String> = question.get_choices()
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, (_, is_correct))| *is_correct)
+                        .map(|(j, _)| (j + 1).to_string())
+                        .collect();
+                    format!("({})", correct_choices.join(", "))
+                };
                 answers_text.push_str(&format!("{}. {}    ", i + 1, answer_string));
             }
             doc.push(elements::Paragraph::new(answers_text).styled(answer_style));
@@ -3048,12 +3349,27 @@ impl Generator
 
         for (question_index, question) in qbank.get_questions().iter().enumerate()
         {
-            let category = header.get_category(question.get_category()).map(|s| s.as_str()).unwrap_or("");
-            doc.push(elements::Paragraph::new(format!("{}. [{}]   {}", question_index + 1, category, question.get_question())).styled(body_style));
-            for (choice_index, (choice_text, _is_correct)) in question.get_choices().iter().enumerate()
-            {
-                let choice_char = (choice_index + 1).to_string();
-                doc.push(elements::Paragraph::new(format!("    ({}) {}", choice_char, choice_text)).styled(body_style));
+            let category_id = question.get_category();
+            let category_text = header.get_category(category_id).map(|s| s.as_str()).unwrap_or("");
+            doc.push(elements::Paragraph::new(format!("{}. [{}]   {}", question_index + 1, category_text, question.get_question())).styled(body_style));
+            
+            if category_id == 3 {
+                // Short answer: ( space * 3 * max_choice_len )
+                let max_len = question.get_choices().iter().map(|(t, _)| t.len()).max().unwrap_or(0);
+                let spaces = " ".repeat(max_len * 3);
+                doc.push(elements::Paragraph::new(format!("    ({})", spaces)).styled(body_style));
+            } else if category_id == 4 {
+                // Essay: 15 blank lines
+                for _ in 0..15 {
+                    doc.push(elements::Paragraph::new(""));
+                }
+            } else {
+                // Category 1, 2: Standard choices
+                for (choice_index, (choice_text, _is_correct)) in question.get_choices().iter().enumerate()
+                {
+                    let choice_char = (choice_index + 1).to_string();
+                    doc.push(elements::Paragraph::new(format!("    ({}) {}", choice_char, choice_text)).styled(body_style));
+                }
             }
             doc.push(elements::Paragraph::new("")); // Blank line after each question
         }
@@ -3136,17 +3452,35 @@ impl Generator
             // Questions
             for (question_index, question) in qbank.get_questions().iter().enumerate()
             {
-                let category = header.get_category(question.get_category()).map(|s: &String| s.as_str()).unwrap_or("");
+                let category_id = question.get_category();
+                let category_text = header.get_category(category_id).map(|s: &String| s.as_str()).unwrap_or("");
                 content.push(json!({
-                    "text": format!("{}. [{}]   {}", question_index + 1, category, question.get_question()),
+                    "text": format!("{}. [{}]   {}", question_index + 1, category_text, question.get_question()),
                     "style": "body"
                 }));
-                for (choice_index, (choice_text, _)) in question.get_choices().iter().enumerate()
-                {
+
+                if category_id == 3 {
+                    // Short answer: ( space * 3 * max_choice_len )
+                    let max_len = question.get_choices().iter().map(|(t, _)| t.len()).max().unwrap_or(0);
+                    let spaces = " ".repeat(max_len * 3);
                     content.push(json!({
-                        "text": format!("    ({}) {}", choice_index + 1, choice_text),
+                        "text": format!("    ({})", spaces),
                         "style": "body"
                     }));
+                } else if category_id == 4 {
+                    // Essay: 15 blank lines
+                    for _ in 0..15 {
+                        content.push(json!({"text": "\n"}));
+                    }
+                } else {
+                    // Category 1, 2: Standard choices
+                    for (choice_index, (choice_text, _)) in question.get_choices().iter().enumerate()
+                    {
+                        content.push(json!({
+                            "text": format!("    ({}) {}", choice_index + 1, choice_text),
+                            "style": "body"
+                        }));
+                    }
                 }
                 content.push(json!({"text": "\n"}));
             }
@@ -3169,13 +3503,21 @@ impl Generator
             let mut answers_text = String::new();
             for (i, question) in qbank.get_questions().iter().enumerate()
             {
-                let correct_choices: Vec<String> = question.get_choices()
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, (_, is_correct)): &(usize, &(String, bool))| *is_correct)
-                    .map(|(j, _): (usize, &(String, bool))| (j + 1).to_string())
-                    .collect();
-                let answer_string = format!("({})", correct_choices.join(", "));
+                let category_id = question.get_category();
+                let answer_string = if category_id == 3 {
+                    let answers: Vec<String> = question.get_choices().iter().map(|(t, _)| t.clone()).collect();
+                    format!("({})", answers.join(", "))
+                } else if category_id == 4 {
+                    "(---)".to_string()
+                } else {
+                    let correct_choices: Vec<String> = question.get_choices()
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, (_, is_correct)): &(usize, &(String, bool))| *is_correct)
+                        .map(|(j, _): (usize, &(String, bool))| (j + 1).to_string())
+                        .collect();
+                    format!("({})", correct_choices.join(", "))
+                };
                 answers_text.push_str(&format!("{}. {}    ", i + 1, answer_string));
             }
             content.push(json!({"text": answers_text, "style": "answer_sheet"}));

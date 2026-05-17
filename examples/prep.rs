@@ -24,7 +24,7 @@ pub fn exam(generator: &mut Generator)
     let note = generator.get_notice();
     println!("{}", note);
 
-    while let Some((question_number, cat, question_text, choices)) = generator.next()
+    while let Some((question_number, _, cat, question_text, choices)) = generator.next()
     {
         println!("{}. [{}]   {}", question_number, cat, question_text);
 

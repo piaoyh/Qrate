@@ -584,17 +584,14 @@ impl QBank
     /// and their correctness.
     /// 
     /// The category is set as follows:
-    /// - If there are no choices, the category is set to 4 (essay).
-    /// - If there is one choice and the choice answer mark is false,
-    ///   the category is set to 4.
-    /// - If there is one choice and the choice answer mark is true,
+    /// - If there are multiple choices only one of which has an answer mark
+    ///   true and all others have answer marks false, the category is set to 1.
+    /// - If there are multiple choices some of which have answer marks true and
+    ///   others have ansswer marks false, the category is set to 2.
+    /// - If there is/are (a) choice(s) which have all answer mark(s) true,
     ///   the category is set to 3.
-    /// - If there is multiple choices and there is multiple correct choices
-    ///   less than the total number of choices, the category is set to 2.
-    /// - If there is multiple choices and there is multiple correct choices
-    ///   equal to the total number of choices, the category is set to 3.
-    /// - If there is multiple choices and there is exactly one correct choice,
-    ///   the category is set to 1.
+    /// - If there are no choices or if all choices have answer marks false,
+    ///   the category is set to 4 (essay).
     /// 
     /// # Arguments
     /// * `question_number` - The 1-based index of the question to determine
@@ -675,6 +672,36 @@ impl QBank
         let res = (question_number <= self.get_length()) && (question_number > 0);
         if res
             { self.questions.remove(question_number-1); }
+        res
+    }
+
+    // pub fn remove_choice(&mut self, question_number: usize, choice_number: usize) -> bool
+    /// Removes a choice from the question by its 1-based index.
+    /// 
+    /// # Arguments
+    /// * `question_number` - The 1-based index of the question to remove.
+    /// * `choice_number` - The 1-based index of the choice to remove.
+    /// 
+    /// # Returns
+    /// * `true` if the choice was successfully removed.
+    /// * `false` if the choice number is out of bounds.
+    /// 
+    /// # Examples
+    /// ```
+    /// use qrate::{ QBank, Question };
+    /// let mut qbank = QBank::new_empty();
+    /// qbank.push_question(Question::new_empty());
+    /// qbank.push_question(Question::new_empty());
+    /// assert_eq!(qbank.get_length(), 2);
+    /// assert!(qbank.remove_question(1));
+    /// assert_eq!(qbank.get_length(), 1);
+    /// assert!(!qbank.remove_question(2)); // Out of bounds, so returns false
+    /// ```
+    pub fn remove_choice(&mut self, question_number: usize, choice_number: usize) -> bool
+    {
+        let res = (question_number <= self.get_length()) && (question_number > 0) && (choice_number > 0) && (choice_number <= self.get_choices_length(question_number));
+        if res
+            { self.get_question_mut(question_number).unwrap().remove_choice(choice_number); }
         res
     }
 

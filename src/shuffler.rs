@@ -313,22 +313,6 @@ impl Shuffler
             { 0 }
     }
 
-    // pub fn get_length_of_shuffled_questions(&self, student_idx: usize) -> Option<ShuffledQSet>
-    ///
-    /// # Arguments
-    /// * `student_idx` - 0-based index.
-    /// 
-    /// # Returns
-    /// The number of questions of the `student_idx`-th student
-    #[inline]
-    pub fn get_length_of_shuffled_questions(&self, student_idx: usize) -> usize
-    {
-        if student_idx >= self.sbank.len()
-            { 0 }
-        else
-            { self.shuffled_qsets[student_idx].get_shuffled_questions().len() }
-    }
-
     // pub fn get_student(&self, student_idx: usize) -> Option<Student>
     /// 
     /// # Arguments

@@ -108,7 +108,9 @@ impl ShuffledQSet
             shuffled_question.shuffle(prng);
             questions.push(shuffled_question);
         }
-        Some(Self { student, questions })
+        let mut me = Self { student, questions };
+        me.shuffle(prng);
+        Some(me)
     }
 
     // pub fn shuffle(&mut self, prng: &mut Random)

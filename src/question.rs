@@ -341,6 +341,37 @@ impl Question
         self.choices = choices;
     }
 
+    // pub fn remove_choice(&mut self, choice_number: usize) -> bool
+    /// Removes a choice from the question by its 1-based index.
+    ///
+    /// # Arguments
+    /// * `choice_number` - The 1-based index of the choice to remove.
+    /// 
+    /// # Returns
+    /// `bool` - `true` if the choice was successfully removed,
+    ///        - `false` if the index is out of bounds.
+    /// 
+    /// # Examples
+    /// ```
+    /// use qrate::Question;
+    /// let mut question = Question::new(1, 1, 1, "Q".to_string(), vec![("A".to_string(), false), ("B".to_string(), false)]);
+    /// assert!(question.remove_choice(1));
+    /// assert_eq!(question.get_choices().len(), 1);
+    /// assert!(!question.remove_choice(2)); // Out of bounds
+    /// ```
+    pub fn remove_choice(&mut self, choice_number: usize) -> bool
+    {
+        if (choice_number <= self.choices.len()) && (choice_number > 0)
+        {
+            self.choices.remove(choice_number - 1);
+            true
+        }
+        else
+        {
+            false
+        }
+    }
+
     // pub fn get_number_of_choices(&self) -> usize
     /// Returns the number of choices for the question.
     /// 
@@ -364,17 +395,14 @@ impl Question
     /// and their correctness.
     /// 
     /// The category is set as follows:
-    /// - If there are no choices, the category is set to 4 (essay).
-    /// - If there is one choice and the choice answer mark is false,
-    ///   the category is set to 4.
-    /// - If there is one choice and the choice answer mark is true,
+    /// - If there are multiple choices only one of which has an answer mark
+    ///   true and all others have answer marks false, the category is set to 1.
+    /// - If there are multiple choices some of which have answer marks true and
+    ///   others have ansswer marks false, the category is set to 2.
+    /// - If there is/are (a) choice(s) which have all answer mark(s) true,
     ///   the category is set to 3.
-    /// - If there is multiple choices and there is multiple correct choices
-    ///   less than the total number of choices, the category is set to 2.
-    /// - If there is multiple choices and there is multiple correct choices
-    ///   equal to the total number of choices, the category is set to 3.
-    /// - If there is multiple choices and there is exactly one correct choice,
-    ///   the category is set to 1.
+    /// - If there are no choices or if all choices have answer marks false,
+    ///   the category is set to 4 (essay).
     /// 
     /// # Examples
     /// ```
@@ -417,8 +445,8 @@ impl Question
         else
         {
             let correct_count = self.choices.iter().filter(|c| c.1).count();
-            if correct_count == 1
-                { self.category = 1; }
+            if correct_count == 0
+                { self.category = 4; }
             else if correct_count == choice_count
                 { self.category = 3; }
             else
