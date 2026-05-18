@@ -262,6 +262,21 @@ impl QBank
             { None }
     }
 
+    pub fn get_question_data(&mut self, num: u16) -> Option<((u16, u8, String, String))>
+    {
+        if let Some(question) = &mut self.get_question(num as usize)
+        {
+            let cat_id = question.get_category_id();
+            let cat_str = self.header.get_category(cat_id).unwrap().clone();
+            let question = question.get_question().clone();
+            Some((num, cat_id, cat_str, question))
+        }
+        else
+        {
+            None
+        }
+    }
+
     // pub fn push_question(&mut self, question: Question)
     /// Adds a `Question` to the bank.
     ///
