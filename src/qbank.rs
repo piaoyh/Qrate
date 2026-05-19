@@ -8,9 +8,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 
-use crate::ChoiceAnswer;
-use crate::Header;
-use crate::Question;
+use crate::{ Question, Choices, ChoiceAnswer, Header };
 
 /// Represents a Question Bank, containing a header and a vector of questions.
 #[derive(Debug, Clone)]
@@ -262,19 +260,38 @@ impl QBank
             { None }
     }
 
-    pub fn get_question_data(&mut self, num: u16) -> Option<((u16, u8, String, String))>
+    // pub fn get_question_data(&mut self, num: u16) -> Option<((u16, u8, String, String, Choices)>
+    /// Retrieves a specific question by its number within the bank.
+    ///
+    /// # Arguments
+    /// * `num` - The number of the question to retrieve.
+    ///
+    /// # Returns
+    /// An optional tuple containing the question number, category ID,
+    /// category name, question text, and choices.
+    /// Returns `None` if the question is not found.
+    /// 
+    /// # Examples
+    /// ```
+    /// use qrate::{ QBank, Question };
+    /// let mut qbank = QBank::new_empty();
+    /// qbank.push_question(Question::new(1, 1, 1, "Test Q".to_string(), vec![]));
+    /// assert_eq!(qbank.get_question_data(1).unwrap().0, 1);
+    /// assert!(qbank.get_question_data(2).is_none());
+    /// ```
+    pub fn get_question_data(&mut self, num: u16) -> Option<(u16, u8, String, String, Choices)>
     {
         if let Some(question) = &mut self.get_question(num as usize)
         {
-            let cat_id = question.get_category_id();
-            let cat_str = self.header.get_category(cat_id).unwrap().clone();
-            let question = question.get_question().clone();
-            Some((num, cat_id, cat_str, question))
+            let choices = question.get_choices();
+            let cat_id = question.get_category();
+            if let Some(cat_str) = self.header.get_category(cat_id)
+            {
+                let question = question.get_question().clone();
+                return Some((num, cat_id, cat_str.clone(), question, choices.clone()));
+            }
         }
-        else
-        {
-            None
-        }
+        None
     }
 
     // pub fn push_question(&mut self, question: Question)
