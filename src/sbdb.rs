@@ -8,9 +8,12 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 use calamine::{ Reader, DataType }; // Add DataType here
 
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 use crate::Excel;
+
 use crate::SBank;
 use crate::SQLiteDB;
 use crate::Student;
@@ -257,6 +260,7 @@ impl SBDB for SQLiteDB
 }
 
 
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 impl SBDB for Excel
 {
     #[inline]

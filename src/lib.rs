@@ -18,6 +18,7 @@
 pub mod database;
 
 /// The `excel` module provides functionalities for Excel file operations.
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 pub mod excel;
 
 /// The `header` module contains the `Header` structure for parsing file headers.
@@ -56,7 +57,10 @@ pub mod generator;
 pub mod utils;
 
 pub use database::SQLiteDB;
+
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 pub use excel::Excel;
+
 pub use header::Header;
 pub use qbank::QBank;
 pub use qbdb::QBDB;

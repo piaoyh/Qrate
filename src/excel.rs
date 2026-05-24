@@ -8,7 +8,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 
-
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 use calamine::DataType;
 
 use crate::{ Question, Choices, check_path };
@@ -18,6 +18,7 @@ use crate::{ Question, Choices, check_path };
 ///
 /// This struct provides methods to read from and write to `.xlsx` files,
 /// structuring the data into "header" and "bank" sheets.
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 #[derive(Debug, Clone)]
 pub struct Excel
 {
@@ -25,6 +26,7 @@ pub struct Excel
     pub(crate) path: String,
 }
 
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 impl Excel
 {
     // pub fn open(path: String, extention: &str) -> Option<Self>

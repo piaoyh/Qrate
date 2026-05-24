@@ -8,13 +8,19 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 use calamine::{ DataType, Reader, open_workbook_auto };
+
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 use rust_xlsxwriter::{ Format, FormatBorder, Workbook };
 
 use crate::Header;
 use crate::QBank;
 use crate::SQLiteDB;
+
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 use crate::Excel;
+
 use crate::{ Choices, Question };
 
 /// A trait defining the database operations for a Question Bank (`QBank`).
@@ -563,6 +569,7 @@ impl QBDB for SQLiteDB
 
 
 
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 impl QBDB for Excel
 {
     // fn open(path: String) -> Option<Self> where Self: Sized
