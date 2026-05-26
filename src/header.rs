@@ -15,6 +15,7 @@
 #[derive(Debug, Clone)]
 pub struct Header
 {
+    version: u32,
     title: String,
     name: String,
     id: String,
@@ -42,6 +43,7 @@ impl Header
     {
         Self
         {
+            version: 1,
             title: String::new(),
             name: String::new(),
             id: String::new(),
@@ -71,6 +73,7 @@ impl Header
     {
         Self
         {
+            version: 1,
             title: "Examination".to_string(),
             name: "Full Name".to_string(),
             id: "Student ID Number".to_string(),
@@ -79,10 +82,10 @@ impl Header
 # General Instructions
 Contextual Understanding: All questions must be interpreted and answered within the specific context of the Information Security course. Failure to do so may lead to incorrect interpretations.
 # Question Types & Scoring
-* Type A: Single-Choice Questions - Select one best answer from the given options. Full points are awarded for the correct answer. You will receive 0 points if no answer is selected or if multiple options are chosen.
-* Type B: Multiple-Choice Questions - Select all applicable answers from the given options. Full points are awarded only if all selected answers are correct. No partial credit is given; any incorrect or missing selection will result in 0 points.
-* Type C: Short-Answer Questions - Provide the correct word, phrase, or brief expression as required.
-* Type D: Essay Questions - Provide a comprehensive written response to the prompt."##.to_string(),
+* Type A: Single-choice objective question; select the one most appropriate answer from the given options. Assigned points are awarded for a correct answer. Selecting no answer or two or more answers results in 0 points. Selecting one wrong answer results in a deduction of `assigned points` / (number of choices - 1).
+* Type B: Multiple-choice objective question; select all applicable correct answers from the given options. Assigned points are awarded if the number of selected answers equals the number of correct answers and all selected answers are correct. If the number of selected answers differs from the number of correct answers, 0 points are awarded. If the number of selected answers equals the number of correct answers, then (`number of wrong options` x `number of selected correct answers` - `number of correct options` x `number of selected wrong answers`) x `assigned points` / `number of choices` points are awarded.
+* Type C: Short answer subjective question; write the appropriate word, phrase, or short expression according to the requirements.
+* Type D: Essay subjective question; write a detailed and comprehensive answer to the given question."##.to_string(),
         }
     }
 
@@ -114,7 +117,7 @@ Contextual Understanding: All questions must be interpreted and answered within 
     #[inline]
     pub fn new(title: String, name: String, id: String, categories: Vec<String>, notice: String) -> Self
     {
-        Self { title, name, id, categories, notice }
+        Self { version: 1, title, name, id, categories, notice }
     }
 
     // pub fn get_title(&self) -> &String
@@ -343,5 +346,42 @@ Contextual Understanding: All questions must be interpreted and answered within 
     pub fn set_notice(&mut self, notice: String)
     {
         self.notice = notice;
+    }
+
+    // pub fn get_version(&self) -> u32
+    /// Gets the version number from the header.
+    ///
+    /// # Output
+    /// `u32` - The version number.
+    ///
+    /// # Examples
+    /// ```
+    /// use qrate::Header;
+    /// let header = Header::new_with_default();
+    /// assert_eq!(header.get_version(), 1);
+    /// ```
+    #[inline]
+    pub fn get_version(&self) -> u32
+    {
+        self.version
+    }
+
+    // pub fn set_version(&mut self, version: u32)
+    /// Sets the version number in the header.
+    ///
+    /// # Arguments
+    /// * `version` - The new version number.
+    ///
+    /// # Examples
+    /// ```
+    /// use qrate::Header;
+    /// let mut header = Header::new_empty();
+    /// header.set_version(2);
+    /// assert_eq!(header.get_version(), 2);
+    /// ```
+    #[inline]
+    pub fn set_version(&mut self, version: u32)
+    {
+        self.version = version;
     }
 }

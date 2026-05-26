@@ -356,6 +356,7 @@ impl QBDB for SQLiteDB
     fn make_tables(&self, categories: u8, choices: u8) -> Result<(), String>
     {
         let mut sql = r#"CREATE TABLE IF NOT EXISTS tblHeader (
+    version INTEGER NOT NULL,
     title	TEXT NOT NULL,
     name	TEXT NOT NULL,
     id  	TEXT NOT NULL,
@@ -398,13 +399,15 @@ impl QBDB for SQLiteDB
         let mut stmt = self.conn.prepare("SELECT * FROM tblHeader;").ok()?;
         let vec_header = stmt.query_map([], |row| {
             let mut categories = Vec::new();
-            let mut i = 4;
+            let mut i = 5; // Start from the 6th column (index 5) for categories
             while let Ok(c) = row.get(i)
             {
                 categories.push(c);
                 i += 1;
             }
-            Ok(Header::new(row.get(0)?, row.get(1)?, row.get(2)?, categories, row.get(3)?))
+            let mut header = Header::new(row.get(1)?, row.get(2)?,row.get(3)?,  categories, row.get(4)?);
+            header.set_version(row.get(0)?);
+            Ok(header)
         }).ok()?;
 
         for info in vec_header
@@ -442,12 +445,14 @@ impl QBDB for SQLiteDB
     {
         let _ = self.make_tables(header.get_categories().len() as u8, 0);
         let length = header.get_categories().len();
-        let mut sql = format!("INSERT INTO tblHeader values (?1, ?2, ?3, ?4");
-        for i in 5..(5 + length)
+        let mut sql = format!("INSERT INTO tblHeader values (?1, ?2, ?3, ?4, ?5");
+        for i in 6..(6 + length)
             { sql += format!(", ?{}", i).as_str(); }
         sql += ");";
 
         let mut params: Vec<&dyn rusqlite::ToSql> = Vec::new();
+        let version = header.get_version();
+        params.push(&version);
         params.push(header.get_title());
         params.push(header.get_name());
         params.push(header.get_id());
@@ -591,11 +596,12 @@ impl QBDB for Excel
 
         // 1. Create "Header" sheet
         let header_sheet = workbook.add_worksheet().set_name("Header").map_err(|e| e.to_string())?;
-        header_sheet.write_string_with_format(0, 0, "Title", &bold_border_format).map_err(|e| e.to_string())?;
-        header_sheet.write_string_with_format(1, 0, "Name", &bold_border_format).map_err(|e| e.to_string())?;
-        header_sheet.write_string_with_format(2, 0, "ID", &bold_border_format).map_err(|e| e.to_string())?;
-        header_sheet.write_string_with_format(3, 0, "Notice", &bold_border_format).map_err(|e| e.to_string())?;
-        header_sheet.write_string_with_format(4, 0, "Categories", &bold_border_format).map_err(|e| e.to_string())?;
+        header_sheet.write_string_with_format(0, 0, "Version", &bold_border_format).map_err(|e| e.to_string())?;
+        header_sheet.write_string_with_format(1, 0, "Title", &bold_border_format).map_err(|e| e.to_string())?;
+        header_sheet.write_string_with_format(2, 0, "Name", &bold_border_format).map_err(|e| e.to_string())?;
+        header_sheet.write_string_with_format(3, 0, "ID", &bold_border_format).map_err(|e| e.to_string())?;
+        header_sheet.write_string_with_format(4, 0, "Notice", &bold_border_format).map_err(|e| e.to_string())?;
+        header_sheet.write_string_with_format(5, 0, "Categories", &bold_border_format).map_err(|e| e.to_string())?;
 
         
         // 2. Create "Questions" sheet
@@ -625,20 +631,22 @@ impl QBDB for Excel
     {
         let mut excel = open_workbook_auto(&self.path).ok()?;
         let range = excel.worksheet_range("Header").ok()?;
-        let title = range.get((0, 1)).and_then(|c| c.as_string()).unwrap_or_default();
-        let name = range.get((1, 1)).and_then(|c| c.as_string()).unwrap_or_default();
-        let id = range.get((2, 1)).and_then(|c| c.as_string()).unwrap_or_default();
-        let notice = range.get((3, 1)).and_then(|c| c.as_string()).unwrap_or_default();
-        
+        let version = range.get((0, 1)).and_then(|c| c.as_string()).unwrap_or_default();
+        let title = range.get((1, 1)).and_then(|c| c.as_string()).unwrap_or_default();
+        let name = range.get((2, 1)).and_then(|c| c.as_string()).unwrap_or_default();
+        let id = range.get((3, 1)).and_then(|c| c.as_string()).unwrap_or_default();
+        let notice = range.get((4, 1)).and_then(|c| c.as_string()).unwrap_or_default();
         let mut categories = Vec::new();
         let mut col = 1;
-        while let Some(cat) = range.get((4, col)).and_then(|c| c.as_string())
+        while let Some(cat) = range.get((5, col)).and_then(|c| c.as_string())
         {
             if cat.is_empty() { break; }
             categories.push(cat);
             col += 1;
         }
-        Some(Header::new(title, name, id, categories, notice))
+        let mut header = Header::new(title, name, id, categories, notice);
+        header.set_version(version.parse().unwrap_or(0));
+        Some(header)
     }
 
     // fn write_header_with_default(&mut self) -> Result<(), String>

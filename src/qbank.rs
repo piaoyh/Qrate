@@ -723,6 +723,48 @@ impl QBank
             { question.determine_category(); }
     }
 
+    // pub fn get_version(&self) -> u32
+    /// Gets the version number of the question bank.
+    /// 
+    /// # Returns
+    /// The version number of the question bank as `u32`.
+    /// 
+    /// # Examples
+    /// ```
+    /// use qrate::{ QBank, Header };
+    /// let mut qbank = QBank::new_empty();
+    /// assert_eq!(qbank.get_version(), 1); // Default version is 1
+    /// let mut new_header = Header::new_empty();
+    /// new_header.set_version(2);
+    /// qbank.set_header(new_header);
+    /// assert_eq!(qbank.get_version(), 2); // Version is updated to 2
+    /// ```
+    #[inline]
+    pub fn get_version(&self) -> u32
+    {
+        self.header.get_version()
+    }
+
+    // pub fn set_version(&mut self, version: u32)
+    /// Sets the version number of the question bank.
+    /// 
+    /// # Arguments
+    /// * `version` - The new version number to set for the question bank.
+    /// 
+    /// # Examples
+    /// ```
+    /// use qrate::{ QBank, Header };
+    /// let mut qbank = QBank::new_empty();
+    /// assert_eq!(qbank.get_version(), 1); // Default version is 1
+    /// qbank.set_version(2);
+    /// assert_eq!(qbank.get_version(), 2); // Version is updated to 2
+    /// ```
+    #[inline]
+    pub fn set_version(&mut self, version: u32)
+    {
+        self.header.set_version(version);
+    }
+
     // pub fn remove_question(&mut self, question_number: usize) -> bool
     /// Removes a question from the bank by its 1-based index.
     /// 

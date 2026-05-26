@@ -56,6 +56,10 @@ pub mod generator;
 /// The `utils` module contains utility functions used across the library.
 pub mod utils;
 
+/// The `error_messages` module defines the `ErrorMessage` enum for standardized error handling.
+pub mod error_messages;
+
+
 pub use database::SQLiteDB;
 
 #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
@@ -72,5 +76,6 @@ pub use shuffled_question::{ ShuffledQuestion, ShuffledQuestions };
 pub use shuffled_qset::{ ShuffledQSet, ShuffledQSets};
 pub use shuffler::Shuffler;
 pub use generator::Generator;
+pub use error_messages::ErrorMessage;
 
 pub(crate) use utils::check_path;

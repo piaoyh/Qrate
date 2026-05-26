@@ -69,6 +69,7 @@ impl Excel
     /// let db = Excel::open("my".to_string(), ".qb.xlsx").unwrap();
     /// assert_eq!(db.get_path(), "my.qb.xlsx");
     /// ```
+    #[inline]
     pub fn get_path(&self) -> &String
     {
         &self.path

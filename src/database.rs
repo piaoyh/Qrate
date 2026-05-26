@@ -223,6 +223,7 @@ impl SQLiteDB
     /// db.set_path("new_path".to_string());
     /// assert_eq!(db.get_path(), "new_path.db");
     /// ```
+    #[inline]
     pub fn set_path(&mut self, path: String)
     {
         self.path = path + ".db"; // Appending .db for consistency
@@ -241,6 +242,7 @@ impl SQLiteDB
     /// let db = SQLiteDB::open("my_db".to_string(), ".db").unwrap();
     /// assert_eq!(db.get_path(), "my_db.db");
     /// ```
+    #[inline]
     pub fn get_path(&self) -> &String
     {
         &self.path
@@ -264,6 +266,7 @@ impl SQLiteDB
     /// // For example, by attempting an operation.
     /// db.get_connection().execute_batch("CREATE TABLE test (id INTEGER);").unwrap();
     /// ```
+    #[inline]
     pub fn set_connection(&mut self, conn: Connection)
     {
         self.conn = conn;
@@ -283,6 +286,7 @@ impl SQLiteDB
     /// let conn_ref = db.get_connection();
     /// assert!(conn_ref.is_autocommit());
     /// ```
+    #[inline]
     pub fn get_connection(&self) -> &Connection
     {
         &self.conn
