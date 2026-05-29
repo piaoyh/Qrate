@@ -27,7 +27,7 @@ use genpdfi::error::Error;
 use genpdfi::{ Document, elements, fonts, style, Element, SimplePageDecorator, Alignment };
 
 use crate::{ Choices, QBank, Questions, check_path };
-use crate::{ Students, Student };
+use crate::{ SBank, Student };
 use crate::Shuffler;
 
 
@@ -70,7 +70,7 @@ impl Generator
     const FOOTER_UNDERLINE: u16 = 0b_100_0000_0000_0000;
     const FOOTER_STRIKE: u16 = 0b_1000_0000_0000_0000;
 
-    // pub fn new(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, students: &Students) -> Option<Self>
+    // pub fn new(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, students: &SBank) -> Option<Self>
     /// Creates a new `Generator` instance for multiple shuffled sets,
     /// one for each student.
     ///
@@ -94,7 +94,7 @@ impl Generator
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Generator, Student, Students };
+    /// use qrate::{ QBank, Generator, Student, SBank };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
@@ -102,13 +102,13 @@ impl Generator
     ///
     /// let student1 = Student::new_from_name("Alice".to_string());
     /// let student2 = Student::new_from_name("Bob".to_string());
-    /// let students = Students::new(vec![student1, student2]);
+    /// let students = SBank::new_with_students(vec![student1, student2]);
     ///
     /// // Generate exams with 2 questions selected for each student
     /// let generator = Generator::new(&qbank, 1, 2, 2, &students);
     /// assert!(generator.is_some());
     /// ```
-    pub fn new(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, students: &Students) -> Option<Self>
+    pub fn new(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, students: &SBank) -> Option<Self>
     {
         let mut shuffler = Shuffler::new(qbank, start, end, students);
         shuffler.make_exams(number_of_questions);
@@ -154,7 +154,7 @@ impl Generator
     {
         Self
         {
-            shuffler: Shuffler::new(&QBank::new_empty(), 1, 1, &Students::new()),
+            shuffler: Shuffler::new(&QBank::new_empty(), 1, 1, &SBank::new()),
             current_question_number: 0,
             title_font_size: 14.0,
             body_font_size: 11.0,
@@ -200,7 +200,7 @@ impl Generator
     pub fn new_one_set(qbank: &QBank, start: u16, end: u16, selected: usize) -> Option<Self>
     {
         let student = Student::new_empty();
-        let students = vec![student];
+        let students = SBank::new_with_students(vec![student]);
         Self::new(qbank, start, end, selected, &students)
     }
 
@@ -237,14 +237,14 @@ impl Generator
     ///
     /// let student1 = Student::new_from_name("Alice".to_string());
     /// let student2 = Student::new_from_name("Bob".to_string());
-    /// let students = Students::new(vec![student1, student2]);
+    /// let students = SBank::new_with_students(vec![student1, student2]);
     /// let seeds = [0_u64, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
     /// 
     /// // Generate exams with 2 questions selected for each student
     /// let generator = Generator::new_with_seeds(&qbank, 1, 2, 2, &students, seed);
     /// assert!(generator.is_some());
     /// ```
-    pub fn new_with_seeds(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, students: &Students, seeds: [u64; 16]) -> Option<Self>
+    pub fn new_with_seeds(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, students: &SBank, seeds: [u64; 16]) -> Option<Self>
     {
         let mut shuffler = Shuffler::new_with_seeds(qbank, start, end, students, seeds);
         if shuffler.make_exams(number_of_questions)
@@ -300,7 +300,7 @@ impl Generator
     {
         Self
         {
-            shuffler: Shuffler::new_with_seeds(&QBank::new_empty(), 1, 1, &Students::new(), seeds),
+            shuffler: Shuffler::new_with_seeds(&QBank::new_empty(), 1, 1, &SBank::new(), seeds),
             current_question_number: 0,
             title_font_size: 14.0,
             body_font_size: 11.0,
@@ -348,7 +348,7 @@ impl Generator
     pub fn new_one_set_with_seeds(qbank: &QBank, start: u16, end: u16, selected: usize, seeds: [u64; 16]) -> Option<Self>
     {
         let student = Student::new("Self Study".to_string(), "-".to_string());
-        let students = vec![student];
+        let students = SBank::new_with_students(vec![student]);
         Self::new_with_seeds(qbank, start, end, selected, &students, seeds)
     }
 

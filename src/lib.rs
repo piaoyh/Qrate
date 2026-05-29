@@ -69,7 +69,7 @@ pub use header::Header;
 pub use qbank::QBank;
 pub use qbdb::QBDB;
 pub use question::{ ChoiceAnswer, Choices, Question, Questions };
-pub use sbank::{ SBank, SBankHelper };
+pub use sbank::SBank;
 pub use sbdb::SBDB;
 pub use student::{ Student, Students };
 pub use shuffled_question::{ ShuffledQuestion, ShuffledQuestions };

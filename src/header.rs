@@ -25,6 +25,11 @@ pub struct Header
 
 impl Header
 {
+    /// The version number for the `Header` struct. This can be used to manage
+    /// compatibility when reading from or writing to files, ensuring
+    /// that the correct format is used.
+    pub const VERSION: u32 = 1;
+
     // pub fn new_empty() -> Self
     /// Creates a new, empty `Header`.
     ///
@@ -43,7 +48,7 @@ impl Header
     {
         Self
         {
-            version: 1,
+            version: Self::VERSION,
             title: String::new(),
             name: String::new(),
             id: String::new(),
@@ -73,7 +78,7 @@ impl Header
     {
         Self
         {
-            version: 1,
+            version: Self::VERSION,
             title: "Examination".to_string(),
             name: "Full Name".to_string(),
             id: "Student ID Number".to_string(),
@@ -117,7 +122,7 @@ Contextual Understanding: All questions must be interpreted and answered within 
     #[inline]
     pub fn new(title: String, name: String, id: String, categories: Vec<String>, notice: String) -> Self
     {
-        Self { version: 1, title, name, id, categories, notice }
+        Self { version: Self::VERSION, title, name, id, categories, notice }
     }
 
     // pub fn get_title(&self) -> &String

@@ -9,7 +9,7 @@
 
 
 use cryptocol::random::{ Random_PRNG_Creator, Random };
-use crate::{ Header, Student, QBank, SBank, SBankHelper, ShuffledQSet, ShuffledQSets };
+use crate::{ Header, Student, QBank, SBank, ShuffledQSet, ShuffledQSets };
 
 
 /// The `Shuffler` struct is responsible for managing the shuffling of questions
@@ -156,7 +156,7 @@ impl Shuffler
     pub fn make_exams(&mut self, number_of_questions: usize) -> bool
     {
         self.shuffled_qsets.clear();
-        for student in self.sbank.clone()
+        for student in self.sbank.get_students().clone()
         {
             if let Some(qset) = self.create_shuffled_qset(student, number_of_questions as usize)
             {
@@ -287,7 +287,7 @@ impl Shuffler
     #[inline]
     pub fn get_shuffled_questions(&self, student_idx: usize) -> Option<ShuffledQSet>
     {
-        if student_idx >= self.sbank.len()
+        if student_idx >= self.sbank.get_length() || student_idx >= self.shuffled_qsets.len()
             { None }
         else
             { Some(self.shuffled_qsets[student_idx].clone()) }
@@ -307,7 +307,7 @@ impl Shuffler
     #[inline]
     pub fn get_shuffled_question(&self, student_idx: usize, question_idx: usize) -> u16
     {
-        if student_idx < self.sbank.len() && question_idx < self.shuffled_qsets[student_idx].get_shuffled_questions().len()
+        if student_idx < self.sbank.get_length() && question_idx < self.shuffled_qsets[student_idx].get_shuffled_questions().len()
             { self.shuffled_qsets[student_idx].get_shuffled_questions()[question_idx].get_question() }
         else
             { 0 }
@@ -325,8 +325,8 @@ impl Shuffler
     #[inline]
     pub fn get_student(&self, student_idx: usize) -> Option<Student>
     {
-        if student_idx < self.sbank.len()
-            { Some(self.sbank[student_idx].clone()) }
+        if student_idx < self.sbank.get_length()
+            { Some(self.sbank.get_student(student_idx).unwrap()) }
         else
             { None }
     }
@@ -339,7 +339,7 @@ impl Shuffler
     #[inline]
     pub fn get_sbank_length(&self) -> usize
     {
-        self.sbank.len()
+        self.sbank.get_length()
     }
 
 

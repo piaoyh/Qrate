@@ -20,6 +20,8 @@ pub struct QBank
 
 impl QBank
 {
+    pub const VERSION: u32 = Header::VERSION;
+
     // pub fn new_empty() -> Self
     /// Creates a new, empty `QBank` with an empty header.
     ///
