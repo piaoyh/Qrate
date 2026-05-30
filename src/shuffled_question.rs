@@ -30,7 +30,7 @@ impl ShuffledQuestion
     /// * `question` - The 1-based index of the question in the `QBank`.
     /// * `number_of_choices` - The total number of choices for this question.
     /// 
-    /// # Output
+    /// # Returns
     /// `Self` - A new `ShuffledQuestion` instance.
     /// 
     /// # Examples
@@ -51,7 +51,7 @@ impl ShuffledQuestion
     // pub fn get_question(&self) -> u16
     /// Gets the 1-based index of the original question.
     /// 
-    /// # Output
+    /// # Returns
     /// `u16` - The index of the question.
     /// 
     /// # Examples
@@ -91,7 +91,7 @@ impl ShuffledQuestion
     /// # Arguments
     /// * `idx` - The 1-based index into the shuffled choice vector.
     /// 
-    /// # Output
+    /// # Returns
     /// `u8` - The original 1-based index of the choice at the shuffled position.
     /// Returns 0 if `idx` is out of bounds.
     /// 
@@ -117,7 +117,7 @@ impl ShuffledQuestion
     /// * `idx` - The 1-based index in the choices vector to modify.
     /// * `choice` - The new original 1-based choice index to place at `idx`.
     /// 
-    /// # Output
+    /// # Returns
     /// `bool` - Returns `true` if the choice was successfully set, `false` otherwise.
     /// 
     /// # Examples
@@ -139,7 +139,7 @@ impl ShuffledQuestion
     // pub fn get_choices(&self) -> &Vec<u8>
     /// Gets a reference to the vector of shuffled choice indices.
     /// 
-    /// # Output
+    /// # Returns
     /// `&Vec<u8>` - A reference to the shuffled choices.
     /// 
     /// # Examples
@@ -176,7 +176,7 @@ impl ShuffledQuestion
     // pub fn how_many_choices(&self) -> usize
     /// Returns the number of choices for the question.
     /// 
-    /// # Output
+    /// # Returns
     /// `usize` - The number of choices.
     /// 
     /// # Examples

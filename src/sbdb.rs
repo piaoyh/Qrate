@@ -19,6 +19,9 @@ use crate::{ SBank, SQLiteDB, Student };
 /// A trait defining the database operations for a Student Bank (`SBank`).
 ///
 /// This abstracts the storage mechanism for student data.
+/// Implementors of this trait can provide different storage backends, such as
+/// SQLite databases or Excel files, while exposing a consistent interface for
+/// reading and writing student data.
 pub trait SBDB
 {
     // fn open(path: String) -> Option<Self> where Self: Sized
@@ -28,11 +31,11 @@ pub trait SBDB
     /// specific to the database type (e.g., `.sbdb`) is appended.
     ///
     /// # Arguments
-    /// * `path` - The file path for the database. For in-memory SQLite databases,
-    ///   use `":memory:"`.
+    /// * `path` - The file path for the database.
+    ///   For in-memory SQLite databases, use `":memory:"`.
     /// * `extention` - The file extension to append.
     ///
-    /// # Output
+    /// # Returns
     /// `Some(Self)` if the connection is successful, otherwise `None`.
     ///
     /// # Example 1 for SQLiteDB
@@ -56,9 +59,10 @@ pub trait SBDB
     // fn make_table(&self) -> Result<(), String>
     /// Creates the necessary table(s) for storing student data.
     ///
-    /// For a database that already has the table, this should not produce an error.
+    /// For a database that already has the table,
+    /// this should not produce an error.
     ///
-    /// # Output
+    /// # Returns
     /// `Ok(())` on success, or an error string on failure.
     ///
     /// # Example 1 for SQLiteDB
@@ -87,7 +91,7 @@ pub trait SBDB
     // fn read_sbank(&self) -> Option<SBank>
     /// Reads all student data from the database into an `SBank`.
     ///
-    /// # Output
+    /// # Returns
     /// `Some(SBank)` containing all students found in the database. Returns an
     /// empty `SBank` if no students are found. Returns `None` if a database
     /// read error occurs.
@@ -140,9 +144,10 @@ pub trait SBDB
     /// depending on the implementation.
     ///
     /// # Arguments
-    /// * `sbank` - A reference to the `SBank` containing the students to be written.
+    /// * `sbank` - A reference to the `SBank`
+    /// containing the students to be written.
     ///
-    /// # Output
+    /// # Returns
     /// `Ok(())` on success, or an error string on failure.
     ///
     /// # Example 1 for SQLiteDB
@@ -191,14 +196,18 @@ impl SBDB for SQLiteDB
 {
     // fn open(path: String, extention: &str) -> Option<SQLiteDB>
     /// Implements `open` for `SQLiteDB`.
-    /// Appends `.sbdb` to the path if no extension is present and opens a connection.
+    /// 
+    /// Appends `.sbdb` to the path
+    /// if no extension is present and opens a connection.
     ///
     /// # Arguments
     /// * `path` - The file path for the database.
     /// * `extention` - The file extension to append.
     ///
-    /// # Output
-    /// `Option<SQLiteDB>` - An optional `SQLiteDB` instance if the connection is successful.
+    /// # Returns
+    /// `Option<SQLiteDB>` - An optional `SQLiteDB` instance
+    /// if the connection is successful.
+    /// For in-memory databases, use `":memory:"` as the path.
     #[inline]
     fn open(path: String) -> Option<SQLiteDB>
     {
@@ -209,8 +218,9 @@ impl SBDB for SQLiteDB
     /// Implements `make_table` for `SQLiteDB`.
     /// Executes a `CREATE TABLE` SQL statement for `tblStudents`.
     ///
-    /// # Output
-    /// `Result<(), String>` - `Ok(())` on success, or an error message string on failure.
+    /// # Returns
+    /// `Result<(), String>` - `Ok(())` on success,
+    /// or an error message string on failure.
     fn make_table(&self) -> Result<(), String>
     {
         let sql = r#"CREATE TABLE IF NOT EXISTS tblHeader (version INTEGER NOT NULL);"#;
@@ -228,8 +238,9 @@ impl SBDB for SQLiteDB
     /// Implements `read_sbank` for `SQLiteDB`.
     /// Queries the `tblStudents` table and maps each row to a `Student` struct.
     ///
-    /// # Output
-    /// `Option<SBank>` - An optional `SBank` containing all students from the database.
+    /// # Returns
+    /// `Option<SBank>` - An optional `SBank` containing all students from the
+    /// database. Returns `None` if a database read error occurs.
     fn read_sbank(&self) -> Option<SBank>
     {
         let mut sbank = SBank::new();
@@ -255,8 +266,9 @@ impl SBDB for SQLiteDB
     /// # Arguments
     /// * `sbank` - A reference to the `SBank` to be written to the database.
     /// 
-    /// # Output
-    /// `Result<(), String>` - `Ok(())` on success, or an error message string on failure.
+    /// # Returns
+    /// `Result<(), String>` - `Ok(())` on success,
+    /// or an error message string on failure.
     fn write_sbank(&mut self, sbank: &SBank) -> Result<(), String>
     {
         let _ = self.make_table();
@@ -288,7 +300,8 @@ impl SBDB for Excel
     /// * `extention` - The file extension to append.
     ///
     /// # Returns
-    /// `Option<Excel>` - An optional `Excel` instance if the file is opened successfully.
+    /// `Option<Excel>` - An optional `Excel` instance
+    /// if the file is opened successfully.
     #[inline]
     fn open(path: String) -> Option<Self>
     where Self: Sized
@@ -300,7 +313,8 @@ impl SBDB for Excel
     /// Creates a new Excel file with a "Students" sheet and headers.
     /// 
     /// # Returns
-    /// `Result<(), String>` - `Ok(())` on success, or an error message string on failure.
+    /// `Result<(), String>` - `Ok(())` on success,
+    /// or an error message string on failure.
     fn make_table(&self) -> Result<(), String>
     {
         let mut workbook = rust_xlsxwriter::Workbook::new();
@@ -335,7 +349,8 @@ impl SBDB for Excel
             { sbank.set_version(row.get(0).and_then(|d| d.as_i64())? as u32); }
 
         let range = excel.worksheet_range("Students").ok()?;
-        for row in range.rows().skip(1) { // Skip header row
+        for row in range.rows().skip(1)
+        { // Skip header row
             sbank.push_student(Student::new(
                 row.get(0).and_then(|d| d.as_string())?,
                 row.get(1).and_then(|d| d.as_string())? // Assuming ID is always string or convertible
@@ -354,7 +369,8 @@ impl SBDB for Excel
     ///   containing the students to be written to the Excel file.
     /// 
     /// # Returns
-    /// `Result<(), String>` - `Ok(())` on success, or an error message string on failure.
+    /// `Result<(), String>` - `Ok(())` on success,
+    /// or an error message string on failure.
     fn write_sbank(&mut self, sbank: &SBank) -> Result<(), String>
     {
         let mut workbook = rust_xlsxwriter::Workbook::new();

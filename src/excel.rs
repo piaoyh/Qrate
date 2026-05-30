@@ -36,7 +36,7 @@ impl Excel
     /// * `path` - The file path for the Excel workbook.
     /// * `extention` - The file extension to append if the path does not have one.
     ///
-    /// # Output
+    /// # Returns
     /// An `Option<Self>` containing the `Excel` instance.
     /// 
     /// # Features
@@ -59,7 +59,7 @@ impl Excel
     // pub fn get_path(&self) -> &String
     /// Gets the path of the Excel file.
     ///
-    /// # Output
+    /// # Returns
     /// `&String` - A reference to the path of the Excel file.
     ///
     /// # Examples
@@ -86,7 +86,7 @@ impl Excel
     ///   It expects the cells to be in the order: ID, Category, Question Text,
     ///   followed by pairs of Choice Text and IsAnswer.
     ///
-    /// # Output
+    /// # Returns
     /// * `Some(Question)` if the row is successfully parsed.
     /// * `None` if essential data (ID, Category, Question Text) is missing or has
     ///   an incorrect data type.

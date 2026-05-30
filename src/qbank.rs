@@ -11,6 +11,14 @@
 use crate::{ Question, Choices, ChoiceAnswer, Header };
 
 /// Represents a Question Bank, containing a header and a vector of questions.
+/// 
+/// The `QBank` struct provides methods to manage the questions and their
+/// associated data, such as categories and choices. It also includes
+/// functionality to determine the category of questions based on their choices
+/// and to select a subset of questions to create a smaller `QBank`. The `QBank`
+/// struct is designed to be flexible and efficient for handling a large
+/// collection of questions, making it suitable for applications
+/// such as exams or quizzes.
 #[derive(Debug, Clone)]
 pub struct QBank
 {
@@ -25,7 +33,7 @@ impl QBank
     // pub fn new_empty() -> Self
     /// Creates a new, empty `QBank` with an empty header.
     ///
-    /// # Output
+    /// # Returns
     /// `Self` - A new, empty `QBank` instance.
     ///
     /// # Examples
@@ -47,7 +55,7 @@ impl QBank
     // pub fn new_with_default() -> Self
     /// Creates a new `QBank` with a default header.
     ///
-    /// # Output
+    /// # Returns
     /// `Self` - A new `QBank` instance with a default header.
     ///
     /// # Examples
@@ -72,7 +80,7 @@ impl QBank
     /// # Arguments
     /// * `header` - The `Header` to be used for the new `QBank`.
     ///
-    /// # Output
+    /// # Returns
     /// `Self` - A new `QBank` instance with the specified header.
     ///
     /// # Examples
@@ -95,7 +103,7 @@ impl QBank
     // pub fn get_header(&self) -> &Header
     /// Gets a reference to the `Header`.
     ///
-    /// # Output
+    /// # Returns
     /// `&Header` - A reference to the `Header` of the question bank.
     ///
     /// # Examples
@@ -113,8 +121,19 @@ impl QBank
     // pub fn get_header_mut(&mut self) -> &mut Header
     /// Gets a mutable reference to the `Header`.
     ///
-    /// # Output
+    /// # Returns
     /// `&mut Header` - A mutable reference to the `Header` of the question bank.
+    /// This allows for modifying the header information of the question bank.
+    /// 
+    /// # Examples
+    /// ```
+    /// use qrate::{ QBank, Header };
+    /// let mut qbank = QBank::new_empty();
+    /// let mut new_header = Header::new_empty();
+    /// new_header.set_title("My Custom Exam".to_string());
+    /// qbank.set_header(new_header);
+    /// assert_eq!(qbank.get_header().get_title(), "My Custom Exam");
+    /// ```
     #[inline]
     pub fn get_header_mut(&mut self) -> &mut Header
     {
@@ -145,7 +164,7 @@ impl QBank
     // pub fn get_questions(&self) -> &Vec<Question>
     /// Gets a reference to the vector of `Question`s.
     ///
-    /// # Output
+    /// # Returns
     /// `&Vec<Question>` - A reference to the vector of `Question`s in the bank.
     ///
     /// # Examples
@@ -187,7 +206,8 @@ impl QBank
     /// assert_eq!(selected.get_length(), 2);
     /// assert_eq!(selected.get_question(1).unwrap().get_id(), 101);
     /// ```
-    pub fn select_questions(&self, start: u16, end: u16) -> QBank    {
+    pub fn select_questions(&self, start: u16, end: u16) -> QBank
+    {
         QBank
         {
             header: self.get_header().clone(),
@@ -226,9 +246,12 @@ impl QBank
     /// # Arguments
     /// * `question_number` - The 1-based index of the question to retrieve.
     ///
-    /// # Output
-    /// `Option<&Question>` - An optional reference to the `Question` at the specified index.
-    ///
+    /// # Returns
+    /// `Option<&Question>` - An optional reference to the `Question` at the
+    /// specified index.
+    /// Returns `None` if the question number is out of bounds (less than 1 or
+    /// greater than the total number of questions).
+    /// 
     /// # Examples
     /// ```
     /// use qrate::{ QBank, Question };
@@ -254,6 +277,18 @@ impl QBank
     ///
     /// # Returns
     /// An optional mutable reference to the `Question` at the specified index.
+    /// Returns `None` if the question number is out of bounds
+    /// (less than 1 or greater than the total number of questions).
+    /// 
+    /// # Examples
+    /// ```
+    /// use qrate::{ QBank, Question };
+    /// 
+    /// let mut qbank = QBank::new_empty();
+    /// qbank.push_question(Question::new(1, 1, 1, "Test Q".to_string(), vec![]));
+    /// assert_eq!(qbank.get_question_mut(1).unwrap().get_id(), 1);
+    /// assert!(qbank.get_question_mut(2).is_none());
+    /// ```
     pub fn get_question_mut(&mut self, question_number: usize) -> Option<&mut Question>
     {
         if (question_number <= self.questions.len()) && question_number > 0
@@ -317,14 +352,18 @@ impl QBank
     }
 
     // pub fn get_choice(&self, question_number: usize, choice_number: usize) -> Option<&ChoiceAnswer>
-    /// Gets a reference to a choice `ChoiceAnswer` by question number and choice number (both 1-based).
+    /// Gets a reference to a choice `ChoiceAnswer` by question number
+    /// and choice number (both 1-based).
     ///
     /// # Arguments
     /// * `question_number` - The 1-based index of the question.
     /// * `choice_number` - The 1-based index of the choice within the question.
     ///
-    /// # Output
-    /// `Option<&ChoiceAnswer>` - An optional reference to the `ChoiceAnswer` at the specified index.
+    /// # Returns
+    /// `Option<&ChoiceAnswer>` - An optional reference to the `ChoiceAnswer` at
+    /// the specified index.
+    /// Returns `None` if the question number or choice number is out of bounds
+    /// (less than 1 or greater than the total number of questions or choices).
     ///
     /// # Examples
     /// ```
@@ -395,7 +434,19 @@ impl QBank
     /// * `true` if it succeeded to set or change.
     /// * `false` if `question_number` is `0` or greater than the total number
     ///   of questions.
+    ///  * `false` if `choice_number` is `0` or greater than the total number of
+    ///   choices.
     /// 
+    /// # Examples
+    /// ```
+    /// use qrate::{ QBank, Question };
+    /// let mut qbank = QBank::new_empty();
+    /// let question = Question::new(1, 1, 1, "Q1".to_string(), vec![]);
+    /// qbank.push_question(question);
+    /// assert_eq!(qbank.set_choice(1, 1, ChoiceAnswer::new("Choice A".to_string(), false)), true);
+    /// assert_eq!(qbank.set_choice(2, 1, ChoiceAnswer::new("Choice B".to_string(), false)), false);
+    /// assert_eq!(qbank.set_choice(1, 2, ChoiceAnswer::new("Choice C".to_string(), false)), false);
+    /// ```
     pub fn set_choice(&mut self, question_number: usize, choice_number: usize, choice_answer: ChoiceAnswer) -> bool
     {
         if let Some(question) = self.get_question_mut(question_number)
@@ -765,6 +816,30 @@ impl QBank
     pub fn set_version(&mut self, version: u32)
     {
         self.header.set_version(version);
+    }
+
+    // pub fn is_higher_version(&self) -> bool
+    /// Checks if the version of the question bank is higher than
+    /// the current version defined in `QBank::VERSION`.
+    /// 
+    /// # Returns
+    /// * `true` if the version of the question bank is higher than `QBank::VERSION`.
+    /// * `false` if the version of the question bank is equal to or lower than `QBank::VERSION`.
+    /// 
+    /// # Examples
+    /// ```
+    /// use qrate::{ QBank, Header };
+    /// let mut qbank = QBank::new_empty();
+    /// assert!(!qbank.is_higher_version()); // Default version is 1, which is not higher than QBank::VERSION (1)
+    /// let mut new_header = Header::new_empty();
+    /// new_header.set_version(2);
+    /// qbank.set_header(new_header);
+    /// assert!(qbank.is_higher_version()); // Version is updated to 2, which is higher than QBank::VERSION (1)
+    /// ```
+    #[inline]
+    pub fn is_higher_version(&self) -> bool
+    {
+        self.get_version() > QBank::VERSION
     }
 
     // pub fn remove_question(&mut self, question_number: usize) -> bool

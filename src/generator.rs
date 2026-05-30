@@ -20,7 +20,6 @@ use hwpers::{HwpWriter, HwpxWriter};
 use hwpers::style::TextStyle;
 #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 use hwpers::hwpx::{HwpxTextStyle, StyledText};
-
 #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 use genpdfi::error::Error;
 #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
@@ -70,7 +69,7 @@ impl Generator
     const FOOTER_UNDERLINE: u16 = 0b_100_0000_0000_0000;
     const FOOTER_STRIKE: u16 = 0b_1000_0000_0000_0000;
 
-    // pub fn new(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, students: &SBank) -> Option<Self>
+    // pub fn new(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, sbank: &SBank) -> Option<Self>
     /// Creates a new `Generator` instance for multiple shuffled sets,
     /// one for each student.
     ///
@@ -84,10 +83,9 @@ impl Generator
     /// * `end` - The 1-based ending index of questions to consider (inclusive).
     /// * `number_of_questions` - The number of questions to be randomly
     ///   selected for each student.
-    /// * `students` - A slice of `Student` instances for whom shuffled sets
-    ///    will be generated.
+    /// * `sbank` - A reference to the `SBank` containing the list of students.
     ///
-    /// # Output
+    /// # Returns
     /// An `Option<Self>` which is `Some(Generator)` if successful, or
     /// `None` if the generation fails (e.g., invalid question range,
     /// insufficient questions, or selected count).
@@ -108,28 +106,34 @@ impl Generator
     /// let generator = Generator::new(&qbank, 1, 2, 2, &students);
     /// assert!(generator.is_some());
     /// ```
-    pub fn new(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, students: &SBank) -> Option<Self>
+    pub fn new(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, sbank: &SBank) -> Option<Self>
     {
-        let mut shuffler = Shuffler::new(qbank, start, end, students);
-        shuffler.make_exams(number_of_questions);
-        Some(
-            Self
-            {
-                shuffler,
-                current_question_number: 0,
-                title_font_size: 14.0,
-                body_font_size: 11.0,
-                answer_sheet_font_size: 12.0,
-                footer_font_size: 9.0,
-                attributes: Self::TITLE_BOLD,
-                margin_left_in_mm: 10.0,
-                margin_right_in_mm: 10.0,
-                margin_top_in_mm: 10.0,
-                margin_buttom_in_mm: 10.0,
-                line_spacing: 1.0,
-                answer_sheet_title: "Answer Sheet        정답지        Ответы".to_string()
-             }
-        )
+        let mut shuffler = Shuffler::new(qbank, start, end, sbank);
+        if shuffler.make_exams(number_of_questions)
+        {
+            Some(
+                Self
+                {
+                    shuffler,
+                    current_question_number: 0,
+                    title_font_size: 14.0,
+                    body_font_size: 11.0,
+                    answer_sheet_font_size: 12.0,
+                    footer_font_size: 9.0,
+                    attributes: Self::TITLE_BOLD,
+                    margin_left_in_mm: 10.0,
+                    margin_right_in_mm: 10.0,
+                    margin_top_in_mm: 10.0,
+                    margin_buttom_in_mm: 10.0,
+                    line_spacing: 1.0,
+                    answer_sheet_title: "Answer Sheet        정답지        Ответы".to_string()
+                }
+            )
+        }
+        else
+        {
+            None
+        }
     }
 
     // pub fn new_empty() -> Self
@@ -139,7 +143,7 @@ impl Generator
     /// default empty or initial states, such as an empty `QBank` and
     /// `ShuffledQSets`, and predefined font sizes and margins.
     ///
-    /// # Output
+    /// # Returns
     /// `Self` - A new `Generator` instance, ready for configuration.
     ///
     /// # Examples
@@ -170,7 +174,7 @@ impl Generator
         }
     }
 
-    // pub fn new_one_set(qbank: &QBank, start: u16, end: u16, selected: usize) -> Option<Self>
+    // pub fn new_one_set(qbank: &QBank, start: u16, end: u16, number_of_questions: usize) -> Option<Self>
     /// Creates a new `Generator` instance for a single shuffled set.
     ///
     /// This function generates a single shuffled question set based on the provided
@@ -180,7 +184,7 @@ impl Generator
     /// * `qbank` - A reference to the `QBank` containing the original questions.
     /// * `start` - The starting number of the questions to include (inclusive).
     /// * `end` - The ending number of the questions to include (inclusive).
-    /// * `selected` - The number of questions to be randomly selected.
+    /// * `number_of_questions` - The number of questions to be randomly selected.
     ///
     /// # Output
     /// An `Option<Self>` which is `Some(Generator)` if successful, or `None` if
@@ -197,14 +201,14 @@ impl Generator
     /// let generator = Generator::new_one_set(&qbank, 1, 2, 2);
     /// assert!(generator.is_some());
     /// ```
-    pub fn new_one_set(qbank: &QBank, start: u16, end: u16, selected: usize) -> Option<Self>
+    pub fn new_one_set(qbank: &QBank, start: u16, end: u16, number_of_questions: usize) -> Option<Self>
     {
         let student = Student::new_empty();
-        let students = SBank::new_with_students(vec![student]);
-        Self::new(qbank, start, end, selected, &students)
+        let sbank = SBank::new_with_students(vec![student]);
+        Self::new(qbank, start, end, number_of_questions, &sbank)
     }
 
-    // pub fn new_with_seeds(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, students: &Students, seeds: [u64; 16]) -> Option<Self>
+    // pub fn new_with_seeds(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, sbank: &SBank, seeds: [u64; 16]) -> Option<Self>
     /// Creates a new `Generator` instance for multiple shuffled sets,
     /// one for each student.
     ///
@@ -218,8 +222,7 @@ impl Generator
     /// * `end` - The 1-based ending index of questions to consider (inclusive).
     /// * `number_of_questions` - The number of questions to be randomly
     ///   selected for each student.
-    /// * `students` - A slice of `Student` instances for whom shuffled sets
-    ///    will be generated.
+    /// * `sbank` - A reference to the `SBank` containing the list of students.
     /// * `seeds` - A seed array, each element of which is of u64.
     ///
     /// # Returns
@@ -237,16 +240,16 @@ impl Generator
     ///
     /// let student1 = Student::new_from_name("Alice".to_string());
     /// let student2 = Student::new_from_name("Bob".to_string());
-    /// let students = SBank::new_with_students(vec![student1, student2]);
+    /// let sbank = SBank::new_with_students(vec![student1, student2]);
     /// let seeds = [0_u64, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
     /// 
     /// // Generate exams with 2 questions selected for each student
-    /// let generator = Generator::new_with_seeds(&qbank, 1, 2, 2, &students, seed);
+    /// let generator = Generator::new_with_seeds(&qbank, 1, 2, 2, &sbank, seed);
     /// assert!(generator.is_some());
     /// ```
-    pub fn new_with_seeds(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, students: &SBank, seeds: [u64; 16]) -> Option<Self>
+    pub fn new_with_seeds(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, sbank: &SBank, seeds: [u64; 16]) -> Option<Self>
     {
-        let mut shuffler = Shuffler::new_with_seeds(qbank, start, end, students, seeds);
+        let mut shuffler = Shuffler::new_with_seeds(qbank, start, end, sbank, seeds);
         if shuffler.make_exams(number_of_questions)
         {
             Some(
@@ -316,7 +319,7 @@ impl Generator
         }
     }
 
-    // pub fn new_one_set(qbank: &QBank, start: u16, end: u16, selected: usize, seeds: [u64; 16]) -> Option<Self>
+    // pub fn new_one_set(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, seeds: [u64; 16]) -> Option<Self>
     /// Creates a new `Generator` instance for a single shuffled set.
     ///
     /// This function generates a single shuffled question set based on the provided
@@ -326,7 +329,7 @@ impl Generator
     /// * `qbank` - A reference to the `QBank` containing the original questions.
     /// * `start` - The starting number of the questions to include (inclusive).
     /// * `end` - The ending number of the questions to include (inclusive).
-    /// * `selected` - The number of questions to be randomly selected.
+    /// * `number_of_questions` - The number of questions to be randomly selected.
     /// * `seeds` - A seed array, each element of which is of u64.
     ///
     /// # Output
@@ -345,11 +348,11 @@ impl Generator
     /// let generator = Generator::new_one_set_with_seeds(&qbank, 1, 2, 2, seeds);
     /// assert!(generator.is_some());
     /// ```
-    pub fn new_one_set_with_seeds(qbank: &QBank, start: u16, end: u16, selected: usize, seeds: [u64; 16]) -> Option<Self>
+    pub fn new_one_set_with_seeds(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, seeds: [u64; 16]) -> Option<Self>
     {
         let student = Student::new("Self Study".to_string(), "-".to_string());
-        let students = SBank::new_with_students(vec![student]);
-        Self::new_with_seeds(qbank, start, end, selected, &students, seeds)
+        let sbank = SBank::new_with_students(vec![student]);
+        Self::new_with_seeds(qbank, start, end, number_of_questions, &sbank, seeds)
     }
 
     // pub fn make_exams(&mut self, number_of_questions: usize)
@@ -358,6 +361,9 @@ impl Generator
     /// # Arguments
     /// * `number_of_questions` - The number of questions to be randomly
     ///   selected for each student.
+    /// 
+    /// # Returns
+    /// `bool` - `true` if the generation is successful, `false` otherwise.
     ///
     /// # Examples
     /// ```
@@ -369,15 +375,15 @@ impl Generator
     /// assert!(generator.origin.get_questions().is_empty());
     /// ```
     #[inline]
-    pub fn make_exams(&mut self, number_of_questions: usize)
+    pub fn make_exams(&mut self, number_of_questions: usize) -> bool
     {
-        self.shuffler.make_exams(number_of_questions);
+        self.shuffler.make_exams(number_of_questions)
     }
 
     // pub fn get_title_font_size(&self) -> f32
     /// Retrieves the current title font size in points.
     ///
-    /// # Output
+    /// # Returns
     /// `f32` - The current font size used for titles.
     ///
     /// # Examples
@@ -419,7 +425,7 @@ impl Generator
     // pub fn get_body_font_size(&self) -> f32
     /// Retrieves the current default font size in points.
     ///
-    /// # Output
+    /// # Returns
     /// `f32` - The current default font size.
     ///
     /// # Examples
@@ -461,7 +467,7 @@ impl Generator
     // pub fn get_footer_font_size(&self) -> f32
     /// Retrieves the current footer font size in points.
     ///
-    /// # Output
+    /// # Returns
     /// `f32` - The current font size used for footers.
     ///
     /// # Examples
@@ -503,7 +509,7 @@ impl Generator
     // pub fn get_answer_sheet_font_size(&self) -> f32
     /// Retrieves the current answer sheet font size in points.
     ///
-    /// # Output
+    /// # Returns
     /// `f32` - The current font size used for the answer sheet.
     ///
     /// # Examples
@@ -545,7 +551,7 @@ impl Generator
     // pub fn is_body_bold(&self) -> bool
     /// Checks if the body text is set to bold.
     ///
-    /// # Output
+    /// # Returns
     /// `bool` - `true` if the body text is bold, `false` otherwise.
     ///
     /// # Examples
@@ -593,7 +599,7 @@ impl Generator
     // pub fn is_body_italic(&self) -> bool
     /// Checks if the body text is set to italic.
     ///
-    /// # Output
+    /// # Returns
     /// `bool` - `true` if the body text is italic, `false` otherwise.
     ///
     /// # Examples
@@ -641,7 +647,7 @@ impl Generator
     // pub fn is_body_underline(&self) -> bool
     /// Checks if the body text is set to underline.
     ///
-    /// # Output
+    /// # Returns
     /// `bool` - `true` if the body text is underlined, `false` otherwise.
     ///
     /// # Examples
@@ -689,7 +695,7 @@ impl Generator
     // pub fn is_body_strike(&self) -> bool
     /// Checks if the body text is set to strikethrough.
     ///
-    /// # Output
+    /// # Returns
     /// `bool` - `true` if the body text is strikethrough, `false` otherwise.
     ///
     /// # Examples
@@ -738,7 +744,7 @@ impl Generator
     // pub fn is_title_bold(&self) -> bool
     /// Checks if the title text is set to bold.
     ///
-    /// # Output
+    /// # Returns
     /// `bool` - `true` if the title text is bold, `false` otherwise.
     ///
     /// # Examples
@@ -786,7 +792,7 @@ impl Generator
     // pub fn is_title_italic(&self) -> bool
     /// Checks if the title text is set to italic.
     ///
-    /// # Output
+    /// # Returns
     /// `bool` - `true` if the title text is italic, `false` otherwise.
     ///
     /// # Examples
@@ -834,7 +840,7 @@ impl Generator
     // pub fn is_title_underline(&self) -> bool
     /// Checks if the title text is set to underline.
     ///
-    /// # Output
+    /// # Returns
     /// `bool` - `true` if the title text is underlined, `false` otherwise.
     ///
     /// # Examples
@@ -882,7 +888,7 @@ impl Generator
     // pub fn is_title_strike(&self) -> bool
     /// Checks if the title text is set to strikethrough.
     ///
-    /// # Output
+    /// # Returns
     /// `bool` - `true` if the title text is strikethrough, `false` otherwise.
     ///
     /// # Examples
@@ -930,7 +936,7 @@ impl Generator
     // pub fn is_footer_bold(&self) -> bool
     /// Checks if the footer text is set to bold.
     ///
-    /// # Output
+    /// # Returns
     /// `bool` - `true` if the footer text is bold, `false` otherwise.
     ///
     /// # Examples
@@ -978,7 +984,7 @@ impl Generator
     // pub fn is_footer_italic(&self) -> bool
     /// Checks if the footer text is set to italic.
     ///
-    /// # Output
+    /// # Returns
     /// `bool` - `true` if the footer text is italic, `false` otherwise.
     ///
     /// # Examples
@@ -1026,7 +1032,7 @@ impl Generator
     // pub fn is_footer_underline(&self) -> bool
     /// Checks if the footer text is set to underline.
     ///
-    /// # Output
+    /// # Returns
     /// `bool` - `true` if the footer text is underlined, `false` otherwise.
     ///
     /// # Examples
@@ -1073,7 +1079,7 @@ impl Generator
     // pub fn is_footer_strike(&self) -> bool
     /// Checks if the footer text is set to strikethrough.
     ///
-    /// # Output
+    /// # Returns
     /// `bool` - `true` if the footer text is strikethrough, `false` otherwise.
     ///
     /// # Examples
@@ -1121,7 +1127,7 @@ impl Generator
     // pub fn is_answer_sheet_bold(&self) -> bool
     /// Checks if the answer sheet text is set to bold.
     ///
-    /// # Output
+    /// # Returns
     /// `bool` - `true` if the answer sheet text is bold, `false` otherwise.
     ///
     /// # Examples
@@ -1169,7 +1175,7 @@ impl Generator
     // pub fn is_answer_sheet_italic(&self) -> bool
     /// Checks if the answer sheet text is set to italic.
     ///
-    /// # Output
+    /// # Returns
     /// `bool` - `true` if the answer sheet text is italic, `false` otherwise.
     ///
     /// # Examples
@@ -1217,7 +1223,7 @@ impl Generator
     // pub fn is_answer_sheet_underline(&self) -> bool
     /// Checks if the answer sheet text is set to underline.
     ///
-    /// # Output
+    /// # Returns
     /// `bool` - `true` if the answer sheet text is underlined, `false` otherwise.
     ///
     /// # Examples
@@ -1265,7 +1271,7 @@ impl Generator
     // pub fn is_answer_sheet_strike(&self) -> bool
     /// Checks if the answer sheet text is set to strikethrough.
     ///
-    /// # Output
+    /// # Returns
     /// `bool` - `true` if the answer sheet text is strikethrough, `false` otherwise.
     ///
     /// # Examples
@@ -1312,7 +1318,7 @@ impl Generator
     // pub fn get_attributes(&self) -> u16
     /// Retrieves the current attribute bitmask.
     ///
-    /// # Output
+    /// # Returns
     /// `u16` - The current attribute bitmask.
     ///
     /// # Examples
@@ -1393,7 +1399,7 @@ impl Generator
     // pub fn get_margin_left_in_mm(&self) -> f32
     /// Retrieves the current left margin in millimeters.
     ///
-    /// # Output
+    /// # Returns
     /// `f32` - The current left margin in millimeters.
     ///
     /// # Examples
@@ -1435,7 +1441,7 @@ impl Generator
     // pub fn get_margin_right_in_mm(&self) -> f32
     /// Retrieves the current right margin in millimeters.
     ///
-    /// # Output
+    /// # Returns
     /// `f32` - The current right margin in millimeters.
     ///
     /// # Examples
@@ -1477,7 +1483,7 @@ impl Generator
     // pub fn get_margin_top_in_mm(&self) -> f32
     /// Retrieves the current top margin in millimeters.
     ///
-    /// # Output
+    /// # Returns
     /// `f32` - The current top margin in millimeters.
     ///
     /// # Examples
@@ -1519,7 +1525,7 @@ impl Generator
     // pub fn get_margin_buttom_in_mm(&self) -> f32
     /// Retrieves the current bottom margin in millimeters.
     ///
-    /// # Output
+    /// # Returns
     /// `f32` - The current bottom margin in millimeters.
     ///
     /// # Examples
@@ -1561,7 +1567,7 @@ impl Generator
     // pub fn get_line_spacing(&self) -> f32
     /// Retrieves the current line spacing in lines.
     ///
-    /// # Output
+    /// # Returns
     /// `f32` - The current line spacing value.
     ///
     /// # Examples
@@ -1603,7 +1609,7 @@ impl Generator
     // pub fn get_answer_sheet_title(&self) -> String
     /// Retrieves the current answer sheet title.
     ///
-    /// # Output
+    /// # Returns
     /// `String` - The current title for the answer sheet.
     ///
     /// # Examples
@@ -1651,7 +1657,7 @@ impl Generator
     // // # Arguments
     // // * `idx` - The zero-based index of the shuffled question set to retrieve.
     // //
-    // // # Output
+    // // # Returns
     // // An `Option<ShuffledQSet>` which is `Some(ShuffledQSet)` if the index is valid,
     // // or `None` if the index is out of bounds.
     // //
@@ -1687,7 +1693,7 @@ impl Generator
     /// # Arguments
     /// * `idx` - The zero-based index of the shuffled question set.
     ///
-    /// # Output
+    /// # Returns
     /// An `Option<(Student, QBank)>` which is `Some((Student, QBank))` if the index is valid,
     /// or `None` if the index is out of bounds or a question cannot be found.
     ///
@@ -1742,7 +1748,7 @@ impl Generator
     /// This function iterates through all generated shuffled question sets and
     /// reconstructs a `QBank` for each, paired with its corresponding `Student`.
     ///
-    /// # Output
+    /// # Returns
     /// A `Vec<(Student, QBank)>` containing all shuffled question banks and
     /// their students.
     ///
@@ -1815,11 +1821,12 @@ impl Generator
     /// It is primarily used for self-testing scenarios,
     /// suchs as in the `exam()` function found in `src/examples/prep.rs`.
     ///
-    /// # Output
-    /// `Option<(u16, String, String, Choices)>` - An `Option` containing
+    /// # Returns
+    /// `Option<(u16, u8, String, String, Choices)>` - An `Option` containing
     /// a tuple with:
     ///   - `u16`: The current question number within the shuffled set.
-    ///   - `String`: The category of the current question.
+    ///   - `u8`: The category ID of the current question.
+    ///   - `String`: The category string of the current question.
     ///   - `String`: The text of the current question.
     ///   - `Choices`: A vector of tuples `(String, bool)` representing the
     ///                shuffled choices and whether each is a correct answer.
@@ -1861,11 +1868,12 @@ impl Generator
     /// It is primarily used for self-testing scenarios,
     /// suchs as in the `exam()` function found in `src/examples/prep.rs`.
     ///
-    /// # Output
-    /// `Option<(u16, String, String, Choices)>` - An `Option` containing
+    /// # Returns
+    /// `Option<(u16, u8, String, String, Choices)>` - An `Option` containing
     /// a tuple with:
     ///   - `u16`: The current question number within the shuffled set.
-    ///   - `String`: The category of the current question.
+    ///   - `u8`: The category ID of the current question.
+    ///   - `String`: The category string of the current question.
     ///   - `String`: The text of the current question.
     ///   - `Choices`: A vector of tuples `(String, bool)` representing the
     ///                shuffled choices and whether each is a correct answer.
@@ -1908,7 +1916,7 @@ impl Generator
     /// * `num` - The number of the question to retrieve.
     /// 
     /// # Returns
-    /// `Option<(u16, String, String, Choices)>` - An `Option` containing
+    /// `Option<(u16, u8, String, String, Choices)>` - An `Option` containing
     /// a tuple with:
     ///   - `u16`: The current question number within the shuffled set.
     ///   - `u8`: The category ID of the current question.
@@ -2055,7 +2063,7 @@ impl Generator
     /// * `path` - The file path where the exams will be saved.
     /// * `extention` - The desired file extension (e.g., "txt", "docx", "pdf").
     ///
-    /// # Output
+    /// # Returns
     /// `Result<(), String>` - Returns `Ok(())` on success, or an `Err` with a
     ///                        `String` describing the error on failure.
     ///
@@ -2108,7 +2116,7 @@ impl Generator
     /// * `student` - A reference to the `Student` for whom the exam is being formatted.
     /// * `qbank` - A reference to the `QBank` containing the shuffled questions for this student.
     ///
-    /// # Output
+    /// # Returns
     /// A `String` containing the fully formatted exam content for the student.
     ///
     /// # Examples
@@ -2291,6 +2299,30 @@ impl Generator
     ///
     /// # Returns
     /// `Vec<u8>` that contains the contents of String object.
+    /// 
+    /// # Examples
+    /// ```
+    /// use qrate::{ QBank, Generator, Student, Students };
+    /// let mut qbank = QBank::new_empty();
+    /// qbank.add_question_with_choices(
+    ///     "What is 1+1?".to_string(),
+    ///     vec![("1".to_string(), false), ("2".to_string(), true)]
+    /// );
+    /// qbank.add_question_with_choices(
+    ///     "What is 2+2?".to_string(),
+    ///     vec![("3".to_string(), false), ("4".to_string(), true)]
+    /// );
+    ///
+    /// let student1 = Student::new_from_name("Alice".to_string());
+    /// let students = Students::new(vec![student1]);
+    ///
+    /// let generator = Generator::new(&qbank, 1, 2, 1, &students).unwrap();
+    /// let content_bytes = generator.export_shuffled_exams_in_txt();
+    /// assert!(!content_bytes.is_empty());
+    /// let content_str = String::from_utf8(content_bytes).unwrap();
+    /// assert!(content_str.contains("What is 1+1?"));
+    /// assert!(content_str.contains("What is 2+2?"));
+    /// ```
     pub fn export_shuffled_exams_in_txt(&self) -> Vec<u8>
     {
         let mut content = String::new();
@@ -2361,7 +2393,7 @@ impl Generator
     /// # Arguments
     /// * `path` - The file path where the DOCX document will be saved.
     ///
-    /// # Output
+    /// # Returns
     /// `Result<(), String>` - Returns `Ok(())` on success, or an `Err` with a
     ///                        `String` describing the error on failure.
     ///
@@ -2403,9 +2435,31 @@ impl Generator
     /// `Vec<u8>`, which can be used for in-memory operations or further
     /// processing without writing to disk.
     ///
-    /// # Output
-    /// `Vec<u8>` - Returns `Vec<u8>` which is binary dataon success,
-    /// or .
+    /// # Returns
+    /// `Result<Vec<u8>, String>` - Returns `Ok(Vec<u8>)` which is binary data on success,
+    /// or an `Err` with a `String` describing the error on failure.
+    /// 
+    /// # Examples
+    /// ```
+    /// use qrate::{ QBank, Generator, Student, Students };
+    /// let mut qbank = QBank::new_empty();
+    /// qbank.add_question_with_choices(
+    ///     "What is 1+1?".to_string(),
+    ///     vec![("1".to_string(), false), ("2".to_string(), true)]
+    /// );
+    /// qbank.add_question_with_choices(
+    ///     "What is 2+2?".to_string(),
+    ///     vec![("3".to_string(), false), ("4".to_string(), true)]
+    /// );
+    ///
+    /// let student1 = Student::new_from_name("Alice".to_string());
+    /// let students = Students::new(vec![student1]);
+    ///
+    /// let generator = Generator::new(&qbank, 1, 2, 1, &students).unwrap();
+    /// let docx_bytes = generator.export_shuffled_exams_in_docx().unwrap();
+    /// assert!(!docx_bytes.is_empty());
+    /// // Further processing of docx_bytes can be done here, such as saving to a file or sending over a network.
+    /// ```
     pub fn export_shuffled_exams_in_docx(&self) -> Result<Vec<u8>, String>
     {
         let mut buffer = Cursor::new(Vec::new());
@@ -2571,9 +2625,35 @@ impl Generator
     /// * `student` - A reference to the `Student` for whom the exam content is being written.
     /// * `qbank` - A reference to the `QBank` containing the shuffled questions for this student.
     ///
-    /// # Output
+    /// # Returns
     /// `Result<Docx, String>` - Returns `Ok(Docx)` on success, or an `Err` with a
     ///                        `String` describing the error on failure.
+    /// 
+    /// # Examples
+    /// ```no_run
+    /// use qrate::{ QBank, Generator, Student, Students, Question };
+    /// use std::fs;
+    /// use std::path::Path;
+    ///
+    /// let mut qbank = QBank::new_empty();
+    /// qbank.add_question(Question::new(1, 1, 1, "Question 1".to_string(), vec![]));
+    /// qbank.add_question(Question::new(2, 2, 1, "Question 2".to_string(), vec![]));
+    ///
+    /// let student1 = Student::new_from_name("Alice".to_string());
+    /// let students = Students::new(vec![student1]);
+    ///
+    /// let generator = Generator::new(&qbank, 1, 2, 1, &students).unwrap();
+    ///
+    /// let result = generator.write_exam_content_to_docx(Docx::new(), &student1, &qbank);
+    /// ```
+    /// This example demonstrates how the `write_exam_content_to_docx` function
+    /// can be called to write exam content for a student into a DOCX document.
+    /// The actual content of the questions and formatting will depend on the
+    /// properties of the `Generator` instance and the data in the `QBank`.
+    /// Note that since `write_exam_content_to_docx` is a private helper
+    /// function, it is not intended to be called directly in typical usage.
+    /// Instead, it is used internally by the public methods that generate
+    /// the DOCX document.
     fn write_exam_content_to_docx(&self, mut docx: Docx, student: &Student, qbank: &QBank) -> Result<Docx, String>
     {
         let pt_to_usize = |pt: f32| -> usize { (pt as usize) << 1 };
@@ -2652,18 +2732,22 @@ impl Generator
             docx = docx.add_paragraph(q_para);
 
             let category_id = question.get_category();
-            if category_id == 3 {
+            if category_id == 3
+            {
                 // Short answer: ( space * 3 * max_choice_len )
                 let max_len = question.get_choices().iter().map(|(t, _)| t.len()).max().unwrap_or(0);
                 let spaces = " ".repeat(max_len * 3);
                 let c_para = paragraph(body_run.clone(), format!("    ({})", spaces), body_font_size);
                 docx = docx.add_paragraph(c_para);
-            } else if category_id == 4 {
+            }
+            else if category_id == 4
+            {
                 // Essay: 15 blank lines
-                for _ in 0..15 {
-                    docx = docx.add_paragraph(blank_line.clone());
-                }
-            } else {
+                for _ in 0..15
+                    { docx = docx.add_paragraph(blank_line.clone()); }
+            }
+            else
+            {
                 // Category 1, 2: Standard choices
                 for (choice_index, (choice_text, _is_correct)) in question.get_choices().iter().enumerate()
                 {
@@ -2697,7 +2781,7 @@ impl Generator
     /// # Arguments
     /// * `path` - The file path where the HWPX document will be saved.
     /// 
-    /// # Output
+    /// # Returns
     /// `Result<(), String>` - Returns `Ok(())` on success, or an `Err` with a
     ///                        `String` describing the error on failure.
     ///
@@ -2731,7 +2815,7 @@ impl Generator
     /// sets for all students, with specified page margins and a footer
     /// with page numbers, and returns the document as a Vec<u8> object.
     /// 
-    /// # Output
+    /// # Returns
     /// `Result<Vec<u8>, String>` - Returns `Ok(Vec<u8>)` containing the HWPX
     ///                             document on success, or an `Err` with a
     ///                             `String` describing the error on failure.
@@ -2847,9 +2931,32 @@ impl Generator
     /// * `qbank` - A reference to the `QBank` containing the shuffled questions
     ///             for this student.
     ///
-    /// # Output
+    /// # Returns
     /// `Result<(), String>` - Returns `Ok(())` on success, or an `Err` with a
     ///                        `String` describing the error on failure.
+    /// 
+    /// # Examples
+    /// ```no_run
+    /// use qrate::{ QBank, Generator, Student, Students, Question };
+    /// use std::fs;
+    /// use std::path::Path;
+    /// let mut qbank = QBank::new_empty();
+    /// qbank.add_question(Question::new(1, 1, 1, "Question 1".to_string(), vec![]));
+    /// qbank.add_question(Question::new(2, 2, 1, "Question 2".to_string(), vec![]));
+    /// let student1 = Student::new_from_name("Alice".to_string());
+    /// let students = Students::new(vec![student1]);
+    /// let generator = Generator::new(&qbank, 1, 2, 1, &students).unwrap();
+    /// let mut hwpx = hwpers::HwpxWriter::new();
+    /// let result = generator.write_exam_content_to_hwpx(&mut hwpx, &student1, &qbank);
+    /// ```
+    /// This example demonstrates how the `write_exam_content_to_hwpx` function
+    /// can be called to write exam content for a student into a HWPX document.
+    /// The actual content of the questions and formatting will depend on the
+    /// properties of the `Generator` instance and the data in the `QBank`.
+    /// Note that since `write_exam_content_to_hwpx` is a private helper
+    /// function, it is not intended to be called directly in typical usage.
+    /// Instead, it is used internally by the public methods that generate
+    /// the HWPX document.
     #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
     fn write_exam_content_to_hwpx(&self, hwpx: &mut HwpxWriter, student: &Student, qbank: &QBank) -> Result<(), String>
     {
@@ -2902,7 +3009,8 @@ impl Generator
                 style: body_style.clone(),
             }]).map_err(|e| e.to_string())?;
 
-            if category_id == 3 {
+            if category_id == 3
+            {
                 // Short answer: ( space * 3 * max_choice_len )
                 let max_len = question.get_choices().iter().map(|(t, _)| t.len()).max().unwrap_or(0);
                 let spaces = " ".repeat(max_len * 3);
@@ -2910,12 +3018,15 @@ impl Generator
                     text: format!("    ({})", spaces),
                     style: body_style.clone(),
                 }]).map_err(|e| e.to_string())?;
-            } else if category_id == 4 {
+            }
+            else if category_id == 4
+            {
                 // Essay: 15 blank lines
-                for _ in 0..15 {
-                    hwpx.add_paragraph("").map_err(|e| e.to_string())?;
-                }
-            } else {
+                for _ in 0..15
+                    { hwpx.add_paragraph("").map_err(|e| e.to_string())?; }
+            }
+            else
+            {
                 // Category 1, 2: Standard choices
                 for (choice_index, (choice_text, _)) in question.get_choices().iter().enumerate()
                 {
@@ -2941,7 +3052,7 @@ impl Generator
     /// # Arguments
     /// * `path` - The file path where the HWP document will be saved.
     /// 
-    /// # Output
+    /// # Returns
     /// `Result<(), String>` - Returns `Ok(())` on success, or an `Err` with a
     ///                        `String` describing the error on failure.
     ///
@@ -3046,22 +3157,27 @@ impl Generator
         let header = self.shuffler.get_header();
         for (student, qbank) in &shuffled_qbanks
         {
-            let student_info_text = format!("{}: {}        {}: {}",
-                header.get_name(), student.get_name(), header.get_id(), student.get_id()
-            );
+            let student_info_text = format!("{}: {}        {}: {}", header.get_name(), student.get_name(),
+                                                                            header.get_id(), student.get_id());
             let mut student_info_styled = hwpers::writer::style::StyledText::new(student_info_text.clone());
             student_info_styled = student_info_styled.add_range(0, student_info_text.len(), answer_sheet_style.clone());
             hwp.add_styled_paragraph(&student_info_styled).map_err(|e| e.to_string())?;
 
             let mut answers_text = String::new();
-            for (i, question) in qbank.get_questions().iter().enumerate() {
+            for (i, question) in qbank.get_questions().iter().enumerate()
+            {
                 let category_id = question.get_category();
-                let answer_string = if category_id == 3 {
+                let answer_string = if category_id == 3
+                {
                     let answers: Vec<String> = question.get_choices().iter().map(|(t, _)| t.clone()).collect();
                     format!("({})", answers.join(", "))
-                } else if category_id == 4 {
+                }
+                else if category_id == 4
+                {
                     "(---)".to_string()
-                } else {
+                }
+                else
+                {
                     let correct_choices: Vec<String> = question.get_choices()
                         .iter()
                         .enumerate()
@@ -3094,9 +3210,32 @@ impl Generator
     /// * `qbank` - A reference to the `QBank` containing the shuffled questions
     ///             for this student.
     ///
-    /// # Output
+    /// # Returns
     /// `Result<(), String>` - Returns `Ok(())` on success, or an `Err` with a
     ///                        `String` describing the error on failure.
+    /// 
+    /// # Examples
+    /// ```no_run
+    /// use qrate::{ QBank, Generator, Student, Students, Question };
+    /// use std::fs;
+    /// use std::path::Path;
+    /// let mut qbank = QBank::new_empty();
+    /// qbank.add_question(Question::new(1, 1, 1, "Question 1".to_string(), vec![]));
+    /// qbank.add_question(Question::new(2, 2, 1, "Question 2".to_string(), vec![]));
+    /// let student1 = Student::new_from_name("Alice".to_string());
+    /// let students = Students::new(vec![student1]);
+    /// let generator = Generator::new(&qbank, 1, 2, 1, &students).unwrap();
+    /// let mut hwp = hwpers::HwpWriter::new();
+    /// let result = generator.write_exam_content_to_hwp(&mut hwp, &student1, &qbank);
+    /// ```
+    /// This example demonstrates how the `write_exam_content_to_hwp` function
+    /// can be called to write exam content for a student into a HWP document.
+    /// The actual content of the questions and formatting will depend on the
+    /// properties of the `Generator` instance and the data in the `QBank`.
+    /// Note that since `write_exam_content_to_hwp` is a private helper
+    /// function, it is not intended to be called directly in typical usage.
+    /// Instead, it is used internally by the public methods that generate
+    /// the HWP document.
     #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
     fn write_exam_content_to_hwp(&self, hwp: &mut HwpWriter, student: &Student, qbank: &QBank) -> Result<(), String>
     {
@@ -3146,7 +3285,8 @@ impl Generator
             q_styled = q_styled.add_range(0, q_text.len(), body_style.clone());
             hwp.add_styled_paragraph(&q_styled).map_err(|e| e.to_string())?;
 
-            if category_id == 3 {
+            if category_id == 3
+            {
                 // Short answer: ( space * 3 * max_choice_len )
                 let max_len = question.get_choices().iter().map(|(t, _)| t.len()).max().unwrap_or(0);
                 let spaces = " ".repeat(max_len * 3);
@@ -3154,12 +3294,15 @@ impl Generator
                 let mut c_styled = hwpers::writer::style::StyledText::new(c_text.clone());
                 c_styled = c_styled.add_range(0, c_text.len(), body_style.clone());
                 hwp.add_styled_paragraph(&c_styled).map_err(|e| e.to_string())?;
-            } else if category_id == 4 {
+            }
+            else if category_id == 4
+            {
                 // Essay: 15 blank lines
-                for _ in 0..15 {
-                    hwp.add_paragraph("").map_err(|e| e.to_string())?;
-                }
-            } else {
+                for _ in 0..15
+                    { hwp.add_paragraph("").map_err(|e| e.to_string())?; }
+            }
+            else
+            {
                 // Category 1, 2: Standard choices
                 for (choice_index, (choice_text, _)) in question.get_choices().iter().enumerate()
                 {
@@ -3183,7 +3326,7 @@ impl Generator
     /// # Arguments
     /// * `path` - The file path where the PDF document will be saved.
     ///
-    /// # Output
+    /// # Returns
     /// `Result<(), String>` - Returns `Ok(())` on success, or an `Err` with a
     /// `String` describing the error on failure.
     ///
@@ -3264,21 +3407,26 @@ impl Generator
 
         for (student, qbank) in &shuffled_qbanks {
             // Student Info
-            let student_info_text = format!("{}: {}        {}: {}",
-                header.get_name(), student.get_name(), header.get_id(), student.get_id()
-            );
+            let student_info_text = format!("{}: {}        {}: {}", header.get_name(), student.get_name(),
+                                                                            header.get_id(), student.get_id());
             doc.push(elements::Paragraph::new(student_info_text).styled(answer_style));
 
             // Answers
             let mut answers_text = String::new();
-            for (i, question) in qbank.get_questions().iter().enumerate() {
+            for (i, question) in qbank.get_questions().iter().enumerate()
+            {
                 let category_id = question.get_category();
-                let answer_string = if category_id == 3 {
+                let answer_string = if category_id == 3
+                {
                     let answers: Vec<String> = question.get_choices().iter().map(|(t, _)| t.clone()).collect();
                     format!("({})", answers.join(", "))
-                } else if category_id == 4 {
+                }
+                else if category_id == 4
+                {
                     "(---)".to_string()
-                } else {
+                }
+                else
+                {
                     let correct_choices: Vec<String> = question.get_choices()
                         .iter()
                         .enumerate()
@@ -3309,12 +3457,35 @@ impl Generator
     /// * `student` - A reference to the `Student` for whom the exam content is being written.
     /// * `qbank` - A reference to the `QBank` containing the shuffled questions for this student.
     ///
-    /// # Output
+    /// # Returns
     /// `Result<(), String>` - Returns `Ok(())` on success, or an `Err` with a
     ///                        `String` describing the error on failure.
     /// 
     /// # Caution
     /// - The attributes of underline and strike are not working.
+    /// 
+    /// # Examples
+    /// ```no_run
+    /// use qrate::{ QBank, Generator, Student, Students, Question };
+    /// use std::fs;
+    /// use std::path::Path;
+    /// let mut qbank = QBank::new_empty();
+    /// qbank.add_question(Question::new(1, 1, 1, "Question 1".to_string(), vec![]));
+    /// qbank.add_question(Question::new(2, 2, 1, "Question 2".to_string(), vec![]));
+    /// let student1 = Student::new_from_name("Alice".to_string());
+    /// let students = Students::new(vec![student1]);
+    /// let generator = Generator::new(&qbank, 1, 2, 1, &students).unwrap();
+    /// let mut doc = genpdfi::Document::new(genpdfi::fonts::from_files("./fonts", "font", None).unwrap());
+    /// let result = generator.write_exam_content_to_pdf(&mut doc, &student1, &qbank);
+    /// ```
+    /// This example demonstrates how the `write_exam_content_to_pdf` function
+    /// can be called to write exam content for a student into a PDF document.
+    /// The actual content of the questions and formatting will depend on the
+    /// properties of the `Generator` instance and the data in the `QBank`.
+    /// Note that since `write_exam_content_to_pdf` is a private helper
+    /// function, it is not intended to be called directly in typical usage.
+    /// Instead, it is used internally by the public methods that generate
+    /// the PDF document.
     #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
     fn write_exam_content_to_pdf(&self, doc: &mut genpdfi::Document, student: &Student, qbank: &QBank) -> Result<(), String>
     {
@@ -3348,9 +3519,7 @@ impl Generator
 
         // Instructions (Handle multi-line notice)
         for line in header.get_notice().lines()
-        {
-            doc.push(elements::Paragraph::new(format!("{}", line)).styled(body_style));
-        }
+            { doc.push(elements::Paragraph::new(format!("{}", line)).styled(body_style)); }
         doc.push(elements::Paragraph::new("")); // Blank line after notice
 
         for (question_index, question) in qbank.get_questions().iter().enumerate()
@@ -3359,17 +3528,21 @@ impl Generator
             let category_text = header.get_category(category_id).map(|s| s.as_str()).unwrap_or("");
             doc.push(elements::Paragraph::new(format!("{}. [{}]   {}", question_index + 1, category_text, question.get_question())).styled(body_style));
             
-            if category_id == 3 {
+            if category_id == 3
+            {
                 // Short answer: ( space * 3 * max_choice_len )
                 let max_len = question.get_choices().iter().map(|(t, _)| t.len()).max().unwrap_or(0);
                 let spaces = " ".repeat(max_len * 3);
                 doc.push(elements::Paragraph::new(format!("    ({})", spaces)).styled(body_style));
-            } else if category_id == 4 {
+            }
+            else if category_id == 4
+            {
                 // Essay: 15 blank lines
-                for _ in 0..15 {
-                    doc.push(elements::Paragraph::new(""));
-                }
-            } else {
+                for _ in 0..15
+                    { doc.push(elements::Paragraph::new("")); }
+            }
+            else
+            {
                 // Category 1, 2: Standard choices
                 for (choice_index, (choice_text, _is_correct)) in question.get_choices().iter().enumerate()
                 {
@@ -3393,6 +3566,23 @@ impl Generator
     /// `Result<Vec<u8>, String>` - Returns a byte vector containing the JSON string
     ///                            on success, or an `Err` with a `String`
     ///                            describing the error on failure.
+    /// 
+    /// # Examples
+    /// ```no_run
+    /// use qrate::{ QBank, Generator, Student, Students, Question };
+    /// use std::fs;
+    /// use std::path::Path;
+    /// let mut qbank = QBank::new_empty();
+    /// qbank.add_question(Question::new(1, 1, 1, "Question 1".to_string(), vec![]));
+    /// qbank.add_question(Question::new(2, 2, 1, "Question 2".to_string(), vec![]));
+    /// let student1 = Student::new_from_name("Alice".to_string());
+    /// let students = Students::new(vec![student1]);
+    /// let generator = Generator::new(&qbank, 1, 2, 1, &students).unwrap();
+    /// let result = generator.export_shuffled_exams_in_pdf();
+    /// assert!(result.is_ok());
+    /// std::fs::write("exam_exported.json", result.unwrap()).unwrap();
+    /// std::fs::remove_file("exam_exported.json").unwrap();
+    /// ```
     #[cfg(any(target_arch = "wasm32", target_arch = "wasm64"))]
     pub fn export_shuffled_exams_in_pdf(&self) -> Result<Vec<u8>, String>
     {
@@ -3465,7 +3655,8 @@ impl Generator
                     "style": "body"
                 }));
 
-                if category_id == 3 {
+                if category_id == 3
+                {
                     // Short answer: ( space * 3 * max_choice_len )
                     let max_len = question.get_choices().iter().map(|(t, _)| t.len()).max().unwrap_or(0);
                     let spaces = " ".repeat(max_len * 3);
@@ -3473,12 +3664,15 @@ impl Generator
                         "text": format!("    ({})", spaces),
                         "style": "body"
                     }));
-                } else if category_id == 4 {
+                }
+                else if category_id == 4
+                {
                     // Essay: 15 blank lines
-                    for _ in 0..15 {
-                        content.push(json!({"text": "\n"}));
-                    }
-                } else {
+                    for _ in 0..15
+                        { content.push(json!({"text": "\n"})); }
+                }
+                else
+                {
                     // Category 1, 2: Standard choices
                     for (choice_index, (choice_text, _)) in question.get_choices().iter().enumerate()
                     {
@@ -3513,9 +3707,13 @@ impl Generator
                 let answer_string = if category_id == 3 {
                     let answers: Vec<String> = question.get_choices().iter().map(|(t, _)| t.clone()).collect();
                     format!("({})", answers.join(", "))
-                } else if category_id == 4 {
+                }
+                else if category_id == 4
+                {
                     "(---)".to_string()
-                } else {
+                }
+                else
+                {
                     let correct_choices: Vec<String> = question.get_choices()
                         .iter()
                         .enumerate()

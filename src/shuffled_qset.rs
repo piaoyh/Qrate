@@ -22,6 +22,9 @@ pub type ShuffledQSets = Vec<ShuffledQSet>;
 
 
 /// Represents a complete set of shuffled questions for a single student.
+/// 
+/// The `ShuffledQSet` struct contains a `Student` object representing the student,
+/// and a vector of `ShuffledQuestion` objects representing the shuffled questions.
 #[derive(Debug, Clone)]
 pub struct ShuffledQSet
 {
@@ -151,7 +154,7 @@ impl ShuffledQSet
     // pub fn get_student(&self) -> &Student
     /// Gets a reference to the `Student` associated with this question set.
     /// 
-    /// # Output
+    /// # Returns
     /// `&Student` - A reference to the student.
     /// 
     /// # Examples
@@ -197,7 +200,7 @@ impl ShuffledQSet
     // pub fn get_shuffled_questions(&self) -> &ShuffledQuestions
     /// Gets a reference to the shuffled questions.
     /// 
-    /// # Output
+    /// # Returns
     /// `&ShuffledQuestions` - A reference to the vector of `ShuffledQuestion`s.
     /// 
     /// # Examples
@@ -218,7 +221,27 @@ impl ShuffledQSet
         &self.questions
     }
 
-
+    // pub fn get_shuffled_questions_mut(&mut self) -> &mut ShuffledQuestions
+    /// Gets a mutable reference to the shuffled questions.
+    /// 
+    /// # Returns
+    /// `&mut ShuffledQuestions` - A mutable reference to the vector of `ShuffledQuestion`s.
+    /// 
+    /// # Examples
+    /// ```
+    /// use qrate::{QBank, Student, shuffler::ShuffledQSet};
+    /// use qrate::Question;
+    /// let mut qbank = QBank::new_with_default();
+    /// qbank.push_question(Question::new(1, 1, 1, "Q1".to_string(), vec![])); // Add a question
+    /// qbank.push_question(Question::new(2, 1, 1, "Q2".to_string(), vec![]));
+    /// qbank.push_question(Question::new(3, 1, 1, "Q3".to_string(), vec![]));
+    /// let student = Student::new("Test".to_string(), "123".to_string());
+    /// let mut qset = ShuffledQSet::new(&qbank, &student, 1, 3).unwrap();
+    /// let questions_mut = qset.get_shuffled_questions_mut();
+    /// assert_eq!(questions_mut.len(), 3);
+    /// questions_mut.push(ShuffledQuestion::new(4, 4)); // Add a new question
+    /// assert_eq!(qset.get_shuffled_questions().len(), 4);
+    /// ```
     #[inline]
     pub fn get_shuffled_questions_mut(&mut self) -> &mut ShuffledQuestions
     {

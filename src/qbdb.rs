@@ -25,8 +25,14 @@ use crate::{ Choices, Question };
 
 /// A trait defining the database operations for a Question Bank (`QBank`).
 ///
-/// This abstracts the storage mechanism for question banks, allowing for different
-/// backend implementations (e.g., SQLite, flat files).
+/// This abstracts the storage mechanism for question banks, allowing for
+/// different backend implementations (e.g., SQLite, flat files).
+/// Implementors of this trait must provide methods for opening a connection,
+/// creating tables, and saving data to the database.
+/// The trait includes methods for reading and writing both the header
+/// information and the questions themselves. The design allows for flexibility
+/// in how the data is stored while providing a consistent interface for
+/// interacting with the question bank.
 pub trait QBDB
 {
     // fn open(path: String, extention: &str) -> Option<Self> where Self: Sized;
@@ -37,8 +43,9 @@ pub trait QBDB
     /// * `path` - The file path for the database.
     /// * `extention` - The file extension to append.
     ///
-    /// # Output
-    /// `Option<Self>` - An optional `Self` instance if the connection is successful.
+    /// # Returns
+    /// `Option<Self>` - An optional `Self` instance
+    /// if the connection is successful.
     ///
     /// # Example 1 for SQLiteDB
     /// ```
@@ -64,7 +71,7 @@ pub trait QBDB
     /// * `categories` - The number of category columns to create in Header table.
     /// * `choices` - The number of choice columns to create in Questions table.
     ///
-    /// # Output
+    /// # Returns
     /// `Result<(), String>` - `Ok(())` on success, or an error string on failure.
     /// 
     /// # Features
@@ -96,8 +103,10 @@ pub trait QBDB
     // fn read_header(&self) -> Option<Header>
     /// Reads the `Header` data from the database.
     ///
-    /// # Output
-    /// `Option<Header>` - An `Option<Header>` which is `Some(Header)` on success, or `None` if not found or on error.
+    /// # Returns
+    /// `Option<Header>` - An `Option<Header>`
+    /// which is `Some(Header)` on success,
+    /// or `None` if not found or on error.
     ///
     /// # Example 1 for SQLiteDB
     /// ```
@@ -131,8 +140,9 @@ pub trait QBDB
     // fn write_header_with_default(&self) -> Result<(), String>
     /// Writes a default `Header` to the database.
     ///
-    /// # Output
-    /// `Result<(), String>` - `Ok(())` on success, or an error message string on failure.
+    /// # Returns
+    /// `Result<(), String>` - `Ok(())` on success,
+    /// or an error message string on failure.
     ///
     /// # Example 1 for SQLiteDB
     /// ```
@@ -165,8 +175,9 @@ pub trait QBDB
     /// # Arguments
     /// * `header` - A reference to the `Header` to be written to the database.
     ///
-    /// # Output
-    /// `Result<(), String>` - `Ok(())` on success, or an error message string on failure.
+    /// # Returns
+    /// `Result<(), String>` - `Ok(())` on success,
+    /// or an error message string on failure.
     ///
     /// # Example 1 for SQLiteDB
     /// ```
@@ -213,8 +224,9 @@ pub trait QBDB
     // fn read_qbank(&self) -> Option<QBank>
     /// Reads the entire `QBank` (header and all questions) from the database.
     ///
-    /// # Output
-    /// `Option<QBank>` - An `Option<QBank>` which is `Some(QBank)` on success, or `None` on failure.
+    /// # Returns
+    /// `Option<QBank>` - An `Option<QBank>` which is `Some(QBank)` on success,
+    /// or `None` on failure.
     ///
     /// # Example 1 for SQLiteDB
     /// ```
@@ -268,8 +280,9 @@ pub trait QBDB
     /// # Arguments
     /// * `qbank` - A reference to the `QBank` to be written to the database.
     ///
-    /// # Output
-    /// `Result<(), String>` - `Ok(())` on success, or an error message string on failure.
+    /// # Returns
+    /// `Result<(), String>` - `Ok(())` on success,
+    /// or an error message string on failure.
     ///
     /// # Example 1 for SQLiteDB
     /// ```
@@ -327,7 +340,7 @@ impl QBDB for SQLiteDB
     /// # Arguments
     /// * `path` - The file path for the database.
     ///
-    /// # Output
+    /// # Returns
     /// `Option<SQLiteDB>` - An optional `SQLiteDB` instance if the connection is successful.
     #[inline]
     fn open(path: String) -> Option<Self>
@@ -351,8 +364,9 @@ impl QBDB for SQLiteDB
     /// * `categories` - The number of category columns to create in `tblHeader`.
     /// * `choices` - The number of choice columns to create in `tblQuestions`.
     ///
-    /// # Output
-    /// `Result<(), String>` - `Ok(())` on success, or an error message string on failure.
+    /// # Returns
+    /// `Result<(), String>` - `Ok(())` on success,
+    /// or an error message string on failure.
     fn make_tables(&self, categories: u8, choices: u8) -> Result<(), String>
     {
         let mut sql = r#"CREATE TABLE IF NOT EXISTS tblHeader (
@@ -392,8 +406,9 @@ impl QBDB for SQLiteDB
     ///
     /// Queries the `tblHeader` table and maps the first row to a `Header` struct.
     ///
-    /// # Output
-    /// `Option<Header>` - An optional `Header` containing the header data from the database.
+    /// # Returns
+    /// `Option<Header>` - An optional `Header`
+    /// containing the header data from the database.
     fn read_header(&self) -> Option<Header>
     {
         let mut stmt = self.conn.prepare("SELECT * FROM tblHeader;").ok()?;
@@ -422,8 +437,9 @@ impl QBDB for SQLiteDB
     /// Implements `write_header_with_default` for `SQLiteDB`.
     /// Creates a default `Header` and calls `write_header`.
     ///
-    /// # Output
-    /// `Result<(), String>` - `Ok(())` on success, or an error message string on failure.
+    /// # Returns
+    /// `Result<(), String>` - `Ok(())` on success,
+    /// or an error message string on failure.
     #[inline]
     fn write_header_with_default(&mut self) -> Result<(), String>
     {
@@ -439,8 +455,9 @@ impl QBDB for SQLiteDB
     /// # Arguments
     /// * `header` - A reference to the `Header` to be written to the database.
     ///
-    /// # Output
-    /// `Result<(), String>` - `Ok(())` on success, or an error message string on failure.
+    /// # Returns
+    /// `Result<(), String>` - `Ok(())` on success,
+    /// or an error message string on failure.
     fn write_header(&mut self, header: &Header) -> Result<(), String>
     {
         let _ = self.make_tables(header.get_categories().len() as u8, 0);
@@ -470,8 +487,9 @@ impl QBDB for SQLiteDB
     /// First, it reads the header using `read_header`. Then, it queries the `tblQuestions` table,
     /// maps each row to a `Question` struct, and collects them into a new `QBank`.
     ///
-    /// # Output
-    /// `Option<QBank>` - An optional `QBank` containing the header and all questions from the database.
+    /// # Returns
+    /// `Option<QBank>` - An optional `QBank`
+    /// containing the header and all questions from the database.
     fn read_qbank(&self) -> Option<QBank>
     {
         let header = self.read_header()?;
@@ -519,8 +537,9 @@ impl QBDB for SQLiteDB
     /// # Arguments
     /// * `qbank` - A reference to the `QBank` containing questions to be written to the database.
     ///
-    /// # Output
-    /// `Result<(), String>` - `Ok(())` on success, or an error message string on failure.
+    /// # Returns
+    /// `Result<(), String>` - `Ok(())` on success,
+    /// or an error message string on failure.
     fn write_qbank(&mut self, qbank: &QBank) -> Result<(), String>
     {
         let categories = qbank.get_header().get_categories().len() as u8;
@@ -580,6 +599,14 @@ impl QBDB for Excel
     // fn open(path: String) -> Option<Self> where Self: Sized
     /// Implements `open` for `Excel`.
     /// Appends `.qb.xlsx` to the path if no extension is present.
+    /// 
+    /// # Arguments
+    /// * `path` - The file path for the Excel workbook.
+    ///
+    /// # Returns
+    /// `Option<Excel>` - An optional `Excel` instance
+    /// if the workbook is successfully opened.
+    /// None otherwise.
     #[inline]
     fn open(path: String) -> Option<Self>
     where Self: Sized
@@ -589,6 +616,14 @@ impl QBDB for Excel
 
     // fn make_tables(&self, choices: u8) -> Result<(), String>
     /// Creates sheets for `Excel`.
+    /// 
+    /// # Arguments
+    /// * `categories` - The number of categories in the question bank.
+    /// * `choices` - The number of choices in each question.
+    ///
+    /// # Returns
+    /// `Result<(), String>` - `Ok(())` on success,
+    /// or an error message string on failure.
     fn make_tables(&self, _categories: u8, choices: u8) -> Result<(), String>
     {
         let mut workbook = Workbook::new();
@@ -627,6 +662,14 @@ impl QBDB for Excel
 
     // fn read_header(&self) -> Option<Header>
     /// Implements `read_header` for `Excel`.
+    /// 
+    /// Reads the "Header" sheet and constructs a `Header` struct from the cell values.
+    /// It dynamically reads category columns until it encounters an empty cell.
+    ///
+    /// # Returns
+    /// `Option<Header>` - An optional `Header`
+    /// containing the header data from the Excel sheet.
+    /// None if the sheet is not found or if there is an error reading the data.
     fn read_header(&self) -> Option<Header>
     {
         let mut excel = open_workbook_auto(&self.path).ok()?;
@@ -651,6 +694,15 @@ impl QBDB for Excel
 
     // fn write_header_with_default(&mut self) -> Result<(), String>
     /// Implements `write_header_with_default` for `Excel`.
+    /// 
+    /// Creates a default `Header` and calls `write_header` to write it to the
+    /// Excel file. This is necessary because the Excel writer library does not
+    /// support in-place updates, so we need to read existing data, modify it,
+    /// and write it back.
+    /// 
+    /// # Returns
+    /// `Result<(), String>` - `Ok(())` on success,
+    /// or an error message string on failure.
     #[inline]
     fn write_header_with_default(&mut self) -> Result<(), String>
     {
@@ -659,12 +711,19 @@ impl QBDB for Excel
 
     // fn write_header(&mut self, header: &Header) -> Result<(), String>
     /// Implements `write_header` for `Excel`.
-    /// This is done by reading the existing questions, creating a new QBank in memory with the new header,
-    /// and then writing the entire QBank back to the file. This is necessary due to the write-only nature
-    /// of the Excel writer library.
+    /// This is done by reading the existing questions, creating a new QBank
+    /// in memory with the new header, and then writing the entire QBank back
+    /// to the file. This is necessary due to the write-only nature of the
+    /// Excel writer library.
+    /// 
+    /// # Arguments
+    /// * `header` - A reference to the `Header` struct containing the new header data.
+    ///
+    /// # Returns
+    /// `Result<(), String>` - `Ok(())` on success,
+    /// or an error message string on failure.
     fn write_header(&mut self, header: &Header) -> Result<(), String>
     {
-        
         // Create a new QBank with the new header.
         let mut qbank = QBank::new_with_header(header.clone());
 
@@ -674,11 +733,10 @@ impl QBDB for Excel
             if let Some(range) = excel.worksheet_range("Questions").ok()
             {
                 // Safely read questions, skipping header row
-                for row in range.rows().skip(1) {
+                for row in range.rows().skip(1)
+                {
                     if let Some(question) = Excel::parse_question_row(row)
-                    {
-                        qbank.push_question(question);
-                    }
+                        { qbank.push_question(question); }
                 }
             }
         }
@@ -689,7 +747,16 @@ impl QBDB for Excel
 
     // fn read_qbank(&self) -> Option<QBank>
     /// Implements `read_qbank` for `Excel`.
-    fn read_qbank(&self) -> Option<QBank> {
+    /// 
+    /// First, it reads the header using `read_header`. Then, it reads the "Questions" sheet,
+    /// parses each row into a `Question` struct, and collects them into a new `QBank`.
+    /// 
+    /// # Returns
+    /// `Option<QBank>` - An optional `QBank`
+    /// containing the header and all questions from the Excel file.
+    /// None if there is an error reading the file or if the necessary sheets are not found.
+    fn read_qbank(&self) -> Option<QBank>
+    {
         let header = self.read_header()?;
         let mut qbank = QBank::new_with_header(header);
 

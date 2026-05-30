@@ -48,6 +48,7 @@ pub mod shuffled_qset;
 /// The `shuffled_question` module provides the `ShuffledQuestion` structure and related functionalities.
 pub mod shuffled_question;
 
+/// The `shuffler` module contains the `Shuffler` structure for shuffling questions and students.
 pub mod shuffler;
 
 /// The `generator` module provides functionalities for generating various exam formats.
@@ -59,7 +60,7 @@ pub mod utils;
 /// The `error_messages` module defines the `ErrorMessage` enum for standardized error handling.
 pub mod error_messages;
 
-
+/// Re-exporting key structures and functionalities for external use.
 pub use database::SQLiteDB;
 
 #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]

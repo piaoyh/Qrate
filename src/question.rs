@@ -13,6 +13,18 @@ pub type Choices = Vec<ChoiceAnswer>;
 pub type Questions = Vec<Question>;
 
 /// Represents a single question with its properties.
+/// - `id`: A unique identifier for the question (1-based).
+/// - `group`: The group to which the question belongs.Questions in the same
+///   group will not appear together in an exam set (1-based).
+/// - `category`: The category of the question (1-based):
+///   - 1: Single answer of multiple-choice
+///   - 2: Multiple answers of multiple-choice
+///   - 3: Short answer
+///   - 4: Essay
+/// - `question`: The text of the question.
+/// - `choices`: A vector of `ChoiceAnswer` tuples representing the choices for
+///   the question. For categories 3 and 4, all choices will have their boolean
+///   value set to true.
 #[derive(Debug, Clone)]
 pub struct Question
 {
@@ -119,10 +131,10 @@ impl Question
     }
 
     // pub fn get_group(&self) -> u16
-    /// Gets the group of the question.
+    /// Gets the group number of the question.
     ///
     /// # Returns
-    /// `u16` - The group of the question.
+    /// `u16` - The group number of the question.
     ///
     /// # Examples
     /// ```
@@ -137,10 +149,10 @@ impl Question
     }
 
     // pub fn set_group(&mut self, group: u16)
-    /// Sets the group of the question.
+    /// Sets the group number of the question.
     ///
     /// # Arguments
-    /// * `group` - The new group for the question.
+    /// * `group` - The new group number for the question.
     ///
     /// # Examples
     /// ```
@@ -156,10 +168,10 @@ impl Question
     }
 
     // pub fn get_category(&self) -> u8
-    /// Gets the category of the question.
+    /// Gets the category number of the question.
     ///
     /// # Returns
-    /// `u8` - The category of the question, 1-based.
+    /// `u8` - The category number of the question, 1-based.
     ///
     /// # Examples
     /// ```
@@ -174,10 +186,10 @@ impl Question
     }
 
     // pub fn set_category(&mut self, category: u8)
-    /// Sets the category of the question.
+    /// Sets the category number of the question.
     ///
     /// # Arguments
-    /// * `category` - The new category for the question, 1-based.
+    /// * `category` - The new category number for the question, 1-based.
     ///
     /// # Examples
     /// ```
@@ -433,7 +445,10 @@ impl Question
     {
         let choice_count = self.choices.len();
         
-        self.category = if choice_count == 0 { 4 }
+        self.category = if choice_count == 0
+                        {
+                            4
+                        }
                         else if choice_count == 1
                         {
                             if self.choices[0].1 { 3 } else { 4 }

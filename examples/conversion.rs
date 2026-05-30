@@ -13,10 +13,10 @@ fn make_student_db()
     use qrate::{ Excel, SBDB, SQLiteDB };
     
     let mut students = SBank::new();
-    students.push(Student::new("Антон Алексеевич Куликов".to_string(), "1".to_string()));
-    students.push(Student::new("Артём Андреевич Слётов".to_string(), "2".to_string()));
-    students.push(Student::new("Ислам Элгарович Мамбетказиев".to_string(), "3".to_string()));
-    students.push(Student::new("Ханыль  Лим".to_string(), "4".to_string()));
+    students.push_student(Student::new("Антон Алексеевич Куликов".to_string(), "1".to_string()));
+    students.push_student(Student::new("Артём Андреевич Слётов".to_string(), "2".to_string()));
+    students.push_student(Student::new("Ислам Элгарович Мамбетказиев".to_string(), "3".to_string()));
+    students.push_student(Student::new("Ханыль  Лим".to_string(), "4".to_string()));
 
     let mut db = SQLiteDB::open("./Students".to_string()).unwrap();
     if let Err(e) = db.write_sbank(&students)

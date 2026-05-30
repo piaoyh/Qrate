@@ -12,8 +12,16 @@ use crate::Student;
 
 /// A struct representing a student bank,
 /// which is a collection of `Student` objects.
+/// 
 /// The `SBank` struct contains a version number for future compatibility checks
 /// and a vector of `Student` objects that represent the students in the bank.
+/// The `SBank` struct provides methods to manage the students in the bank, such
+/// as adding, removing, and retrieving students. It also includes functionality
+/// to optimize the bank by removing any students that have empty names and IDs,
+/// ensuring that the bank only contains valid student entries.
+/// The `SBank` struct is designed to be flexible and efficient for handling a
+/// large collection of students, making it suitable for applications such as
+/// exams or quizzes where student information needs to be stored and managed.
 #[derive(Debug, Clone)]
 pub struct SBank
 {
@@ -112,6 +120,30 @@ impl SBank
     pub fn set_version(&mut self, version: u32)
     {
         self.version = version;
+    }
+
+    // pub fn is_higher_version(&self) -> bool
+    /// Checks if the version of the student bank is higher than
+    /// the current version defined in `SBank::VERSION`.
+    /// 
+    /// # Returns
+    /// * `true` if the version of the student bank is higher than `SBank::VERSION`.
+    /// * `false` if the version of the student bank is equal to or lower than `SBank::VERSION`.
+    /// 
+    /// # Examples
+    /// ```
+    /// use qrate::{ SBank, Header };
+    /// let mut sbank = SBank::new_empty();
+    /// assert!(!sbank.is_higher_version()); // Default version is 1, which is not higher than SBank::VERSION (1)
+    /// let mut new_header = Header::new_empty();
+    /// new_header.set_version(2);
+    /// sbank.set_header(new_header);
+    /// assert!(sbank.is_higher_version()); // Version is updated to 2, which is higher than SBank::VERSION (1)
+    /// ```
+    #[inline]
+    pub fn is_higher_version(&self) -> bool
+    {
+        self.get_version() > SBank::VERSION
     }
 
     // pub fn is_empty(&self) -> bool
@@ -350,4 +382,3 @@ impl SBank
         }
     }
 }
-

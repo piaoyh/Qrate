@@ -7,9 +7,13 @@
 // except according to those terms.
 ///////////////////////////////////////////////////////////////////////////////
 
+
+/// A type alias for a vector of `Student`s, representing a collection of students.
 pub type Students = Vec::<Student>;
 
 /// Represents a student with a name and an ID.
+/// This struct provides methods to create a new student,
+/// get and set the student's name and ID.
 #[derive(Debug, Clone)]
 pub struct Student
 {
@@ -22,7 +26,7 @@ impl Student
     // pub fn new_empty() -> Self
     /// Creates a new, empty `Student`.
     ///
-    /// # Output
+    /// # Returns
     /// `Self` - A new, empty `Student` instance.
     ///
     /// # Examples
@@ -49,7 +53,7 @@ impl Student
     /// * `name` - The name of the student.
     /// * `id` - The ID of the student.
     ///
-    /// # Output
+    /// # Returns
     /// `Self` - A new `Student` instance.
     ///
     /// # Examples
@@ -67,7 +71,7 @@ impl Student
     // pub fn get_name(&self) -> String
     /// Gets the student's name.
     ///
-    /// # Output
+    /// # Returns
     /// `&String` - A reference to the student's name.
     ///
     /// # Examples
@@ -102,7 +106,7 @@ impl Student
     // pub fn get_id(&self) -> &String
     /// Gets the student's ID.
     ///
-    /// # Output
+    /// # Returns
     /// `&String` - A reference to the student's ID.
     ///
     /// # Examples

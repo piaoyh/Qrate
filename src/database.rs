@@ -17,8 +17,14 @@ use crate::check_path;
 
 
 /// Represents an SQLite database connection.
-///
-/// This struct provides a simple interface for opening and closing an SQLite database connection.
+/// 
+/// This struct provides a simple interface for opening and closing an SQLite
+/// database connection.
+/// It includes methods for opening a database from a file or in memory, saving
+/// the database to a file or in memory, and closing the connection.
+/// The `SQLiteDB` struct encapsulates the database path and the
+/// `rusqlite::Connection` object, allowing for easy management of the database
+/// connection throughout the application.
 #[derive(Debug)]
 pub struct SQLiteDB
 {
@@ -38,8 +44,9 @@ impl SQLiteDB
     /// * `path` - The path to the database file.
     /// * `extention` - The file extension to append if the path does not have one.
     ///
-    /// # Output
-    /// An `Option<Self>` which is `Some(SQLiteDB)` on successful connection, or `None` on failure.
+    /// # Returns
+    /// An `Option<Self>` which is `Some(SQLiteDB)` on successful connection,
+    /// or `None` on failure.
     ///
     /// # Examples
     /// ```
@@ -105,6 +112,15 @@ impl SQLiteDB
     /// # Returns
     /// An `Option<Self>` which is `Some(SQLiteDB)` on successful connection,
     /// or `None` on failure.
+    /// 
+    /// # Examples
+    /// ```
+    /// use qrate::SQLiteDB;
+    /// 
+    /// // Using an in-memory database for the example.
+    /// let db = SQLiteDB::open_empty_in_memory();
+    /// assert!(db.is_some());
+    /// ```
     pub fn open_empty_in_memory() -> Option<Self>
     {
         if let Ok(conn) = Connection::open_in_memory()
@@ -119,7 +135,7 @@ impl SQLiteDB
     /// # Arguments
     /// * `file_path` - The path to the file where the database will be saved.
     ///
-    /// # Output
+    /// # Returns
     /// `Ok(())` if the database is saved successfully, `Err(())` otherwise.
     ///
     /// # Examples
@@ -134,12 +150,6 @@ impl SQLiteDB
     {
         let sql = format!("VACUUM INTO '{}'", file_path);
         self.conn.execute(sql.as_str(), [])?;
-
-        // let mut destination_conn = Connection::open(file_path)?;
-        // let backup = Backup::new(&self.conn, &mut destination_conn)?;
-        // backup.run_to_completion(-1, Duration::from_millis(100), None)?;
-        // let mut destination_conn = Connection::open(file_path)?;
-        // #[allow(unused_must_use)] destination_conn.execute("VACUUM", []);
         Ok(())
     }
 
@@ -180,7 +190,7 @@ impl SQLiteDB
     // pub fn close(self) -> Result<(), (Connection, Error)>
     /// Closes the database connection.
     ///
-    /// # Output
+    /// # Returns
     /// `Ok(())` if the connection is closed successfully, `Err(())` otherwise.
     ///
     /// # Examples
@@ -191,22 +201,35 @@ impl SQLiteDB
     /// let result = db.close();
     /// assert!(result.is_ok());
     /// ```
+    #[inline]
     pub fn close(self) -> Result<(), (Connection, Error)>
     {
-        match self.conn.close()
-        {
-            Ok(_) => Ok(()),
-            Err(e) => Err(e),
-        }
+        self.conn.close()
     }
 
-    // pub fn vacuum(&mut self) -> Result<usize>
+    // pub fn vacuum(&mut self) -> Result<usize, Error>
     /// Vacuum database
-    #[allow(unused_must_use)]
+    /// 
+    /// # Returns
+    /// * `Ok(usize)` containing the number of rows affected by the VACUUM
+    /// command.
+    /// * `Err(())` otherwise
+    ///
+    /// # Examples
+    /// ```
+    /// use qrate::SQLiteDB;
+    ///
+    /// let db = SQLiteDB::open(":memory:".to_string(), ".db").unwrap();
+    /// db.vacuum();
+    /// ```
     #[inline]
-    pub fn vacuum(&mut self)
+    pub fn vacuum(&mut self) -> Result<usize, Error>
     {
-        self.conn.execute("VACUUM", []);
+        match self.conn.execute("VACUUM", [])
+        {
+            Ok(rows_affected) => Ok(rows_affected),
+            Err(e) => Err(e),
+        }
     }
 
     // pub fn set_path(&mut self, path: String)
@@ -232,7 +255,7 @@ impl SQLiteDB
     // pub fn get_path(&self) -> &String
     /// Gets the path of the database file.
     ///
-    /// # Output
+    /// # Returns
     /// `&String` - A reference to the path of the database file.
     ///
     /// # Examples

@@ -33,7 +33,8 @@ impl Header
     // pub fn new_empty() -> Self
     /// Creates a new, empty `Header`.
     ///
-    /// # Output `Self` - A new, empty `Header` instance.
+    /// # Returns
+    /// `Self` - A new, empty `Header` instance.
     /// 
     /// # Features
     /// All fields are initialized as empty strings or an empty vector.
@@ -60,7 +61,7 @@ impl Header
     // pub fn new_with_default() -> Self
     /// Creates a new `Header` with default values.
     ///
-    /// # Output
+    /// # Returns
     /// `Self` - A new `Header` instance with default values.
     ///
     /// # Features
@@ -104,7 +105,7 @@ Contextual Understanding: All questions must be interpreted and answered within 
     /// * `category` - A vector of strings representing categories or types of questions.
     /// * `notice` - A string containing any important notices or instructions.
     ///
-    /// # Output
+    /// # Returns
     /// `Self` - A new `Header` instance with the specified values.
     ///
     /// # Examples
@@ -128,7 +129,7 @@ Contextual Understanding: All questions must be interpreted and answered within 
     // pub fn get_title(&self) -> &String
     /// Gets the title from the header.
     ///
-    /// # Output
+    /// # Returns
     /// `&String` - A reference to the title string.
     ///
     /// # Examples
@@ -165,7 +166,7 @@ Contextual Understanding: All questions must be interpreted and answered within 
     // pub fn get_name(&self) -> &String
     /// Gets the name from the header.
     ///
-    /// # Output
+    /// # Returns
     /// `&String` - A reference to the name string.
     ///
     /// # Examples
@@ -202,7 +203,7 @@ Contextual Understanding: All questions must be interpreted and answered within 
     // pub fn get_id(&self) -> &String
     /// Gets the ID from the header.
     ///
-    /// # Output
+    /// # Returns
     /// `&String` - A reference to the ID string.
     ///
     /// # Examples
@@ -239,7 +240,7 @@ Contextual Understanding: All questions must be interpreted and answered within 
     // pub fn get_categories(&self) -> &Vec<String>
     /// Gets the vector of categories from the header.
     ///
-    /// # Output
+    /// # Returns
     /// `&Vec<String>` - A reference to the vector of category strings.
     ///
     /// # Examples
