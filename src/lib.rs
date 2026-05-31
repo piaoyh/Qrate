@@ -60,11 +60,15 @@ pub mod utils;
 /// The `error_messages` module defines the `ErrorMessage` enum for standardized error handling.
 pub mod error_messages;
 
+/// The `self_study` module provides functionalities for self-study sessions and scoring.
+pub mod self_study;
+
 /// Re-exporting key structures and functionalities for external use.
 pub use database::SQLiteDB;
 
 #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 pub use excel::Excel;
+
 
 pub use header::Header;
 pub use qbank::QBank;
@@ -77,6 +81,7 @@ pub use shuffled_question::{ ShuffledQuestion, ShuffledQuestions };
 pub use shuffled_qset::{ ShuffledQSet, ShuffledQSets};
 pub use shuffler::Shuffler;
 pub use generator::Generator;
+pub use self_study::{ SelfStudy, ScoringRule, UserAnswer };
 pub use error_messages::ErrorMessage;
 
 pub(crate) use utils::check_path;
