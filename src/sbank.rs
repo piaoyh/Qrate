@@ -188,10 +188,10 @@ impl SBank
     /// assert_eq!(sbank.get_student(1).unwrap().get_name(), "Alice");
     /// assert!(sbank.get_student(3).is_none());
     /// ```
-    pub fn get_student(&self, number: usize) -> Option<Student>
+    pub fn get_student(&self, student_number: u16) -> Option<Student>
     {
-        if (number <= self.get_length()) && number > 0
-            { Some(self.students[number - 1].clone()) }
+        if (student_number as usize <= self.get_length()) && student_number > 0
+            { Some(self.students[student_number as usize - 1].clone()) }
         else
             { None }
     }
@@ -219,11 +219,11 @@ impl SBank
     /// assert_eq!(sbank.get_student(2).unwrap().get_name(), "Charlie");
     /// assert!(!sbank.set_student(3, new_student)); // Out of bounds
     /// ```
-    pub fn set_student(&mut self, number: usize, student: Student) -> bool
+    pub fn set_student(&mut self, student_number: u16, student: Student) -> bool
     {
-        let res = (number <= self.get_length()) && number > 0;
+        let res = (student_number as usize <= self.get_length()) && student_number > 0;
         if res
-            { self.students[number - 1] = student; }
+            { self.students[student_number as usize - 1] = student; }
         res
     }
     
@@ -373,12 +373,12 @@ impl SBank
     pub fn optimize(&mut self)
     {
         let len = self.get_length();
-        for number in (1..=len).rev()
+        for student_number in (1..=len).rev()
         {
-            // Because number is within the reange 1..=len, .unwrap() does not cause panic.
-            let student = self.get_student(number).unwrap();
+            // Because student_number is within the range 1..=len, .unwrap() does not cause panic.
+            let student = self.get_student(student_number as u16).unwrap();
             if student.get_name().is_empty() && student.get_id().is_empty()
-                { self.remove_student(number); }
+                { self.remove_student(student_number); }
         }
     }
 }

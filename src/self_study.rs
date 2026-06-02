@@ -469,9 +469,9 @@ impl SelfStudy
         let points_per_question = 100.0 / (total_questions as f64);
         let mut total_score = 0.0;
 
-        for i in 0..total_questions
+        for i in 1..=total_questions
         {
-            let num = (i + 1) as u16;
+            let num = i as u16;
             let shuffled_qset = match self.shuffler.get_shuffled_qsets().get(0)
             {
                 Some(s) => s,
@@ -492,7 +492,7 @@ impl SelfStudy
             };
             let category = origin_question.get_category();
             let origin_choices = origin_question.get_choices();
-            let user_ans = &self.user_answers[i];
+            let user_ans = &self.user_answers[i - 1];
 
             // Extract correct answer information (based on shuffled choices)
             let mut correct_indices = Vec::new();

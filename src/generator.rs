@@ -1684,14 +1684,15 @@ impl Generator
     //     if idx < self.shuffled_qsets.len() { Some(self.shuffled_qsets[idx].clone()) } else { None }
     // }
 
-    // pub fn get_shuffled_qbank(&self, idx: usize) -> Option<(Student, QBank)>
+    // pub fn get_shuffled_qbank(&self, student_number: u16) -> Option<(Student, QBank)>
     /// Retrieves a specific shuffled `QBank` and its associated `Student` by index.
     ///
     /// This function reconstructs a `QBank` with shuffled questions for a given student
     /// based on the original `QBank` and the shuffled question set at the specified index.
     ///
     /// # Arguments
-    /// * `idx` - The zero-based index of the shuffled question set.
+    /// * `student_number` - The 1-based index of the student for whom to retrieve
+    ///   the shuffled question set.
     ///
     /// # Returns
     /// An `Option<(Student, QBank)>` which is `Some((Student, QBank))` if the index is valid,
@@ -1709,7 +1710,7 @@ impl Generator
     /// let students = Students::new(vec![student1]);
     ///
     /// let generator = Generator::new(&qbank, 1, 2, &students).unwrap();
-    /// let shuffled_qbank_tuple = generator.get_shuffled_qbank(0);
+    /// let shuffled_qbank_tuple = generator.get_shuffled_qbank(1);
     /// assert!(shuffled_qbank_tuple.is_some());
     /// let (student, shuffled_qbank) = shuffled_qbank_tuple.unwrap();
     /// assert_eq!(student.get_name(), "Alice");
@@ -1718,27 +1719,23 @@ impl Generator
     /// let no_shuffled_qbank = generator.get_shuffled_qbank(1);
     /// assert!(no_shuffled_qbank.is_none());
     /// ```
-    pub fn get_shuffled_qbank(&self, idx: usize) -> Option<(Student, QBank)>
+    pub fn get_shuffled_qbank(&self, student_number: u16) -> Option<(Student, QBank)>
     {
-        if idx < self.shuffler.get_sbank_length()
+        let shuffled_qset = self.shuffler.get_shuffled_questions(student_number as usize)?;
+        let qset_len = shuffled_qset.get_shuffled_questions().len();
+
+        let header = self.shuffler.get_header().clone();
+        let mut qbank = QBank::new_with_header(header);
+        let mut questions = Questions::new();
+        for question_idx in 1..=qset_len
         {
-            let header = self.shuffler.get_header().clone();
-            let mut qbank = QBank::new_with_header(header);
-            let mut questions = Questions::new();
-            for i in 0..self.shuffler.get_qbank_length()
-            {
-                let qn = self.shuffler.get_shuffled_question(idx, i);
-                // Find question by actual ID, not by index
-                let question = self.shuffler.get_qbank().get_question(qn as usize)?;
-                questions.push(question.clone());
-            }
-            qbank.set_questions(questions);
-            Some((self.shuffler.get_student(idx).unwrap(), qbank))
+            let question_number = self.shuffler.get_shuffled_question(student_number, question_idx as u16);
+            // Find question by actual ID, not by index
+            let question = self.shuffler.get_qbank().get_question(question_number as usize)?;
+            questions.push(question.clone());
         }
-        else
-        {
-            None
-        }
+        qbank.set_questions(questions);
+        Some((self.shuffler.get_student(student_number).unwrap(), qbank))
     }
 
     // pub fn get_shuffled_qbanks(&self) -> Vec::<(Student, QBank)>
@@ -1773,9 +1770,9 @@ impl Generator
     pub fn get_shuffled_qbanks(&self) -> Vec::<(Student, QBank)>
     {
         let mut shuffled_qbanks = Vec::new();
-        for i in 0..self.shuffler.get_qbank_length()
+        for i in 1..=self.shuffler.get_sbank_length()
         {
-            if let Some(shuffled_qbank) = self.get_shuffled_qbank(i)
+            if let Some(shuffled_qbank) = self.get_shuffled_qbank(i as u16)
                 { shuffled_qbanks.push(shuffled_qbank); }
         }
         shuffled_qbanks

@@ -7,7 +7,7 @@ fn main() -> Result<(), String>
 {
     let sbank = load_students().ok_or("No Students DB!".to_string())?;
     let qbank = load_questions().ok_or("No Questions DB!".to_string())?;
-    let generator = Generator::new(&qbank, 1, 51, 10, &sbank).ok_or("Index Error!")?;
+    let generator = Generator::new(&qbank, 1, 67, 10, &sbank).ok_or("Index Error!")?;
     generator.save_shuffled_exams("./IS_exam".to_string(), "txt")?;
     generator.save_shuffled_exams("./IS_exam".to_string(), "docx")?;
     // generator.save_shuffled_exams("./IS_exam".to_string(), "pdf")?;
