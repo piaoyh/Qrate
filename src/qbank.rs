@@ -525,6 +525,75 @@ impl QBank
         len
     }
 
+    // pub fn get_number_of_questions_in_category(&self, cat: u8) -> usize
+    /// Gets the total number of questions in a specific category.
+    ///
+    /// # Arguments
+    /// * `cat` - The category to check.
+    ///
+    /// # Returns
+    /// The total number of questions in the specified category as `usize`.
+    /// If there are no questions, returns `0`.
+    ///
+    /// # Examples
+    /// ```
+    /// use qrate::{ QBank, Question };
+    /// let mut qbank = QBank::new_empty();
+    /// qbank.push_question(Question::new(1, 1, 1, "Q1".to_string(), vec![("Choice A".to_string(), false), ("Choice B".to_string(), false)]));
+    /// qbank.push_question(Question::new(2, 1, 1, "Q2".to_string(), vec![("Choice A".to_string(), false)]));
+    /// assert_eq!(qbank.get_number_of_questions_in_category(1), 2);
+    /// ```
+    pub fn get_number_of_questions_in_category(&self, cat: u8) -> usize
+    {
+        let mut qb = self.clone();
+        qb.optimize();
+        let mut count = 0;
+        for q in qb.get_questions()
+        {
+            if cat == q.get_category()
+                { count += 1; }
+        }
+        count
+    }
+
+    // pub fn get_number_of_questions_with_answer(&self, answer: u8) -> usize
+    /// Gets the total number of questions
+    /// that have a specific answer marked as true.
+    ///
+    /// # Arguments
+    /// * `answer` - The answer to check.
+    ///   This is a 1-based index representing the choice number.
+    ///
+    /// # Returns
+    /// The total number of questions that have the specified answer marked
+    /// as true as `usize`.
+    /// If there are no questions, returns `0`.
+    ///
+    /// # Examples
+    /// ```
+    /// use qrate::{ QBank, Question };
+    /// let mut qbank = QBank::new_empty();
+    /// qbank.push_question(Question::new(1, 1, 1, "Q1".to_string(), vec![("Choice A".to_string(), false), ("Choice B".to_string(), false)]));
+    /// qbank.push_question(Question::new(2, 1, 1, "Q2".to_string(), vec![("Choice A".to_string(), false)]));
+    /// assert_eq!(qbank.get_number_of_questions_with_answer(1), 1);
+    /// ```
+    pub fn get_number_of_questions_with_answer(&self, answer: u8) -> usize
+    {
+        let mut qb = self.clone();
+        qb.optimize();
+        let mut count = 0;
+        for q in qb.get_questions()
+        {
+            if (q.get_category() == 1) || (q.get_category() == 2)
+            {
+                let choices = q.get_choices();
+                if (answer > 0) && (answer as usize <= choices.len()) && choices[answer as usize - 1].1
+                    { count += 1; }
+            }
+        }
+        count
+    }
+
     // pub fn get_choices_length(&self, question_number: usize) -> usize
     /// Gets the number of choices for a specific question by its 1-based index.
     /// 
