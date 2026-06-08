@@ -11,10 +11,10 @@
 #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 use calamine::{ Reader, DataType }; // Add DataType here
 
+use crate::{ SBank, SQLiteDB, Student };
+
 #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 use crate::Excel;
-
-use crate::{ SBank, SQLiteDB, Student };
 
 /// A trait defining the database operations for a Student Bank (`SBank`).
 ///
@@ -247,7 +247,7 @@ impl SBDB for SQLiteDB
         let mut stmt = self.conn.prepare("SELECT * FROM tblHeader;").ok()?;
         let version: u32 = stmt.query_row([], |row| row.get(0)).ok()?;
 
-        let mut stmt = self.conn.prepare("SELECT * FROM tblStudents;").ok()?;
+        let mut stmt = self.conn.prepare("SELECT * FROM tblStudents ORDER BY id;").ok()?;
         let student_iter = stmt.query_map([], |row| {
             Ok(Student::new(row.get(0)?, row.get(1)?))
         }).ok()?;

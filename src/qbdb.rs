@@ -14,14 +14,11 @@ use calamine::{ DataType, Reader, open_workbook_auto };
 #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 use rust_xlsxwriter::{ Format, FormatBorder, Workbook };
 
-use crate::Header;
-use crate::QBank;
-use crate::SQLiteDB;
+use crate::{ Header, QBank, SQLiteDB, Choices, Question };
 
 #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 use crate::Excel;
 
-use crate::{ Choices, Question };
 
 /// A trait defining the database operations for a Question Bank (`QBank`).
 ///
@@ -493,7 +490,7 @@ impl QBDB for SQLiteDB
     fn read_qbank(&self) -> Option<QBank>
     {
         let header = self.read_header()?;
-        let mut stmt = self.conn.prepare("SELECT * FROM tblQuestions;").ok()?;
+        let mut stmt = self.conn.prepare("SELECT * FROM tblQuestions ORDER BY id;").ok()?;
         let vec_question = stmt.query_map([], |row| {
             let id: u16 = row.get(0)?;
             let group: u16 = row.get(1)?;
