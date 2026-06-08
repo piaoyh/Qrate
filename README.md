@@ -18,4 +18,7 @@ A generator built with `qrate` ensures that every student receives a distinct ex
 - Randomized Order: Even if two students share the same question, it will appear at different positions in their respective exams.
 - Shuffled Choices: For multiple-choice questions, the order of the answers is randomized for every paper.
 
+## Who Is Actively Using This Crate
+The Chrome Extension QuizWiz uses this crate as its core engine. QuizWiz is published at https://chrome.google.com/webstore/detail/lhpjjmaipdgdcjabnfgegcmmpnoflhad in Web Store.
+
 __By introducing these layers of randomization, qrate makes it extremely difficult for students to share answers during an exam.__
