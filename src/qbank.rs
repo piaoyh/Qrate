@@ -1067,4 +1067,29 @@ impl QBank
             }
         }
     }
+
+    // pub fn sort(&mut self)
+    /// Sorts the questions in the bank by their IDs in ascending order.
+    /// 
+    /// This method uses the `sort_by_key` method to sort the questions based
+    /// on their IDs. After calling this method, the questions in the bank will
+    /// be ordered by their IDs from lowest to highest.
+    /// 
+    /// # Examples
+    /// ```
+    /// use qrate::{ QBank, Question };
+    /// let mut qbank = QBank::new_empty();
+    /// qbank.push_question(Question::new(5, 1, 1, "Q1".to_string(), vec![]));
+    /// qbank.push_question(Question::new(3, 1, 1, "Q2".to_string(), vec![]));
+    /// qbank.push_question(Question::new(8, 1, 1, "Q3".to_string(), vec![]));
+    /// qbank.sort();
+    /// assert_eq!(qbank.get_question(1).unwrap().get_id(), 3);
+    /// assert_eq!(qbank.get_question(2).unwrap().get_id(), 5);
+    /// assert_eq!(qbank.get_question(3).unwrap().get_id(), 8);
+    /// ```
+    #[inline]
+    pub fn sort(&mut self)
+    {
+        self.questions.sort_by_key(|q| q.get_id());
+    }
 }

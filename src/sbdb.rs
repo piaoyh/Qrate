@@ -256,6 +256,7 @@ impl SBDB for SQLiteDB
         for student in students
             { sbank.push_student(student); }
         sbank.set_version(version);
+        sbank.sort();
         Some(sbank)
     }
 

@@ -381,4 +381,30 @@ impl SBank
                 { self.remove_student(student_number); }
         }
     }
+
+    // pub fn sort(&mut self)
+    /// Sorts the students in the bank by their IDs in ascending order.
+    /// 
+    /// The sorting process uses the `sort_by_key` method on the underlying
+    /// vector of students, with the key being the string representation of
+    /// the student's ID. This ensures that the students are ordered based on
+    /// their IDs, which can be useful for quickly finding students or
+    /// for displaying the list of students in a consistent order.
+    /// 
+    /// # Examples
+    /// ```
+    /// use qrate::{SBank, Student};
+    /// let mut sbank = SBank::new();
+    /// sbank.push_student(Student::new("Charlie".to_string(), "s789".to_string()));
+    /// sbank.push_student(Student::new("Alice".to_string(), "s123".to_string()));
+    /// sbank.push_student(Student::new("Bob".to_string(), "s456".to_string()));
+    /// sbank.sort();
+    /// assert_eq!(sbank.get_student(1).unwrap().get_name(), "Alice");
+    /// assert_eq!(sbank.get_student(2).unwrap().get_name(), "Bob");
+    /// assert_eq!(sbank.get_student(3).unwrap().get_name(), "Charlie");
+    /// ```
+    pub fn sort(&mut self)
+    {
+        self.students.sort_by_key(|s| s.get_id().to_string());
+    }
 }

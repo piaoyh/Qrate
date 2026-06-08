@@ -521,6 +521,7 @@ impl QBDB for SQLiteDB
             else
                 { return None; }
         }
+        question_bank.sort();
         Some(question_bank)
     }
 
