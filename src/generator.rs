@@ -69,7 +69,7 @@ impl Generator
     const FOOTER_UNDERLINE: u16 = 0b_100_0000_0000_0000;
     const FOOTER_STRIKE: u16 = 0b_1000_0000_0000_0000;
 
-    // pub fn new(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, sbank: &SBank) -> Option<Self>
+    // pub fn new(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, sbank: &SBank, answer_sheet_title: String) -> Option<Self>
     /// Creates a new `Generator` instance for multiple shuffled sets,
     /// one for each student.
     ///
@@ -84,6 +84,7 @@ impl Generator
     /// * `number_of_questions` - The number of questions to be randomly
     ///   selected for each student.
     /// * `sbank` - A reference to the `SBank` containing the list of students.
+    /// * `answer_sheet_title` - The title to be used for the answer sheet.
     ///
     /// # Returns
     /// An `Option<Self>` which is `Some(Generator)` if successful, or
@@ -103,10 +104,10 @@ impl Generator
     /// let students = SBank::new_with_students(vec![student1, student2]);
     ///
     /// // Generate exams with 2 questions selected for each student
-    /// let generator = Generator::new(&qbank, 1, 2, 2, &students);
+    /// let generator = Generator::new(&qbank, 1, 2, 2, &students, "Answer Sheet".to_string());
     /// assert!(generator.is_some());
     /// ```
-    pub fn new(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, sbank: &SBank) -> Option<Self>
+    pub fn new(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, sbank: &SBank, answer_sheet_title: String) -> Option<Self>
     {
         let mut shuffler = Shuffler::new(qbank, start, end, sbank);
         if shuffler.make_exams(number_of_questions)
@@ -126,7 +127,7 @@ impl Generator
                     margin_top_in_mm: 10.0,
                     margin_buttom_in_mm: 10.0,
                     line_spacing: 1.0,
-                    answer_sheet_title: "Answer Sheet        정답지        Ответы".to_string()
+                    answer_sheet_title: answer_sheet_title
                 }
             )
         }
@@ -136,12 +137,15 @@ impl Generator
         }
     }
 
-    // pub fn new_empty() -> Self
+    // pub fn new_empty(answer_sheet_title: String) -> Self
     /// Creates a new, empty `Generator` instance with default values.
     ///
     /// This function initializes all fields of the `Generator` struct to their
     /// default empty or initial states, such as an empty `QBank` and
     /// `ShuffledQSets`, and predefined font sizes and margins.
+    ///
+    /// # Arguments
+    /// * `answer_sheet_title` - The title to be used for the answer sheet.
     ///
     /// # Returns
     /// `Self` - A new `Generator` instance, ready for configuration.
@@ -150,11 +154,11 @@ impl Generator
     /// ```
     /// use qrate::Generator;
     ///
-    /// let generator = Generator::new_empty();
+    /// let generator = Generator::new_empty("Answer Sheet".to_string());
     /// // Verify that the generator's internal qbank is empty.
     /// assert!(generator.origin.get_questions().is_empty());
     /// ```
-    pub fn new_empty() -> Self
+    pub fn new_empty(answer_sheet_title: String) -> Self
     {
         Self
         {
@@ -170,11 +174,11 @@ impl Generator
             margin_top_in_mm: 10.0,
             margin_buttom_in_mm: 10.0,
             line_spacing: 1.0,
-            answer_sheet_title: "Answer Sheet        정답지        Ответы".to_string()
+            answer_sheet_title: answer_sheet_title
         }
     }
 
-    // pub fn new_one_set(qbank: &QBank, start: u16, end: u16, number_of_questions: usize) -> Option<Self>
+    // pub fn new_one_set(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, answer_sheet_title: String) -> Option<Self>
     /// Creates a new `Generator` instance for a single shuffled set.
     ///
     /// This function generates a single shuffled question set based on the provided
@@ -185,6 +189,7 @@ impl Generator
     /// * `start` - The starting number of the questions to include (inclusive).
     /// * `end` - The ending number of the questions to include (inclusive).
     /// * `number_of_questions` - The number of questions to be randomly selected.
+    /// * `answer_sheet_title` - The title to be used for the answer sheet.
     ///
     /// # Output
     /// An `Option<Self>` which is `Some(Generator)` if successful, or `None` if
@@ -198,17 +203,17 @@ impl Generator
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     ///
-    /// let generator = Generator::new_one_set(&qbank, 1, 2, 2);
+    /// let generator = Generator::new_one_set(&qbank, 1, 2, 2, "Answer Sheet".to_string());
     /// assert!(generator.is_some());
     /// ```
-    pub fn new_one_set(qbank: &QBank, start: u16, end: u16, number_of_questions: usize) -> Option<Self>
+    pub fn new_one_set(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, answer_sheet_title: String) -> Option<Self>
     {
         let student = Student::new_empty();
         let sbank = SBank::new_with_students(vec![student]);
-        Self::new(qbank, start, end, number_of_questions, &sbank)
+        Self::new(qbank, start, end, number_of_questions, &sbank, answer_sheet_title)
     }
 
-    // pub fn new_with_seeds(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, sbank: &SBank, seeds: [u64; 16]) -> Option<Self>
+    // pub fn new_with_seeds(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, sbank: &SBank, answer_sheet_title: String, seeds: [u64; 16]) -> Option<Self>
     /// Creates a new `Generator` instance for multiple shuffled sets,
     /// one for each student.
     ///
@@ -223,6 +228,7 @@ impl Generator
     /// * `number_of_questions` - The number of questions to be randomly
     ///   selected for each student.
     /// * `sbank` - A reference to the `SBank` containing the list of students.
+    /// * `answer_sheet_title` - The title to be used for the answer sheet.
     /// * `seeds` - A seed array, each element of which is of u64.
     ///
     /// # Returns
@@ -244,10 +250,10 @@ impl Generator
     /// let seeds = [0_u64, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
     /// 
     /// // Generate exams with 2 questions selected for each student
-    /// let generator = Generator::new_with_seeds(&qbank, 1, 2, 2, &sbank, seed);
+    /// let generator = Generator::new_with_seeds(&qbank, 1, 2, 2, &sbank, "Answer Sheet".to_string(), seeds);
     /// assert!(generator.is_some());
     /// ```
-    pub fn new_with_seeds(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, sbank: &SBank, seeds: [u64; 16]) -> Option<Self>
+    pub fn new_with_seeds(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, sbank: &SBank, answer_sheet_title: String, seeds: [u64; 16]) -> Option<Self>
     {
         let mut shuffler = Shuffler::new_with_seeds(qbank, start, end, sbank, seeds);
         if shuffler.make_exams(number_of_questions)
@@ -267,7 +273,7 @@ impl Generator
                     margin_top_in_mm: 10.0,
                     margin_buttom_in_mm: 10.0,
                     line_spacing: 1.0,
-                    answer_sheet_title: "Answer Sheet        정답지        Ответы".to_string()
+                    answer_sheet_title: answer_sheet_title
                 }
             )
         }
@@ -277,7 +283,7 @@ impl Generator
         }
     }
 
-    // pub fn new_empty_with_seeds(seeds: [u64; 16]) -> Self
+    // pub fn new_empty_with_seeds(answer_sheet_title: String,seeds: [u64; 16]) -> Self
     /// Creates a new, empty `Generator` instance with default values.
     ///
     /// This function initializes all fields of the `Generator` struct to their
@@ -286,6 +292,7 @@ impl Generator
     /// 
     /// # Arguments
     /// * `seeds` - A seed array, each element of which is of u64.
+    /// * `answer_sheet_title` - The title to be used for the answer sheet.
     ///
     /// # Returns
     /// `Self` - A new `Generator` instance, ready for configuration.
@@ -295,11 +302,11 @@ impl Generator
     /// use qrate::Generator;
     ///
     /// let seeds = [0_u64, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
-    /// let generator = Generator::new_empty_with_seeds(seeds);
+    /// let generator = Generator::new_empty_with_seeds("Answer Sheet".to_string(), seeds);
     /// // Verify that the generator's internal qbank is empty.
     /// assert!(generator.origin.get_questions().is_empty());
     /// ```
-    pub fn new_empty_with_seeds(seeds: [u64; 16]) -> Self
+    pub fn new_empty_with_seeds(answer_sheet_title: String, seeds: [u64; 16]) -> Self
     {
         Self
         {
@@ -315,11 +322,11 @@ impl Generator
             margin_top_in_mm: 10.0,
             margin_buttom_in_mm: 10.0,
             line_spacing: 1.0,
-            answer_sheet_title: "Answer Sheet        정답지        Ответы".to_string()
+            answer_sheet_title: answer_sheet_title
         }
     }
 
-    // pub fn new_one_set(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, seeds: [u64; 16]) -> Option<Self>
+    // pub fn new_one_set(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, answer_sheet_title: String, seeds: [u64; 16]) -> Option<Self>
     /// Creates a new `Generator` instance for a single shuffled set.
     ///
     /// This function generates a single shuffled question set based on the provided
@@ -330,6 +337,7 @@ impl Generator
     /// * `start` - The starting number of the questions to include (inclusive).
     /// * `end` - The ending number of the questions to include (inclusive).
     /// * `number_of_questions` - The number of questions to be randomly selected.
+    /// * `answer_sheet_title` - The title to be used for the answer sheet.
     /// * `seeds` - A seed array, each element of which is of u64.
     ///
     /// # Output
@@ -345,14 +353,14 @@ impl Generator
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     ///
     /// let seeds = [0_u64, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
-    /// let generator = Generator::new_one_set_with_seeds(&qbank, 1, 2, 2, seeds);
+    /// let generator = Generator::new_one_set_with_seeds(&qbank, 1, 2, 2, "Answer Sheet".to_string(), seeds);
     /// assert!(generator.is_some());
     /// ```
-    pub fn new_one_set_with_seeds(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, seeds: [u64; 16]) -> Option<Self>
+    pub fn new_one_set_with_seeds(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, answer_sheet_title: String, seeds: [u64; 16]) -> Option<Self>
     {
         let student = Student::new("Self Study".to_string(), "-".to_string());
         let sbank = SBank::new_with_students(vec![student]);
-        Self::new_with_seeds(qbank, start, end, number_of_questions, &sbank, seeds)
+        Self::new_with_seeds(qbank, start, end, number_of_questions, &sbank, answer_sheet_title, seeds)
     }
 
     // pub fn make_exams(&mut self, number_of_questions: usize)
@@ -2236,7 +2244,7 @@ impl Generator
             writeln!(file, "{}", content).map_err(|e| e.to_string())?;
             // Add a separator for multiple students, if applicable
             if self.shuffler.get_sbank_length() > 1
-                { writeln!(file, "-------X------- CUT -------X------- 자르기 -------X------- резать -------X-------\n\n").map_err(|e| e.to_string())?; }
+                { writeln!(file, "---------------✀---------------✀---------------✀---------------✀---------------\n\n").map_err(|e| e.to_string())?; }
         }
         // Add a separator for the answer sheet
         //write!(file, "\n\u{000C}\n").map_err(|e| e.to_string())?; // Form feed for page break
@@ -2331,7 +2339,7 @@ impl Generator
             content.push_str(exam_content.as_str());
             // Add a separator for multiple students, if applicable
             if self.shuffler.get_sbank_length() > 1
-                { content.push_str("-------X------- CUT -------X------- 자르기 -------X------- резать -------X-------\n\n"); }
+                { content.push_str("---------------✀---------------✀---------------✀---------------✀---------------\n\n"); }
         }
         // Add a separator for the answer sheet
         //content.push_str("\n\u{000C}\n"); // Form feed for page break
