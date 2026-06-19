@@ -887,6 +887,24 @@ impl QBank
         self.header.set_version(version);
     }
 
+    // pub fn set_current_version(&mut self)
+    /// Sets the version number of the question bank to the current version
+    /// defined in `QBank::VERSION`.
+    /// 
+    /// # Examples
+    /// ```
+    /// use qrate::{ QBank, Header };
+    /// let mut qbank = QBank::new_empty();
+    /// assert_eq!(qbank.get_version(), 1); // Default version is 1
+    /// qbank.set_current_version();
+    /// assert_eq!(qbank.get_version(), QBank::VERSION); // Version is updated to the current version defined in QBank::VERSION
+    /// ```
+    #[inline]
+    pub fn set_current_version(&mut self)
+    {
+        self.set_version(QBank::VERSION);
+    }
+
     // pub fn is_higher_version(&self) -> bool
     /// Checks if the version of the question bank is higher than
     /// the current version defined in `QBank::VERSION`.

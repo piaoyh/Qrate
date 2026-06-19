@@ -2789,6 +2789,9 @@ impl Generator
     /// # Returns
     /// `Result<(), String>` - Returns `Ok(())` on success, or an `Err` with a
     ///                        `String` describing the error on failure.
+    /// 
+    /// # Cautions
+    /// This function is unstable at the moment! Don;t use this.
     ///
     /// # Examples
     /// ```no_run
@@ -2824,6 +2827,9 @@ impl Generator
     /// `Result<Vec<u8>, String>` - Returns `Ok(Vec<u8>)` containing the HWPX
     ///                             document on success, or an `Err` with a
     ///                             `String` describing the error on failure.
+    /// 
+    /// # Cautions
+    /// This function is unstable at the moment! Don;t use this.
     ///
     /// # Examples
     /// ```no_run
@@ -2939,6 +2945,9 @@ impl Generator
     /// # Returns
     /// `Result<(), String>` - Returns `Ok(())` on success, or an `Err` with a
     ///                        `String` describing the error on failure.
+    /// 
+    /// # Cautions
+    /// This function is unstable at the moment! Don;t use this.
     /// 
     /// # Examples
     /// ```no_run
@@ -3060,6 +3069,9 @@ impl Generator
     /// # Returns
     /// `Result<(), String>` - Returns `Ok(())` on success, or an `Err` with a
     ///                        `String` describing the error on failure.
+    /// 
+    /// # Cautions
+    /// This function is unstable at the moment! Don;t use this.
     ///
     /// # Examples
     /// ```no_run
@@ -3095,6 +3107,9 @@ impl Generator
     /// `Result<Vec<u8>, String>` - Returns `Ok(Vec<u8>)` containing the HWP
     ///                             document on success, or an `Err` with a
     ///                             `String` describing the error on failure.
+    /// 
+    /// # Cautions
+    /// This function is unstable at the moment! Don;t use this.
     ///
     /// # Examples
     /// ```no_run
@@ -3218,6 +3233,9 @@ impl Generator
     /// # Returns
     /// `Result<(), String>` - Returns `Ok(())` on success, or an `Err` with a
     ///                        `String` describing the error on failure.
+    /// 
+    /// # Cautions
+    /// This function is unstable at the moment! Don;t use this.
     /// 
     /// # Examples
     /// ```no_run

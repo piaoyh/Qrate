@@ -15,12 +15,12 @@ cryptocol = "0.19"
 rusqlite = { version = "0.39", features = ["bundled", "serialize", "backup"] }
 docx-rs = "0.4"
 serde_json = "1.0"
+rust_xlsxwriter = "0.95"
+calamine = "0.35"
 
 [target.'cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))'.dependencies]
 hwpers = "0.5"
 genpdfi = "0.2.7"
-rust_xlsxwriter = "0.95"
-calamine = "0.35"
 
 [profile.dev]
 incremental = false
