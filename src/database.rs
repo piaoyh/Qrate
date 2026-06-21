@@ -10,10 +10,10 @@
 
 use std::ptr::copy_nonoverlapping;
 // use std::time::Duration;
-use rusqlite::{ Connection, ffi, Error };
+use rusqlite::{ Connection, ffi };
 // use rusqlite::backup::Backup;
 
-use crate::check_path;
+use crate::{ ErrorMessage, check_path };
 
 
 /// Represents an SQLite database connection.
@@ -37,16 +37,18 @@ pub struct SQLiteDB
 
 impl SQLiteDB
 {
-    // pub fn open_with_ext(path: String, extention: &str) -> Option<Self>
+    // pub fn open_with_ext(path: String, extention: &str) -> Result<Self, ErrorMessage>
     /// Opens a new connection to an SQLite database.
     ///
     /// # Arguments
     /// * `path` - The path to the database file.
-    /// * `extention` - The file extension to append if the path does not have one.
+    /// * `extention` - The file extension to append
+    ///   if the path does not have one.
     ///
     /// # Returns
-    /// An `Option<Self>` which is `Some(SQLiteDB)` on successful connection,
-    /// or `None` on failure.
+    /// An `Result<Self, ErrorMessage>`which is:
+    /// * `Ok(SQLiteDB)` on successful connection, or
+    /// * `Err(ErrorMessage::FailedToOpenDatabase)` on failure.
     ///
     /// # Examples
     /// ```
@@ -54,25 +56,28 @@ impl SQLiteDB
     ///
     /// // In a real scenario, you would provide a file path.
     /// let db = SQLiteDB::open_with_ext("./CProgramming".to_string(), "qbdb");
-    /// assert!(db.is_some());
+    /// assert!(db.is_ok());
     /// ```
-    pub fn open_with_ext(path: String, extention: &str) -> Option<Self>
+    pub fn open_with_ext(path: String, extention: &str) -> Result<Self, ErrorMessage>
     {
         let extended_path = check_path(path, extention);
         if let Ok(con) = Connection::open(&extended_path)
-            { Some(Self { path: extended_path, conn: con }) }
+            { Ok(Self { path: extended_path, conn: con }) }
         else
-            { None }
+            { Err(ErrorMessage::FailedToOpenDatabase) }
     }
 
-    // pub fn open_in_memory(data: &[u8]) -> Option<Self>
+    // pub fn open_in_memory(data: &[u8]) -> Result<Self, ErrorMessage>
     /// Opens a new connection to an SQLite database in memory.
     ///
     /// # Arguments
-    /// * `data` - contains the contents of the SQLite database opened outside and read.
+    /// * `data` - contains the contents of the SQLite database opened outside
+    /// of the application and read.
     ///
     /// # Output
-    /// An `Option<Self>` which is `Some(SQLiteDB)` on successful connection, or `None` on failure.
+    /// An `Result<Self, ErrorMessage>` which is:
+    /// * `Ok(SQLiteDB)` on successful connection, or
+    /// * `Err(ErrorMessage::FailedToReceiveDatabaseFromMemory)` on failure.
     ///
     /// # Examples
     /// ```
@@ -82,9 +87,9 @@ impl SQLiteDB
     /// 
     /// // Using an in-memory database for the example.
     /// let db = SQLiteDB::open_in_memory(&data);
-    /// assert!(db.is_some());
+    /// assert!(db.is_ok());
     /// ```
-    pub fn open_in_memory(data: &[u8]) -> Option<Self>
+    pub fn open_in_memory(data: &[u8]) -> Result<Self, ErrorMessage>
     {
         if let Ok(conn) = Connection::open_in_memory()
         {
@@ -92,26 +97,30 @@ impl SQLiteDB
             let size = data.len() as i64;
             let data_ptr = unsafe { ffi::sqlite3_malloc(size as i32) as *mut u8 };
             if data_ptr.is_null()
-                { return None; }
+                { return Err(ErrorMessage::FailedToReceiveDatabaseFromMemory); }
             unsafe { copy_nonoverlapping(data.as_ptr(), data_ptr, data.len()); }
 
             // SQLITE_DESERIALIZE_FREEONCLOSE(1) | SQLITE_DESERIALIZE_RESIZEABLE(2)
             let flags = 1 | 2;
             let result = unsafe { ffi::sqlite3_deserialize(db_handle, b"main\0".as_ptr() as *const i8, data_ptr as *mut u8, size, size, flags) };
-            if result == 0 { Some(Self { path: String::new(), conn }) } else { None }
+            if result == 0
+                { Ok(Self { path: String::new(), conn }) }
+            else
+                { Err(ErrorMessage::FailedToReceiveDatabaseFromMemory) }
         }
         else
         {
-            None
+            Err(ErrorMessage::FailedToReceiveDatabaseFromMemory)
         }
     }
 
-    // pub fn open_empty_in_memory() -> Option<Self>
+    // pub fn open_empty_in_memory() -> Result<Self, ErrorMessage>
     /// Opens a new connection to an empty SQLite database in memory.
     /// 
     /// # Returns
-    /// An `Option<Self>` which is `Some(SQLiteDB)` on successful connection,
-    /// or `None` on failure.
+    /// An `Result<Self, ErrorMessage>` which is:
+    /// * `Ok(SQLiteDB)` on successful connection, or
+    /// * `Err(ErrorMessage::FailedToOpenEmptyDatabaseInMemory)` on failure.
     /// 
     /// # Examples
     /// ```
@@ -119,24 +128,25 @@ impl SQLiteDB
     /// 
     /// // Using an in-memory database for the example.
     /// let db = SQLiteDB::open_empty_in_memory();
-    /// assert!(db.is_some());
+    /// assert!(db.is_ok());
     /// ```
-    pub fn open_empty_in_memory() -> Option<Self>
+    pub fn open_empty_in_memory() -> Result<Self, ErrorMessage>
     {
         if let Ok(conn) = Connection::open_in_memory()
-            { Some(Self { path: String::new(), conn }) }
+            { Ok(Self { path: String::new(), conn }) }
         else
-            { None }
+            { Err(ErrorMessage::FailedToOpenEmptyDatabaseInMemory) }
     }
 
-    // pub fn save_to_file(&self, file_path: &str) -> Result<(), Error>
+    // pub fn save_to_file(&self, file_path: &str) -> Result<(), ErrorMessage>
     /// Saves the database to a file.
     ///
     /// # Arguments
     /// * `file_path` - The path to the file where the database will be saved.
     ///
     /// # Returns
-    /// `Ok(())` if the database is saved successfully, `Err(())` otherwise.
+    /// `Ok(())` if the database is saved successfully,
+    /// `Err(ErrorMessage::FailedToWriteDatabase)` otherwise.
     ///
     /// # Examples
     /// ```
@@ -146,19 +156,22 @@ impl SQLiteDB
     /// let result = db.save_to_file("my_db.db");
     /// assert!(result.is_ok());
     /// ```
-    pub fn save_to_file(&self, file_path: &str) -> Result<(), Error>
+    pub fn save_to_file(&self, file_path: &str) -> Result<(), ErrorMessage>
     {
         let sql = format!("VACUUM INTO '{}'", file_path);
-        self.conn.execute(sql.as_str(), [])?;
-        Ok(())
+        match self.conn.execute(sql.as_str(), [])
+        {
+            Ok(_) => Ok(()),
+            Err(_) => Err(ErrorMessage::FailedToWriteDatabase),
+        }
     }
 
     // pub fn save_in_memory(&self) -> Result<Vec<u8>, Error>
     /// Saves the database to a byte vector in memory.
     ///
     /// # Returns
-    /// `Ok(Vec<u8>)` containing the serialized database if successful,
-    /// `Err(())` otherwise.
+    /// * `Ok(Vec<u8>)` containing the serialized database if successful,
+    /// * `Err(ErrorMessage::FailedToWriteDatabaseToMemory)` otherwise.
     ///
     /// # Examples
     /// ```
@@ -170,14 +183,14 @@ impl SQLiteDB
     /// let data = result.unwrap();
     /// assert!(!data.is_empty());
     /// ```
-    pub fn save_in_memory(&mut self) -> Result<Vec<u8>, Error>
+    pub fn save_in_memory(&mut self) -> Result<Vec<u8>, ErrorMessage>
     {
         let db_handle = unsafe { self.conn.handle() };
         let mut size: i64 = 0;
         let data_ptr = unsafe { ffi::sqlite3_serialize(db_handle, b"main\0".as_ptr() as *const i8, &mut size as *mut i64, 0) };
         if data_ptr.is_null()
         {
-            Err(Error::SqliteFailure(ffi::Error::new(1), None))
+            Err(ErrorMessage::FailedToWriteDatabaseToMemory)
         }
         else
         {
@@ -187,11 +200,12 @@ impl SQLiteDB
         }
     }
 
-    // pub fn close(self) -> Result<(), (Connection, Error)>
+    // pub fn close(self) -> Result<(), ErrorMessage>
     /// Closes the database connection.
     ///
     /// # Returns
-    /// `Ok(())` if the connection is closed successfully, `Err(())` otherwise.
+    /// `Ok(())` if the connection is closed successfully,
+    /// `Err(ErrorMessage::FailedToCloseDatabase)` otherwise.
     ///
     /// # Examples
     /// ```
@@ -202,18 +216,22 @@ impl SQLiteDB
     /// assert!(result.is_ok());
     /// ```
     #[inline]
-    pub fn close(self) -> Result<(), (Connection, Error)>
+    pub fn close(self) -> Result<(), ErrorMessage>
     {
-        self.conn.close()
+        match self.conn.close()
+        {
+            Ok(_) => Ok(()),
+            Err(_) => Err(ErrorMessage::FailedToCloseDatabase),
+        }
     }
 
-    // pub fn vacuum(&mut self) -> Result<usize, Error>
+    // pub fn vacuum(&mut self) -> Result<usize, ErrorMessage>
     /// Vacuum database
     /// 
     /// # Returns
     /// * `Ok(usize)` containing the number of rows affected by the VACUUM
     /// command.
-    /// * `Err(())` otherwise
+    /// * `Err(ErrorMessage)` otherwise
     ///
     /// # Examples
     /// ```
@@ -221,14 +239,15 @@ impl SQLiteDB
     ///
     /// let db = SQLiteDB::open(":memory:".to_string(), ".db").unwrap();
     /// db.vacuum();
+    /// assert!(db.is_ok());
     /// ```
     #[inline]
-    pub fn vacuum(&mut self) -> Result<usize, Error>
+    pub fn vacuum(&mut self) -> Result<usize, ErrorMessage>
     {
         match self.conn.execute("VACUUM", [])
         {
             Ok(rows_affected) => Ok(rows_affected),
-            Err(e) => Err(e),
+            Err(_) => Err(ErrorMessage::FailedToVacuumDatabase),
         }
     }
 

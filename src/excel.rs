@@ -11,7 +11,7 @@
 #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 use calamine::DataType;
 
-use crate::{ Question, Choices, check_path };
+use crate::{ Question, Choices, ErrorMessage, check_path };
 
 
 /// Represents an Excel file for question bank operations.
@@ -29,7 +29,7 @@ pub struct Excel
 #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 impl Excel
 {
-    // pub fn open(path: String, extention: &str) -> Option<Self>
+    // pub fn open(path: String, extention: &str) -> Result<Self, ErrorMessage>
     /// Creates a new `Excel` instance with a given path.
     ///
     /// # Arguments
@@ -37,7 +37,8 @@ impl Excel
     /// * `extention` - The file extension to append if the path does not have one.
     ///
     /// # Returns
-    /// An `Option<Self>` containing the `Excel` instance.
+    /// An `Result<Self, ErrorMessage>`which is:
+    /// * `Ok(SQLiteDB)` always.
     /// 
     /// # Features
     /// If the path does not have an extension, `extention` is appended.
@@ -47,13 +48,13 @@ impl Excel
     /// use qrate::Excel;
     ///
     /// let excel_handler = Excel::open("my_quiz".to_string(), ".qb.xlsx");
-    /// assert!(excel_handler.is_some());
+    /// assert!(excel_handler.is_ok());
     /// assert_eq!(excel_handler.unwrap().get_path(), "my_quiz.qb.xlsx");
     /// ```
     #[inline]
-    pub fn open_with_ext(path: String, extention: &str) -> Option<Self>
+    pub fn open_with_ext(path: String, extention: &str) -> Result<Self, ErrorMessage>
     {
-        Some(Self { path: check_path(path, extention) })
+        Ok(Self { path: check_path(path, extention) })
     }
 
     // pub fn get_path(&self) -> &String

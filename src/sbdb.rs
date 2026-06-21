@@ -8,13 +8,9 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 
-#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 use calamine::{ Reader, DataType }; // Add DataType here
 
-use crate::{ SBank, SQLiteDB, Student };
-
-#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
-use crate::Excel;
+use crate::{ SBank, SQLiteDB, Excel, Student, ErrorMessage };
 
 /// A trait defining the database operations for a Student Bank (`SBank`).
 ///
@@ -24,7 +20,7 @@ use crate::Excel;
 /// reading and writing student data.
 pub trait SBDB
 {
-    // fn open(path: String) -> Option<Self> where Self: Sized
+    // fn open(path: String) -> Result<Self, ErrorMessage> where Self: Sized
     /// Opens a connection to the student database.
     ///
     /// If the path does not have a file extension, a default extension
@@ -36,14 +32,18 @@ pub trait SBDB
     /// * `extention` - The file extension to append.
     ///
     /// # Returns
-    /// `Some(Self)` if the connection is successful, otherwise `None`.
+    /// `Result<SQLiteDB, ErrorMessage>` - A `Result` containing:
+    /// * `Ok(SQLiteDB)` if the connection is successful, or
+    /// * `Err(ErrorMessage::FailedToOpenSBank)` if it fails.
+    /// 
+    /// For in-memory databases, use `":memory:"` as the path.
     ///
     /// # Example 1 for SQLiteDB
     /// ```
     /// use qrate::{SBDB, SQLiteDB};
     ///
     /// let db = SQLiteDB::open(":memory:".to_string(), ".db");
-    /// assert!(db.is_some());
+    /// assert!(db.is_ok());
     /// ```
     ///
     /// # Example 2 for Excel
@@ -51,19 +51,24 @@ pub trait SBDB
     /// use qrate::{SBDB, Excel};
     ///
     /// let excel = Excel::open("students.sb.xlsx".to_string(), ".sb.xlsx");
-    /// assert!(excel.is_some());
+    /// assert!(excel.is_ok());
     /// // assert_eq!(excel.unwrap().get_path(), "students.sb.xlsx"); // Excel doesn't have get_path method directly on SBDB
     /// ```
-    fn open(path: String) -> Option<Self> where Self: Sized;
+    fn open(path: String) -> Result<Self, ErrorMessage> where Self: Sized;
 
-    // fn make_table(&self) -> Result<(), String>
+    // fn make_table(&self) -> Result<(), ErrorMessage>
     /// Creates the necessary table(s) for storing student data.
     ///
     /// For a database that already has the table,
     /// this should not produce an error.
     ///
     /// # Returns
-    /// `Ok(())` on success, or an error string on failure.
+    /// `Result<(), ErrorMessage>`
+    /// * `Ok(())` on success, or
+    /// * `Err(ErrorMessage::FailedToCreateHeaderForQBank)` if it fails to
+    ///   create the header table, or
+    /// * `Err(ErrorMessage::FailedToMakeTableForSBank)` if it fails to
+    ///   create the student list table.
     ///
     /// # Example 1 for SQLiteDB
     /// ```
@@ -86,15 +91,17 @@ pub trait SBDB
     /// assert!(Path::new(file_path).exists());
     /// std::fs::remove_file(file_path).unwrap(); // Clean up
     /// ```
-    fn make_table(&self) -> Result<(), String>;
+    fn make_table(&self) -> Result<(), ErrorMessage>;
 
-    // fn read_sbank(&self) -> Option<SBank>
+    // fn read_sbank(&self) -> Result<SBank, ErrorMessage>
     /// Reads all student data from the database into an `SBank`.
     ///
     /// # Returns
-    /// `Some(SBank)` containing all students found in the database. Returns an
-    /// empty `SBank` if no students are found. Returns `None` if a database
-    /// read error occurs.
+    /// `Result<SBank, ErrorMessage>`
+    /// * `Ok(SBank)` if the SBank is successfully read, or
+    /// * `Err(ErrorMessage::FailedToReadHeaderForSBank)` if reading
+    ///    the header fails, or
+    /// * `Err(ErrorMessage::FailedToOpenSBank)` if it fails.
     ///
     /// # Example 1 for SQLiteDB
     /// ```
@@ -108,7 +115,7 @@ pub trait SBDB
     /// db.write_sbank(&sbank).unwrap();
     ///
     /// let read_sbank = db.read_sbank();
-    /// assert!(read_sbank.is_some());
+    /// assert!(read_sbank.is_ok());
     /// let read_bank = read_sbank.unwrap();
     /// assert_eq!(read_bank.len(), 1);
     /// assert_eq!(read_bank.get(0).unwrap().get_name(), "Alice");
@@ -127,16 +134,16 @@ pub trait SBDB
     /// excel.write_sbank(&sbank).unwrap();
     ///
     /// let read_sbank = excel.read_sbank();
-    /// assert!(read_sbank.is_some());
+    /// assert!(read_sbank.is_ok());
     /// let read_bank = read_sbank.unwrap();
     /// assert_eq!(read_bank.len(), 1);
     /// assert_eq!(read_bank.get(0).unwrap().get_name(), "Bob");
     ///
     /// fs::remove_file(file_path).unwrap(); // Clean up
     /// ```
-    fn read_sbank(&self) -> Option<SBank>;
+    fn read_sbank(&self) -> Result<SBank, ErrorMessage>;
 
-    // fn write_sbank(&mut self, sbank: &SBank) -> Result<(), String>
+    // fn write_sbank(&mut self, sbank: &SBank) -> Result<(), ErrorMessage>
     /// Writes the contents of an `SBank` to the database.
     ///
     /// This will insert all students from the `SBank` into the database.
@@ -148,7 +155,15 @@ pub trait SBDB
     /// containing the students to be written.
     ///
     /// # Returns
-    /// `Ok(())` on success, or an error string on failure.
+    /// `Result<(), ErrorMessage>`
+    /// * `Ok(())` on success,
+    /// * `Err(ErrorMessage::EmptySBank)` if the student bank is empty,
+    /// * `Err(ErrorMessage::FailedToMakeTableForSBank)`
+    ///   if it fails to create the necessary tables,
+    /// * `Err(ErrorMessage::FailedToWriteHeaderForSBank)`
+    ///   if writing the header fails, or
+    /// * `Err(ErrorMessage::FailedToWriteSBank)`
+    ///   if writing a question fails.
     ///
     /// # Example 1 for SQLiteDB
     /// ```
@@ -188,13 +203,13 @@ pub trait SBDB
     ///
     /// fs::remove_file(file_path).unwrap(); // Clean up
     /// ```
-    fn write_sbank(&mut self, sbank: &SBank) -> Result<(), String>;
+    fn write_sbank(&mut self, sbank: &SBank) -> Result<(), ErrorMessage>;
 }
 
 
 impl SBDB for SQLiteDB
 {
-    // fn open(path: String, extention: &str) -> Option<SQLiteDB>
+    // fn open(path: String, extention: &str) ->Result<Self, ErrorMessage>
     /// Implements `open` for `SQLiteDB`.
     /// 
     /// Appends `.sbdb` to the path
@@ -205,13 +220,19 @@ impl SBDB for SQLiteDB
     /// * `extention` - The file extension to append.
     ///
     /// # Returns
-    /// `Option<SQLiteDB>` - An optional `SQLiteDB` instance
-    /// if the connection is successful.
+    /// `Result<SQLiteDB, ErrorMessage>` - A `Result` containing:
+    /// * `Ok(SQLiteDB)` if the connection is successful, or
+    /// * `Err(ErrorMessage::FailedToOpenSBank)` if it fails.
+    /// 
     /// For in-memory databases, use `":memory:"` as the path.
-    #[inline]
-    fn open(path: String) -> Option<SQLiteDB>
+    fn open(path: String) -> Result<Self, ErrorMessage>
     {
-        SQLiteDB::open_with_ext(path, "sbdb")
+        if !path.is_empty()
+        {
+            if let Ok(db) = SQLiteDB::open_with_ext(path, "sbdb")
+                { return Ok(db); }
+        }
+        Err(ErrorMessage::FailedToOpenSBank)
     }
 
     // fn make_table(&self) -> Result<(), String>
@@ -219,45 +240,67 @@ impl SBDB for SQLiteDB
     /// Executes a `CREATE TABLE` SQL statement for `tblStudents`.
     ///
     /// # Returns
-    /// `Result<(), String>` - `Ok(())` on success,
-    /// or an error message string on failure.
-    fn make_table(&self) -> Result<(), String>
+    /// `Result<(), ErrorMessage>`
+    /// * `Ok(())` on success, or
+    /// * `Err(ErrorMessage::FailedToCreateHeaderForQBank)` if it fails to
+    ///   create the header table, or
+    /// * `Err(ErrorMessage::FailedToMakeTableForSBank)` if it fails to
+    ///   create the student list table.
+    fn make_table(&self) -> Result<(), ErrorMessage>
     {
         let sql = r#"CREATE TABLE IF NOT EXISTS tblHeader (version INTEGER NOT NULL);"#;
         if let Err(e) = self.conn.execute(sql, [])
-            { return Err(format!("Failed to create table tblHeader!! {}", e)) }
+            { return Err(ErrorMessage::FailedToCreateHeaderForSBank); }
         
         let sql = r#"CREATE TABLE IF NOT EXISTS tblStudents (
     name        TEXT NOT NULL,
     id          TEXT NOT NULL
 );"#;
-        self.conn.execute(sql, []).map(|_| ()).map_err(|e| format!("Failed to create table tblStudents: {}", e))
+        match self.conn.execute(sql, [])
+        {
+            Ok(_) => Ok(()),
+            Err(_) => Err(ErrorMessage::FailedToMakeTableForSBank),
+        }
     }
 
-    // fn read_sbank(&self) -> Option<SBank>
+    // fn read_sbank(&self) -> Result<SBank, ErrorMessage>
     /// Implements `read_sbank` for `SQLiteDB`.
     /// Queries the `tblStudents` table and maps each row to a `Student` struct.
     ///
     /// # Returns
-    /// `Option<SBank>` - An optional `SBank` containing all students from the
-    /// database. Returns `None` if a database read error occurs.
-    fn read_sbank(&self) -> Option<SBank>
+    /// `Result<SBank, ErrorMessage>`
+    /// * `Ok(SBank)` if the SBank is successfully read, or
+    /// * `Err(ErrorMessage::FailedToReadHeaderForSBank)` if reading
+    ///    the header fails, or
+    /// * `Err(ErrorMessage::FailedToOpenSBank)` if it fails.
+    fn read_sbank(&self) -> Result<SBank, ErrorMessage>
     {
         let mut sbank = SBank::new();
-        let mut stmt = self.conn.prepare("SELECT * FROM tblHeader;").ok()?;
-        let version: u32 = stmt.query_row([], |row| row.get(0)).ok()?;
-
-        let mut stmt = self.conn.prepare("SELECT * FROM tblStudents ORDER BY id;").ok()?;
-        let student_iter = stmt.query_map([], |row| {
-            Ok(Student::new(row.get(0)?, row.get(1)?))
-        }).ok()?;
-
-        let students = student_iter.filter_map(|res| res.ok()).collect::<Vec<Student>>();
-        for student in students
-            { sbank.push_student(student); }
-        sbank.set_version(version);
-        sbank.sort();
-        Some(sbank)
+        if let Ok(mut stmt) = self.conn.prepare("SELECT * FROM tblHeader;")
+        {
+            if let Ok(version) = stmt.query_row([], |row| row.get(0))
+            {
+                if let Ok(mut stmt) = self.conn.prepare("SELECT * FROM tblStudents ORDER BY id;")
+                {
+                    if let Ok(student_iter) = stmt.query_map([], |row| {
+                        Ok(Student::new(row.get(0)?, row.get(1)?))
+                    })
+                    {
+                        let students = student_iter.filter_map(|res| res.ok()).collect::<Vec<Student>>();
+                        for student in students
+                            { sbank.push_student(student); }
+                        sbank.set_version(version);
+                        sbank.sort();
+                        return Ok(sbank);
+                    }
+                }
+            }
+            else
+            {
+                return Err(ErrorMessage::FailedToReadHeaderForSBank);
+            }
+        }
+        Err(ErrorMessage::FailedToOpenSBank)
     }
 
     // fn write_sbank(&self, sbank: &SBank) -> Result<(), String>
@@ -268,23 +311,50 @@ impl SBDB for SQLiteDB
     /// * `sbank` - A reference to the `SBank` to be written to the database.
     /// 
     /// # Returns
-    /// `Result<(), String>` - `Ok(())` on success,
-    /// or an error message string on failure.
-    fn write_sbank(&mut self, sbank: &SBank) -> Result<(), String>
+    /// `Result<(), ErrorMessage>`
+    /// * `Ok(())` on success,
+    /// * `Err(ErrorMessage::EmptySBank)` if the student bank is empty,
+    /// * `Err(ErrorMessage::FailedToMakeTableForSBank)`
+    ///   if it fails to create the necessary tables,
+    /// * `Err(ErrorMessage::FailedToWriteHeaderForSBank)`
+    ///   if writing the header fails, or
+    /// * `Err(ErrorMessage::FailedToWriteSBank)`
+    ///   if writing a question fails.
+    fn write_sbank(&mut self, sbank: &SBank) -> Result<(), ErrorMessage>
     {
-        let _ = self.make_table();
-        if sbank.is_empty()
-            { return Ok(()); }  // Nothing to write, which is a success.
-
-        let tx = self.conn.transaction().map_err(|e| e.to_string())?;
+        if let Ok(_) = self.make_table()
         {
-            let mut stmt = tx.prepare("INSERT INTO tblHeader (version) VALUES (?1);").map_err(|e| e.to_string())?;
-            stmt.execute((sbank.get_version(),)).map_err(|e| format!("Failed to insert version {}: {}", sbank.get_version(), e))?;
-            let mut stmt = tx.prepare("INSERT INTO tblStudents (name, id) VALUES (?1, ?2);").map_err(|e| e.to_string())?;
-            for student in sbank.get_students()
-                { stmt.execute((student.get_name(), student.get_id())).map_err(|e| format!("Failed to insert student {}: {}", student.get_id(), e))?; }
+            if sbank.is_empty()
+                { return Err(ErrorMessage::EmptySBank); }  // Nothing to write
+
+            let mut tx = self.conn.transaction();
+            if tx.is_ok()
+            {
+                let tx_ = tx.unwrap();
+                if let Ok(mut stmt) = tx_.prepare("INSERT INTO tblHeader (version) VALUES (?1);")
+                {
+                    if stmt.execute((sbank.get_version(),)).is_ok()
+                    {
+                        if let Ok(mut stmt) = tx_.prepare("INSERT INTO tblStudents (name, id) VALUES (?1, ?2);")
+                        {
+                            for student in sbank.get_students()
+                            {
+                                if stmt.execute((student.get_name(), student.get_id())).is_err()
+                                    { break; }
+                            }
+                        }
+                    }
+                }
+                tx = Ok(tx_);
+            }
+            if tx.unwrap().commit().is_ok()
+                { return Ok(()); }
         }
-        tx.commit().map_err(|e| e.to_string())
+        else
+        {
+            return Err(ErrorMessage::FailedToMakeTableForSBank);
+        }
+        Err(ErrorMessage::FailedToWriteSBank)
     }
 }
 
@@ -292,7 +362,7 @@ impl SBDB for SQLiteDB
 #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 impl SBDB for Excel
 {
-    // fn open(path: String) -> Option<Self>
+    // fn open(path: String) -> Result<Self, ErrorMessage>
     /// Implements `open` for `Excel`.
     /// Appends `.sb.xlsx` to the path if no extension is present and opens an Excel file.
     ///
@@ -301,10 +371,10 @@ impl SBDB for Excel
     /// * `extention` - The file extension to append.
     ///
     /// # Returns
-    /// `Option<Excel>` - An optional `Excel` instance
-    /// if the file is opened successfully.
+    /// An `Result<Self, ErrorMessage>`which is:
+    /// * `Ok(Excel)` always.
     #[inline]
-    fn open(path: String) -> Option<Self>
+    fn open(path: String) -> Result<Self, ErrorMessage>
     where Self: Sized
     {
         Excel::open_with_ext(path, "sb.xlsx")
@@ -338,10 +408,9 @@ impl SBDB for Excel
     /// and starts reading from the second row.
     /// 
     /// # Returns
-    /// `Option<SBank>` - An optional `SBank` containing all students read from
-    /// the Excel file. Returns `None` if an error occurs while reading the file
-    /// or if the "Students" sheet is not found.
-    fn read_sbank(&self) -> Option<SBank>
+    /// `Result<SBank, ErrorMessage>` - A `Result` containing the `SBank` if successful,
+    /// or an error message if reading fails.
+    fn read_sbank(&self) -> Result<SBank, ErrorMessage>
     {
         let mut sbank = SBank::new();
         let mut excel = calamine::open_workbook_auto(&self.path).ok()?;
@@ -357,7 +426,7 @@ impl SBDB for Excel
                 row.get(1).and_then(|d| d.as_string())? // Assuming ID is always string or convertible
             ));
         }
-        Some(sbank)
+        Ok(sbank)
     }
     
     // fn write_sbank(&mut self, sbank: &SBank) -> Result<(), String>

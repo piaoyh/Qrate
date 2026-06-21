@@ -8,16 +8,11 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 
-#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 use calamine::{ DataType, Reader, open_workbook_auto };
-
-#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
+use genpdfi::error::Error;
 use rust_xlsxwriter::{ Format, FormatBorder, Workbook };
 
-use crate::{ Header, QBank, SQLiteDB, Choices, Question };
-
-#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
-use crate::Excel;
+use crate::{ Header, QBank, SQLiteDB, Excel, Choices, Question, ErrorMessage };
 
 
 /// A trait defining the database operations for a Question Bank (`QBank`).
@@ -32,7 +27,7 @@ use crate::Excel;
 /// interacting with the question bank.
 pub trait QBDB
 {
-    // fn open(path: String, extention: &str) -> Option<Self> where Self: Sized;
+    // fn open(path: String, extention: &str) -> Result<Self, ErrorMessage> where Self: Sized
     /// Opens a connection to the question bank database.
     /// If the path has no extension, proper extention is appended.
     ///
@@ -41,15 +36,16 @@ pub trait QBDB
     /// * `extention` - The file extension to append.
     ///
     /// # Returns
-    /// `Option<Self>` - An optional `Self` instance
-    /// if the connection is successful.
+    /// `Result<Self, ErrorMessage>`
+    /// * `Ok(Self)` if the connection is successful, or
+    /// * `Err(ErrorMessage::FailedToOpenQBank)` if it fails.
     ///
     /// # Example 1 for SQLiteDB
     /// ```
     /// use qrate::{ SQLiteDB, QBDB };
     ///
     /// let db = SQLiteDB::open(":memory:".to_string());
-    /// assert!(db.is_some());
+    /// assert!(db.is_ok());
     /// ```
     ///
     /// # Example 2 for Excel
@@ -57,11 +53,11 @@ pub trait QBDB
     /// use qrate::{ Excel, QBDB };
     ///
     /// let excel = Excel::open("test_quiz.qb.xlsx".to_string());
-    /// assert!(excel.is_some());
+    /// assert!(excel.is_ok());
     /// ```
-    fn open(path: String) -> Option<Self> where Self: Sized;
+    fn open(path: String) -> Result<Self, ErrorMessage> where Self: Sized;
 
-    // fn make_tables(&self, categories: u8, choices: u8) -> Result<(), String>
+    // fn make_tables(&mut self, categories: u8, choices: u8) -> Result<(), ErrorMessage>
     /// Creates the necessary tables in the database.
     ///
     /// # Arguments
@@ -69,7 +65,12 @@ pub trait QBDB
     /// * `choices` - The number of choice columns to create in Questions table.
     ///
     /// # Returns
-    /// `Result<(), String>` - `Ok(())` on success, or an error string on failure.
+    /// `Result<(), ErrorMessage>`
+    /// * `Ok(())` on success, or
+    /// * `Err(ErrorMessage::FailedToCreateHeaderForQBank)` if it fails to
+    ///   create the header table, or
+    /// * `Err(ErrorMessage::FailedToMakeTableForQBank)` if `categories` is `0`
+    ///   or it fails to create the question table.
     /// 
     /// # Features
     /// If `choices` is zero, this method will not make Questions table.
@@ -95,15 +96,15 @@ pub trait QBDB
     /// assert!(Path::new(file_path).exists());
     /// std::fs::remove_file(file_path).unwrap(); // Clean up
     /// ```
-    fn make_tables(&self, categories: u8, choices: u8) -> Result<(), String>;
+    fn make_tables(&mut self, categories: u8, choices: u8) -> Result<(), ErrorMessage>;
 
-    // fn read_header(&self) -> Option<Header>
+    // fn read_header(&self) -> Result<Header, ErrorMessage>
     /// Reads the `Header` data from the database.
     ///
     /// # Returns
-    /// `Option<Header>` - An `Option<Header>`
-    /// which is `Some(Header)` on success,
-    /// or `None` if not found or on error.
+    /// `Result<Header, ErrorMessage>`
+    /// * `Ok(Header)` if the header is successfully read, or
+    /// * `Err(ErrorMessage::FailedToReadHeaderForQBank)` if it fails.
     ///
     /// # Example 1 for SQLiteDB
     /// ```
@@ -114,7 +115,7 @@ pub trait QBDB
     /// db.write_header_with_default().unwrap();
     ///
     /// let header = db.read_header();
-    /// assert!(header.is_some());
+    /// assert!(header.is_ok());
     /// assert_eq!(header.unwrap().get_title(), "Examination");
     /// ```
     ///
@@ -128,18 +129,19 @@ pub trait QBDB
     /// excel.write_header_with_default().unwrap();
     ///
     /// let header = excel.read_header();
-    /// assert!(header.is_some());
+    /// assert!(header.is_ok());
     /// assert_eq!(header.unwrap().get_title(), "Examination");
     /// fs::remove_file(file_path).unwrap(); // Clean up
     /// ```
-    fn read_header(&self) -> Option<Header>;
+    fn read_header(&self) -> Result<Header, ErrorMessage>;
 
-    // fn write_header_with_default(&self) -> Result<(), String>
+    // fn write_header_with_default(&self) -> Result<(), ErrorMessage>
     /// Writes a default `Header` to the database.
     ///
     /// # Returns
-    /// `Result<(), String>` - `Ok(())` on success,
-    /// or an error message string on failure.
+    /// `Result<(), ErrorMessage>`
+    /// * `Ok(())` on success, or
+    /// * `Err(ErrorMessage::FailedToWriteHeaderForQBank)` on failure.
     ///
     /// # Example 1 for SQLiteDB
     /// ```
@@ -164,17 +166,18 @@ pub trait QBDB
     /// assert!(Path::new(file_path).exists());
     /// fs::remove_file(file_path).unwrap(); // Clean up
     /// ```
-    fn write_header_with_default(&mut self) -> Result<(), String>;
+    fn write_header_with_default(&mut self) -> Result<(), ErrorMessage>;
 
-    // fn write_header(&self, header: &Header) -> Result<(), String>
+    // fn write_header(&self, header: &Header) -> Result<(), ErrorMessage>
     /// Writes a given `Header` to the database.
     ///
     /// # Arguments
     /// * `header` - A reference to the `Header` to be written to the database.
     ///
     /// # Returns
-    /// `Result<(), String>` - `Ok(())` on success,
-    /// or an error message string on failure.
+    /// `Result<(), ErrorMessage>`
+    /// * `Ok(())` on success, or
+    /// * `Err(ErrorMessage::FailedToWriteHeaderForQBank)` on failure.
     ///
     /// # Example 1 for SQLiteDB
     /// ```
@@ -216,14 +219,17 @@ pub trait QBDB
     /// assert_eq!(read_header.get_title(), "Math Exam");
     /// fs::remove_file(file_path).unwrap(); // Clean up
     /// ```
-    fn write_header(&mut self, header: &Header) -> Result<(), String>;
+    fn write_header(&mut self, header: &Header) -> Result<(), ErrorMessage>;
 
-    // fn read_qbank(&self) -> Option<QBank>
+    // fn read_qbank(&self) -> Result<QBank, ErrorMessage>
     /// Reads the entire `QBank` (header and all questions) from the database.
     ///
     /// # Returns
-    /// `Option<QBank>` - An `Option<QBank>` which is `Some(QBank)` on success,
-    /// or `None` on failure.
+    /// `Result<QBank, ErrorMessage>`
+    /// * `Ok(QBank)` if the QBank is successfully read, or
+    /// * `Err(ErrorMessage::FailedToReadHeaderForQBank)` if reading
+    ///    the header fails, or
+    /// * `Err(ErrorMessage::FailedToOpenQBank)` if it fails.
     ///
     /// # Example 1 for SQLiteDB
     /// ```
@@ -240,7 +246,7 @@ pub trait QBDB
     /// db.write_qbank(&qbank_to_write).unwrap();
     ///
     /// let qbank_read = db.read_qbank();
-    /// assert!(qbank_read.is_some());
+    /// assert!(qbank_read.is_ok());
     /// let read_bank = qbank_read.unwrap();
     /// assert_eq!(read_bank.get_questions().len(), 1);
     /// assert_eq!(read_bank.get_header().get_title(), "Examination");
@@ -260,26 +266,33 @@ pub trait QBDB
     /// excel.write_qbank(&qbank_to_write).unwrap();
     ///
     /// let qbank_read = excel.read_qbank();
-    /// assert!(qbank_read.is_some());
+    /// assert!(qbank_read.is_ok());
     /// let read_bank = qbank_read.unwrap();
     /// assert_eq!(read_bank.get_questions().len(), 1);
     /// assert_eq!(read_bank.get_header().get_title(), "Examination");
     /// fs::remove_file(file_path).unwrap(); // Clean up
     /// ```
-    fn read_qbank(&self) -> Option<QBank>;
+    fn read_qbank(&self) -> Result<QBank, ErrorMessage>;
 
-    // fn write_qbank(&mut self, qbank: &QBank) -> Result<(), String>
+    // fn write_qbank(&mut self, qbank: &QBank) -> Result<(), ErrorMessage>
     /// Writes an entire `QBank` (header and all questions) to the database.
     ///
-    /// Note: This typically writes the questions. The header should be written separately
-    /// if it's not already present.
+    /// Note: This typically writes the questions. The header should be written
+    /// separately if it's not already present.
     ///
     /// # Arguments
     /// * `qbank` - A reference to the `QBank` to be written to the database.
     ///
     /// # Returns
-    /// `Result<(), String>` - `Ok(())` on success,
-    /// or an error message string on failure.
+    /// `Result<(), ErrorMessage>`
+    /// * `Ok(())` on success,
+    /// * `Err(ErrorMessage::EmptyQBank)` if the question bank is empty,
+    /// * `Err(ErrorMessage::FailedToMakeTableForQBank)`
+    ///   if it fails to create the necessary tables,
+    /// * `Err(ErrorMessage::FailedToWriteHeaderForQBank)`
+    ///   if writing the header fails, or
+    /// * `Err(ErrorMessage::FailedToWriteQBank)`
+    ///   if writing a question fails.
     ///
     /// # Example 1 for SQLiteDB
     /// ```
@@ -325,12 +338,12 @@ pub trait QBDB
     ///
     /// fs::remove_file(file_path).unwrap(); // Clean up
     /// ```
-    fn write_qbank(&mut self, qbank: &QBank) -> Result<(), String>;
+    fn write_qbank(&mut self, qbank: &QBank) -> Result<(), ErrorMessage>;
 }
 
 impl QBDB for SQLiteDB
 {
-    // fn open(path: String) -> Option<Self> where Self: Sized
+    // fn open(path: String) -> Result<Self, ErrorMessage> where Self: Sized
     /// Implements `open` for `SQLiteDB`.
     /// Appends `.qbdb` to the path if no extension is present and opens a connection.
     ///
@@ -338,20 +351,24 @@ impl QBDB for SQLiteDB
     /// * `path` - The file path for the database.
     ///
     /// # Returns
-    /// `Option<SQLiteDB>` - An optional `SQLiteDB` instance if the connection is successful.
+    /// `Result<SQLiteDB, ErrorMessage>` - A `Result` containing:
+    /// * `Ok(SQLiteDB)` if the connection is successful, or
+    /// * `Err(ErrorMessage::FailedToOpenQBank)` if it fails.
+    /// 
+    /// For in-memory databases, use `":memory:"` as the path.
     #[inline]
-    fn open(path: String) -> Option<Self>
+    fn open(path: String) -> Result<Self, ErrorMessage>
     where Self: Sized
     {
-        if path.is_empty()
-            { return SQLiteDB::open_empty_in_memory(); }
-        else
+        if !path.is_empty()
         {
-            SQLiteDB::open_with_ext(path, "qbdb")
+            if let Ok(db) = SQLiteDB::open_with_ext(path, "qbdb")
+                { return Ok(db); }
         }
+        Err(ErrorMessage::FailedToOpenQBank)
     }
 
-    // fn make_tables(&self, categories: u8, choices: u8) -> Result<(), String>
+    // fn make_tables(&mut self, categories: u8, choices: u8) -> Result<(), String>
     /// Creates tables for `SQLiteDB`.
     ///
     /// Dynamically constructs `CREATE TABLE` SQL statements for `tblHeader` and `tblQuestions`
@@ -362,10 +379,17 @@ impl QBDB for SQLiteDB
     /// * `choices` - The number of choice columns to create in `tblQuestions`.
     ///
     /// # Returns
-    /// `Result<(), String>` - `Ok(())` on success,
-    /// or an error message string on failure.
-    fn make_tables(&self, categories: u8, choices: u8) -> Result<(), String>
+    /// `Result<(), ErrorMessage>`
+    /// * `Ok(())` on success, or
+    /// * `Err(ErrorMessage::FailedToCreateHeaderForQBank)` if it fails to
+    ///   create the header table, or
+    /// * `Err(ErrorMessage::FailedToMakeTableForQBank)` if `categories` is `0`
+    ///   or it fails to create the question table.
+    fn make_tables(&mut self, categories: u8, choices: u8) -> Result<(), ErrorMessage>
     {
+        if categories == 0
+            { return Err(ErrorMessage::FailedToMakeTableForQBank); }
+
         let mut sql = r#"CREATE TABLE IF NOT EXISTS tblHeader (
     version INTEGER NOT NULL,
     title	TEXT NOT NULL,
@@ -375,70 +399,90 @@ impl QBDB for SQLiteDB
         for i in 1..=categories
             { sql += format!(",\n\tcategory{}\tTEXT NOT NULL", i).as_str(); }
         sql += "\n);";
-        if let Err(e) = self.conn.execute(sql.as_str(), [])
-            { return Err(format!("Failed to create table tblHeader!! {}", e)) }
-        if choices == 0
-            { return Ok(()); }
 
-        let mut sql = r#"CREATE TABLE IF NOT EXISTS tblQuestions (
+        let mut ret = Ok(());
+        let mut tx = self.conn.transaction();
+        if tx.is_ok()
+        {
+            let tx_ = tx.unwrap();
+            if tx_.execute(sql.as_str(), []).is_err()
+            {
+                ret = Err(ErrorMessage::FailedToCreateHeaderForQBank);
+            }
+            else
+            {
+                if choices != 0
+                {
+                    let mut sql = r#"CREATE TABLE IF NOT EXISTS tblQuestions (
     id	        INTEGER NOT NULL UNIQUE,
     modum       INTEGER NOT NULL,
     category    INTEGER NOT NULL,
     question	TEXT NOT NULL"#.to_string();
-        for i in 1..=choices
-        {
-            sql += &format!(",\n\tchoice{}_text\tTEXT", i);
-            sql += &format!(",\n\tchoice{}_is_answer\tBOOLEAN", i);
+                    for i in 1..=choices
+                    {
+                        sql += &format!(",\n\tchoice{}_text\tTEXT", i);
+                        sql += &format!(",\n\tchoice{}_is_answer\tBOOLEAN", i);
+                    }
+                    sql += ",\n\tPRIMARY KEY(id)\n);";
+                    if tx_.execute(sql.as_str(), []).is_err()
+                        { ret = Err(ErrorMessage::FailedToMakeTableForQBank); }
+                }
+            }
+            tx = Ok(tx_);
         }
-        sql += ",\n\tPRIMARY KEY(id)\n);";
-        match self.conn.execute(sql.as_str(), [])
-        {
-            Ok(_) => Ok(()),
-            Err(e) => Err(format!("Failed to create table tblQuestions!! {}", e)),
-        }
+        if tx.unwrap().commit().is_ok()
+            { return Ok(()); }
+        if ret == Ok(())
+            { return Err(ErrorMessage::FailedToMakeTableForQBank); }
+        ret
     }
 
-    // fn read_header(&self) -> Option<Header>
+    // fn read_header(&self) -> Result<Header, ErrorMessage>
     /// Implements `read_header` for `SQLiteDB`.
     ///
     /// Queries the `tblHeader` table and maps the first row to a `Header` struct.
     ///
     /// # Returns
-    /// `Option<Header>` - An optional `Header`
-    /// containing the header data from the database.
-    fn read_header(&self) -> Option<Header>
+    /// `Result<Header, ErrorMessage>`
+    /// * `Ok(Header)` if the header is successfully read, or
+    /// * `Err(ErrorMessage::FailedToReadHeaderForQBank)` if it fails.
+    fn read_header(&self) -> Result<Header, ErrorMessage>
     {
-        let mut stmt = self.conn.prepare("SELECT * FROM tblHeader;").ok()?;
-        let vec_header = stmt.query_map([], |row| {
-            let mut categories = Vec::new();
-            let mut i = 5; // Start from the 6th column (index 5) for categories
-            while let Ok(c) = row.get(i)
-            {
-                categories.push(c);
-                i += 1;
-            }
-            let mut header = Header::new(row.get(1)?, row.get(2)?,row.get(3)?,  categories, row.get(4)?);
-            header.set_version(row.get(0)?);
-            Ok(header)
-        }).ok()?;
-
-        for info in vec_header
+        if let Ok(mut stmt) = self.conn.prepare("SELECT * FROM tblHeader;")
         {
-            if let Ok(ff) = info
-                { return Some(ff); }
+            if let Ok(vec_header) = stmt.query_map([], |row| {
+                let mut categories = Vec::new();
+                let mut i = 5; // Start from the 6th column (index 5) for categories
+                while let Ok(c) = row.get(i)
+                {
+                    categories.push(c);
+                    i += 1;
+                }
+                let mut header = Header::new(row.get(1)?, row.get(2)?,row.get(3)?,  categories, row.get(4)?);
+                header.set_version(row.get(0)?);
+                Ok(header)
+            })
+            {
+                for info in vec_header
+                {
+                    if let Ok(header) = info
+                        { return Ok(header); }
+                }
+            }
         }
-        None
+        Err(ErrorMessage::FailedToReadHeaderForQBank)
     }
 
-    // fn write_header_with_default(&self) -> Result<(), String>
+    // fn write_header_with_default(&self) -> Result<(), ErrorMessage>
     /// Implements `write_header_with_default` for `SQLiteDB`.
     /// Creates a default `Header` and calls `write_header`.
     ///
     /// # Returns
-    /// `Result<(), String>` - `Ok(())` on success,
-    /// or an error message string on failure.
+    /// `Result<(), ErrorMessage>`
+    /// * `Ok(())` on success, or
+    /// * `Err(ErrorMessage::FailedToWriteHeaderForQBank)` on failure.
     #[inline]
-    fn write_header_with_default(&mut self) -> Result<(), String>
+    fn write_header_with_default(&mut self) -> Result<(), ErrorMessage>
     {
         self.write_header(&Header::new_with_default())
     }
@@ -453,9 +497,10 @@ impl QBDB for SQLiteDB
     /// * `header` - A reference to the `Header` to be written to the database.
     ///
     /// # Returns
-    /// `Result<(), String>` - `Ok(())` on success,
-    /// or an error message string on failure.
-    fn write_header(&mut self, header: &Header) -> Result<(), String>
+    /// `Result<(), ErrorMessage>`
+    /// * `Ok(())` on success, or
+    /// * `Err(ErrorMessage::FailedToWriteHeaderForQBank)` on failure.
+    fn write_header(&mut self, header: &Header) -> Result<(), ErrorMessage>
     {
         let _ = self.make_tables(header.get_categories().len() as u8, 0);
         let length = header.get_categories().len();
@@ -474,58 +519,68 @@ impl QBDB for SQLiteDB
         for category in header.get_categories()
             { params.push(category); }
 
-        self.conn.execute(sql.as_str(), &params[..]).map_err(|e| e.to_string())?;
-        Ok(())
+        match self.conn.execute(sql.as_str(), &params[..])
+        {
+            Ok(_) => Ok(()),
+            Err(_) => Err(ErrorMessage::FailedToWriteHeaderForQBank),
+        }
     }
 
-    // fn read_qbank(&self) -> Option<QBank>
+    // fn read_qbank(&self) -> Result<QBank, ErrorMessage>
     /// Implements `read_qbank` for `SQLiteDB`.
     ///
     /// First, it reads the header using `read_header`. Then, it queries the `tblQuestions` table,
     /// maps each row to a `Question` struct, and collects them into a new `QBank`.
     ///
     /// # Returns
-    /// `Option<QBank>` - An optional `QBank`
-    /// containing the header and all questions from the database.
-    fn read_qbank(&self) -> Option<QBank>
+    /// `Result<QBank, ErrorMessage>`
+    /// * `Ok(QBank)` if the QBank is successfully read, or
+    /// * `Err(ErrorMessage::FailedToReadHeaderForQBank)` if reading
+    ///    the header fails, or
+    /// * `Err(ErrorMessage::FailedToOpenQBank)` if it fails.
+    fn read_qbank(&self) -> Result<QBank, ErrorMessage>
     {
         let header = self.read_header()?;
-        let mut stmt = self.conn.prepare("SELECT * FROM tblQuestions ORDER BY id;").ok()?;
-        let vec_question = stmt.query_map([], |row| {
-            let id: u16 = row.get(0)?;
-            let group: u16 = row.get(1)?;
-            let category: u8 = row.get(2)?;
-            let question: String = row.get(3)?;
-            let mut choices = Choices::new();
-
-            // The loop will attempt to read pairs of choice_text and choice_is_answer.
-            // It stops when it can't read a pair, which is safer than a fixed limit.
-            
-            let mut idx = 4;
-            loop
-            {
-                if let (Ok(choice), Ok(is_answer)) = (row.get(idx), row.get(idx + 1))
-                    { choices.push((choice, is_answer)); }
-                else    // Stop if we can't read a complete choice pair.
-                    { break; }
-                idx += 2;
-            }
-            Ok(Question::new(id, group, category, question, choices))
-        }).ok()?;
-
-        let mut question_bank = QBank::new_with_header(header);
-        for result_question in vec_question
+        if let Ok(mut stmt) = self.conn.prepare("SELECT * FROM tblQuestions ORDER BY id;")
         {
-            if let Ok(question) = result_question
-                { question_bank.push_question(question); }
-            else
-                { return None; }
+            if let Ok(vec_question) = stmt.query_map([], |row| {
+                let id: u16 = row.get(0)?;
+                let group: u16 = row.get(1)?;
+                let category: u8 = row.get(2)?;
+                let question: String = row.get(3)?;
+                let mut choices = Choices::new();
+
+                // The loop will attempt to read pairs of choice_text and choice_is_answer.
+                // It stops when it can't read a pair, which is safer than a fixed limit.
+                
+                let mut idx = 4;
+                loop
+                {
+                    if let (Ok(choice), Ok(is_answer)) = (row.get(idx), row.get(idx + 1))
+                        { choices.push((choice, is_answer)); }
+                    else    // Stop if we can't read a complete choice pair.
+                        { break; }
+                    idx += 2;
+                }
+                Ok(Question::new(id, group, category, question, choices))
+            })
+            {
+                let mut question_bank = QBank::new_with_header(header);
+                for result_question in vec_question
+                {
+                    if let Ok(question) = result_question
+                        { question_bank.push_question(question); }
+                    else
+                        { return Err(ErrorMessage::FailedToOpenQBank); }
+                }
+                question_bank.sort();
+                return Ok(question_bank);
+            }
         }
-        question_bank.sort();
-        Some(question_bank)
+        Err(ErrorMessage::FailedToOpenQBank)
     }
 
-    // fn write_qbank(&mut self, qbank: &QBank) -> Result<(), String>
+    // fn write_qbank(&mut self, qbank: &QBank) -> Result<(), ErrorMessage>
     /// Implements `write_qbank` for `SQLiteDB`.
     ///
     /// Iterates through the questions in the provided `QBank` and inserts each one
@@ -536,56 +591,72 @@ impl QBDB for SQLiteDB
     /// * `qbank` - A reference to the `QBank` containing questions to be written to the database.
     ///
     /// # Returns
-    /// `Result<(), String>` - `Ok(())` on success,
-    /// or an error message string on failure.
-    fn write_qbank(&mut self, qbank: &QBank) -> Result<(), String>
+    /// `Result<(), ErrorMessage>`
+    /// * `Ok(())` on success,
+    /// * `Err(ErrorMessage::EmptyQBank)` if the question bank is empty,
+    /// * `Err(ErrorMessage::FailedToMakeTableForQBank)`
+    ///   if it fails to create the necessary tables,
+    /// * `Err(ErrorMessage::FailedToWriteHeaderForQBank)`
+    ///   if writing the header fails, or
+    /// * `Err(ErrorMessage::FailedToWriteQBank)`
+    ///   if writing a question fails.
+    fn write_qbank(&mut self, qbank: &QBank) -> Result<(), ErrorMessage>
     {
         let categories = qbank.get_header().get_categories().len() as u8;
         // 1. Determine the maximum number of choices in the entire bank to create a uniform SQL statement.
         let max_choices = qbank.get_max_choices();
-        let _ = self.make_tables(categories, max_choices as u8);
-        let _ = self.write_header(qbank.get_header());
-        if qbank.get_questions().is_empty()   // Nothing to write
-            { return Err("Empty QBank".to_string()); }
-
-        // 2. Build the SQL statement dynamically.
-        let mut sql = "INSERT INTO tblQuestions (id, modum, category, question".to_string();
-        let mut values = "?, ?, ?, ?".to_string();
-        for i in 1..=max_choices
+        if let Ok(_) = self.make_tables(categories, max_choices as u8)
         {
-            sql += &format!(", choice{}_text, choice{}_is_answer", i, i);
-            values += ", ?, ?";
-        }
-        sql += &format!(") VALUES ({});", values);
-
-        // 3. Iterate through questions and execute the INSERT statement.
-        for elem in qbank.get_questions()
-        {
-            let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
-            params.push(Box::new(elem.get_id()));
-            params.push(Box::new(elem.get_group()));
-            params.push(Box::new(elem.get_category()));
-            params.push(Box::new(elem.get_question().clone()));
-
-            let choices = elem.get_choices();
-            for i in 0..max_choices
+            if let Ok(_) = self.write_header(qbank.get_header())
             {
-                if i < choices.len()
+                if qbank.get_questions().is_empty()   // Nothing to write
+                    { return Err(ErrorMessage::EmptyQBank); }
+
+                // 2. Build the SQL statement dynamically.
+                let mut sql = "INSERT INTO tblQuestions (id, modum, category, question".to_string();
+                let mut values = "?, ?, ?, ?".to_string();
+                for i in 1..=max_choices
                 {
-                    params.push(Box::new(choices[i].0.clone())); // choice_text
-                    params.push(Box::new(choices[i].1)); // choice_is_answer
+                    sql += &format!(", choice{}_text, choice{}_is_answer", i, i);
+                    values += ", ?, ?";
                 }
-                else    // Pad with NULLs if the question has fewer choices than the max.
+                sql += &format!(") VALUES ({});", values);
+
+                // 3. Iterate through questions and execute the INSERT statement.
+                for elem in qbank.get_questions()
                 {
-                    params.push(Box::new(rusqlite::types::Value::Null));
-                    params.push(Box::new(rusqlite::types::Value::Null));
+                    let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+                    params.push(Box::new(elem.get_id()));
+                    params.push(Box::new(elem.get_group()));
+                    params.push(Box::new(elem.get_category()));
+                    params.push(Box::new(elem.get_question().clone()));
+
+                    let choices = elem.get_choices();
+                    for i in 0..max_choices
+                    {
+                        if i < choices.len()
+                        {
+                            params.push(Box::new(choices[i].0.clone())); // choice_text
+                            params.push(Box::new(choices[i].1)); // choice_is_answer
+                        }
+                        else    // Pad with NULLs if the question has fewer choices than the max.
+                        {
+                            params.push(Box::new(rusqlite::types::Value::Null));
+                            params.push(Box::new(rusqlite::types::Value::Null));
+                        }
+                    }
+
+                    let params_for_exec: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+                    if let Ok(_) = self.conn.execute(&sql, &params_for_exec[..])
+                        { return Ok(()); }
                 }
             }
-
-            let params_for_exec: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
-            self.conn.execute(&sql, &params_for_exec[..]).map_err(|e| e.to_string())?;
         }
-        Ok(())
+        else
+        {
+            return Err(ErrorMessage::FailedToMakeTableForQBank);
+        }
+        Err(ErrorMessage::FailedToWriteQBank)
     }
 }
 
@@ -594,7 +665,7 @@ impl QBDB for SQLiteDB
 #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 impl QBDB for Excel
 {
-    // fn open(path: String) -> Option<Self> where Self: Sized
+    // fn open(path: String) -> Result<Self, ErrorMessage> where Self: Sized
     /// Implements `open` for `Excel`.
     /// Appends `.qb.xlsx` to the path if no extension is present.
     /// 
@@ -606,10 +677,15 @@ impl QBDB for Excel
     /// if the workbook is successfully opened.
     /// None otherwise.
     #[inline]
-    fn open(path: String) -> Option<Self>
+    fn open(path: String) -> Result<Self, ErrorMessage>
     where Self: Sized
     {
-        Excel::open_with_ext(path, "qb.xlsx")
+        if !path.is_empty()
+        {
+            if let Ok(db) = Excel::open_with_ext(path, "qb.xlsx")
+                { return Ok(db); }
+        }
+        Err(ErrorMessage::FailedToOpenQBank)
     }
 
     // fn make_tables(&self, choices: u8) -> Result<(), String>
@@ -636,7 +712,6 @@ impl QBDB for Excel
         header_sheet.write_string_with_format(4, 0, "Notice", &bold_border_format).map_err(|e| e.to_string())?;
         header_sheet.write_string_with_format(5, 0, "Categories", &bold_border_format).map_err(|e| e.to_string())?;
 
-        
         // 2. Create "Questions" sheet
         if choices != 0
         {
