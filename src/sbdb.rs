@@ -8,7 +8,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 
-use calamine::{ Reader, DataType }; // Add DataType here
+use calamine::{ Reader, DataType };
 
 use crate::{ SBank, SQLiteDB, Excel, Student, ErrorMessage };
 
@@ -56,7 +56,7 @@ pub trait SBDB
     /// ```
     fn open(path: String) -> Result<Self, ErrorMessage> where Self: Sized;
 
-    // fn make_table(&self) -> Result<(), ErrorMessage>
+    // fn make_table(&mut self) -> Result<(), ErrorMessage>
     /// Creates the necessary table(s) for storing student data.
     ///
     /// For a database that already has the table,
@@ -91,9 +91,9 @@ pub trait SBDB
     /// assert!(Path::new(file_path).exists());
     /// std::fs::remove_file(file_path).unwrap(); // Clean up
     /// ```
-    fn make_table(&self) -> Result<(), ErrorMessage>;
+    fn make_table(&mut self) -> Result<(), ErrorMessage>;
 
-    // fn read_sbank(&self) -> Result<SBank, ErrorMessage>
+    // fn read_sbank(&mut self) -> Result<SBank, ErrorMessage>
     /// Reads all student data from the database into an `SBank`.
     ///
     /// # Returns
@@ -141,7 +141,7 @@ pub trait SBDB
     ///
     /// fs::remove_file(file_path).unwrap(); // Clean up
     /// ```
-    fn read_sbank(&self) -> Result<SBank, ErrorMessage>;
+    fn read_sbank(&mut self) -> Result<SBank, ErrorMessage>;
 
     // fn write_sbank(&mut self, sbank: &SBank) -> Result<(), ErrorMessage>
     /// Writes the contents of an `SBank` to the database.
@@ -235,7 +235,7 @@ impl SBDB for SQLiteDB
         Err(ErrorMessage::FailedToOpenSBank)
     }
 
-    // fn make_table(&self) -> Result<(), String>
+    // fn make_table(&mut self) -> Result<(), String>
     /// Implements `make_table` for `SQLiteDB`.
     /// Executes a `CREATE TABLE` SQL statement for `tblStudents`.
     ///
@@ -246,24 +246,34 @@ impl SBDB for SQLiteDB
     ///   create the header table, or
     /// * `Err(ErrorMessage::FailedToMakeTableForSBank)` if it fails to
     ///   create the student list table.
-    fn make_table(&self) -> Result<(), ErrorMessage>
+    fn make_table(&mut self) -> Result<(), ErrorMessage>
     {
         let sql = r#"CREATE TABLE IF NOT EXISTS tblHeader (version INTEGER NOT NULL);"#;
-        if let Err(e) = self.conn.execute(sql, [])
-            { return Err(ErrorMessage::FailedToCreateHeaderForSBank); }
-        
-        let sql = r#"CREATE TABLE IF NOT EXISTS tblStudents (
+        let mut ret = Err(ErrorMessage::FailedToMakeTableForSBank);
+        let mut tx = self.conn.transaction();
+        if tx.is_ok()
+        {
+            let tx_ = tx.unwrap();
+            if tx_.execute(sql, []).is_ok()
+            {
+                let sql = r#"CREATE TABLE IF NOT EXISTS tblStudents (
     name        TEXT NOT NULL,
     id          TEXT NOT NULL
 );"#;
-        match self.conn.execute(sql, [])
-        {
-            Ok(_) => Ok(()),
-            Err(_) => Err(ErrorMessage::FailedToMakeTableForSBank),
+                if tx_.execute(sql, []).is_ok()
+                    { ret = Ok(()); }
+            }
+            else
+            {
+                ret = Err(ErrorMessage::FailedToCreateHeaderForSBank)
+            }
+            tx = Ok(tx_);
         }
+        tx.unwrap().commit();
+        ret
     }
 
-    // fn read_sbank(&self) -> Result<SBank, ErrorMessage>
+    // fn read_sbank(&mut self) -> Result<SBank, ErrorMessage>
     /// Implements `read_sbank` for `SQLiteDB`.
     /// Queries the `tblStudents` table and maps each row to a `Student` struct.
     ///
@@ -273,34 +283,46 @@ impl SBDB for SQLiteDB
     /// * `Err(ErrorMessage::FailedToReadHeaderForSBank)` if reading
     ///    the header fails, or
     /// * `Err(ErrorMessage::FailedToOpenSBank)` if it fails.
-    fn read_sbank(&self) -> Result<SBank, ErrorMessage>
+    fn read_sbank(&mut self) -> Result<SBank, ErrorMessage>
     {
         let mut sbank = SBank::new();
-        if let Ok(mut stmt) = self.conn.prepare("SELECT * FROM tblHeader;")
+        let mut ret = Err(ErrorMessage::FailedToOpenSBank);
+        let mut tx = self.conn.transaction();
+        if tx.is_ok()
         {
-            if let Ok(version) = stmt.query_row([], |row| row.get(0))
+            let tx_ = tx.unwrap();
+            if let Ok(mut stmt) = tx_.prepare("SELECT * FROM tblHeader;")
             {
-                if let Ok(mut stmt) = self.conn.prepare("SELECT * FROM tblStudents ORDER BY id;")
+                if let Ok(version) = stmt.query_row([], |row| row.get(0))
                 {
-                    if let Ok(student_iter) = stmt.query_map([], |row| {
-                        Ok(Student::new(row.get(0)?, row.get(1)?))
-                    })
+                    if let Ok(mut stmt) = tx_.prepare("SELECT * FROM tblStudents ORDER BY id;")
                     {
-                        let students = student_iter.filter_map(|res| res.ok()).collect::<Vec<Student>>();
-                        for student in students
-                            { sbank.push_student(student); }
-                        sbank.set_version(version);
-                        sbank.sort();
-                        return Ok(sbank);
+                        if let Ok(student_iter) = stmt.query_map([], |row| {
+                            Ok(Student::new(row.get(0)?, row.get(1)?))
+                        })
+                        {
+                            let students = student_iter.filter_map(|res| res.ok()).collect::<Vec<Student>>();
+                            for student in students
+                                { sbank.push_student(student); }
+                            sbank.set_version(version);
+                            sbank.sort();
+                            ret = Ok(sbank);
+                        }
                     }
+                }
+                else
+                {
+                    ret = Err(ErrorMessage::FailedToReadHeaderForSBank);
                 }
             }
             else
             {
-                return Err(ErrorMessage::FailedToReadHeaderForSBank);
+                ret = Err(ErrorMessage::FailedToReadHeaderForSBank);
             }
+            tx = Ok(tx_);
         }
-        Err(ErrorMessage::FailedToOpenSBank)
+        tx.unwrap().commit();
+        ret
     }
 
     // fn write_sbank(&self, sbank: &SBank) -> Result<(), String>
@@ -322,39 +344,34 @@ impl SBDB for SQLiteDB
     ///   if writing a question fails.
     fn write_sbank(&mut self, sbank: &SBank) -> Result<(), ErrorMessage>
     {
-        if let Ok(_) = self.make_table()
-        {
-            if sbank.is_empty()
-                { return Err(ErrorMessage::EmptySBank); }  // Nothing to write
+        self.make_table()?;
+        if sbank.is_empty()
+            { return Err(ErrorMessage::EmptySBank); }  // Nothing to write
 
-            let mut tx = self.conn.transaction();
-            if tx.is_ok()
+        let mut tx = self.conn.transaction();
+        if tx.is_ok()
+        {
+            let tx_ = tx.unwrap();
+            if let Ok(mut stmt) = tx_.prepare("INSERT INTO tblHeader (version) VALUES (?1);")
             {
-                let tx_ = tx.unwrap();
-                if let Ok(mut stmt) = tx_.prepare("INSERT INTO tblHeader (version) VALUES (?1);")
+                if stmt.execute((sbank.get_version(),)).is_ok()
                 {
-                    if stmt.execute((sbank.get_version(),)).is_ok()
+                    if let Ok(mut stmt) = tx_.prepare("INSERT INTO tblStudents (name, id) VALUES (?1, ?2);")
                     {
-                        if let Ok(mut stmt) = tx_.prepare("INSERT INTO tblStudents (name, id) VALUES (?1, ?2);")
+                        for student in sbank.get_students()
                         {
-                            for student in sbank.get_students()
-                            {
-                                if stmt.execute((student.get_name(), student.get_id())).is_err()
-                                    { break; }
-                            }
+                            if stmt.execute((student.get_name(), student.get_id())).is_err()
+                                { break; }
                         }
                     }
                 }
-                tx = Ok(tx_);
             }
-            if tx.unwrap().commit().is_ok()
-                { return Ok(()); }
+            tx = Ok(tx_);
         }
+        if tx.unwrap().commit().is_ok()
+            { Ok(()) }
         else
-        {
-            return Err(ErrorMessage::FailedToMakeTableForSBank);
-        }
-        Err(ErrorMessage::FailedToWriteSBank)
+            { Err(ErrorMessage::FailedToWriteSBank) }
     }
 }
 
