@@ -269,7 +269,7 @@ impl SBDB for SQLiteDB
             }
             tx = Ok(tx_);
         }
-        tx.unwrap().commit();
+        let _ = tx.unwrap().commit();
         ret
     }
 
@@ -321,7 +321,7 @@ impl SBDB for SQLiteDB
             }
             tx = Ok(tx_);
         }
-        tx.unwrap().commit();
+        let _ = tx.unwrap().commit();
         ret
     }
 
@@ -376,7 +376,6 @@ impl SBDB for SQLiteDB
 }
 
 
-#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 impl SBDB for Excel
 {
     // fn open(path: String) -> Result<Self, ErrorMessage>
@@ -397,89 +396,171 @@ impl SBDB for Excel
         Excel::open_with_ext(path, "sb.xlsx")
     }
 
-    // fn make_table(&self) -> Result<(), String>
-    /// Creates a new Excel file with a "Students" sheet and headers.
-    /// 
+    // fn make_table(&mut self) -> Result<(), ErrorMessage>
+    /// Creates the necessary table(s) for storing student data.
+    ///
+    /// For a database that already has the table,
+    /// this should not produce an error.
+    ///
     /// # Returns
-    /// `Result<(), String>` - `Ok(())` on success,
-    /// or an error message string on failure.
-    fn make_table(&self) -> Result<(), String>
+    /// `Result<(), ErrorMessage>`
+    /// * `Ok(())` on success, or
+    /// * `Err(ErrorMessage::FailedToCreateHeaderForQBank)` if it fails to
+    ///   create the header table, or
+    /// * `Err(ErrorMessage::FailedToMakeTableForSBank)` if it fails to
+    ///   create the student list table.
+    fn make_table(&mut self) -> Result<(), ErrorMessage>
     {
         let mut workbook = rust_xlsxwriter::Workbook::new();
         let format = rust_xlsxwriter::Format::new().set_bold();
 
-        let sheet = workbook.add_worksheet().set_name("Header").map_err(|e| e.to_string())?;
-        sheet.write_string_with_format(0, 0, "Version", &format).map_err(|e| e.to_string())?;
-
-        let sheet = workbook.add_worksheet().set_name("Students").map_err(|e| e.to_string())?;
-
-        sheet.write_string_with_format(0, 0, "Name", &format).map_err(|e| e.to_string())?;
-        sheet.write_string_with_format(0, 1, "ID", &format).map_err(|e| e.to_string())?;
-
-        workbook.save(&self.path).map_err(|e| e.to_string())
+        if let Ok(sheet) = workbook.add_worksheet().set_name("Header")
+        {
+            if sheet.write_string_with_format(0, 0, "Version", &format).is_ok()
+            {
+                if let Ok(sheet) = workbook.add_worksheet().set_name("Students")
+                {
+                    if sheet.write_string_with_format(0, 0, "Name", &format).is_ok()
+                    && sheet.write_string_with_format(0, 1, "ID", &format).is_ok()
+                    && workbook.save(&self.path).is_ok()
+                    {
+                        return Ok(());
+                    }
+                }
+                return Err(ErrorMessage::FailedToMakeTableForSBank)
+            }
+        }
+        Err(ErrorMessage::FailedToCreateHeaderForQBank)
     }
 
-    // fn read_sbank(&self) -> Option<SBank>
-    /// Reads students from the "Students" sheet in an Excel file.
-    /// Assumes the first row contains headers
-    /// and starts reading from the second row.
-    /// 
+    // fn read_sbank(&mut self) -> Result<SBank, ErrorMessage>
+    /// Reads all student data from the database into an `SBank`.
+    ///
     /// # Returns
-    /// `Result<SBank, ErrorMessage>` - A `Result` containing the `SBank` if successful,
-    /// or an error message if reading fails.
-    fn read_sbank(&self) -> Result<SBank, ErrorMessage>
+    /// `Result<SBank, ErrorMessage>`
+    /// * `Ok(SBank)` if the SBank is successfully read, or
+    /// * `Err(ErrorMessage::FailedToReadHeaderForSBank)` if reading
+    ///    the header fails, or
+    /// * `Err(ErrorMessage::FailedToOpenSBank)` if it fails.
+    fn read_sbank(&mut self) -> Result<SBank, ErrorMessage>
     {
         let mut sbank = SBank::new();
-        let mut excel = calamine::open_workbook_auto(&self.path).ok()?;
-        let range = excel.worksheet_range("Header").ok()?;
-        for row in range.rows().skip(1)
-            { sbank.set_version(row.get(0).and_then(|d| d.as_i64())? as u32); }
+        if let Ok(mut excel) = calamine::open_workbook_auto(&self.path)
+        {
+            if let Ok(range) = excel.worksheet_range("Header")
+            {
+                for row in range.rows().skip(1)
+                {
+                    if let Some(v) = row.get(0).and_then(|d| d.as_i64())
+                        { sbank.set_version(v as u32); }
+                    else
+                        { return Err(ErrorMessage::FailedToReadHeaderForSBank); }
+                }
 
-        let range = excel.worksheet_range("Students").ok()?;
-        for row in range.rows().skip(1)
-        { // Skip header row
-            sbank.push_student(Student::new(
-                row.get(0).and_then(|d| d.as_string())?,
-                row.get(1).and_then(|d| d.as_string())? // Assuming ID is always string or convertible
-            ));
+                if let Ok(range) = excel.worksheet_range("Students")
+                {
+                    for row in range.rows().skip(1) // Skip header row
+                    {
+                        if let Some(name) = row.get(0).and_then(|d| d.as_string())
+                        {
+                            if let Some(id) = row.get(1).and_then(|d| d.as_string())
+                                { sbank.push_student(Student::new(name, id)); }
+                            else
+                                { return Err(ErrorMessage::FailedToOpenSBank); }
+                        }
+                        else
+                        {
+                            return Err(ErrorMessage::FailedToOpenSBank);
+                        }
+                    }
+                    Ok(sbank)
+                }
+                else
+                {   
+                    Err(ErrorMessage::FailedToOpenSBank)
+                }
+            }
+            else
+            {
+                Err(ErrorMessage::FailedToReadHeaderForSBank)
+            }
         }
-        Ok(sbank)
+        else
+        {
+            Err(ErrorMessage::FailedToOpenSBank)
+        }
     }
     
-    // fn write_sbank(&mut self, sbank: &SBank) -> Result<(), String>
-    /// Writes a collection of students to a "Students" sheet in an Excel file.
-    /// If the file does not exist, it will be created. If it already exists,
-    /// the "Students" sheet will be overwritten.
-    /// 
+    // fn write_sbank(&mut self, sbank: &SBank) -> Result<(), ErrorMessage>
+    /// Writes the contents of an `SBank` to the database.
+    ///
+    /// This will insert all students from the `SBank` into the database.
+    /// If the table already contains data, this may result in duplicates
+    /// depending on the implementation.
+    ///
     /// # Arguments
     /// * `sbank` - A reference to the `SBank`
-    ///   containing the students to be written to the Excel file.
-    /// 
+    /// containing the students to be written.
+    ///
     /// # Returns
-    /// `Result<(), String>` - `Ok(())` on success,
-    /// or an error message string on failure.
-    fn write_sbank(&mut self, sbank: &SBank) -> Result<(), String>
+    /// `Result<(), ErrorMessage>`
+    /// * `Ok(())` on success,
+    /// * `Err(ErrorMessage::EmptySBank)` if the student bank is empty,
+    /// * `Err(ErrorMessage::FailedToMakeTableForSBank)`
+    ///   if it fails to create the necessary tables,
+    /// * `Err(ErrorMessage::FailedToWriteHeaderForSBank)`
+    ///   if writing the header fails, or
+    /// * `Err(ErrorMessage::FailedToWriteSBank)`
+    ///   if writing a question fails.
+    fn write_sbank(&mut self, sbank: &SBank) -> Result<(), ErrorMessage>
     {
         let mut workbook = rust_xlsxwriter::Workbook::new();
         let header_format = rust_xlsxwriter::Format::new().set_bold();
 
-        let sheet = workbook.add_worksheet().set_name("Header").map_err(|e| e.to_string())?;
-        sheet.write_string_with_format(0, 0, "Version", &header_format).map_err(|e| e.to_string())?;
-        sheet.write_string(1, 0, "1").map_err(|e| e.to_string())?;
-
-        let sheet = workbook.add_worksheet().set_name("Students").map_err(|e| e.to_string())?;
-        // Write header
-        sheet.write_string_with_format(0, 0, "Name", &header_format).map_err(|e| e.to_string())?;
-        sheet.write_string_with_format(0, 1, "ID", &header_format).map_err(|e| e.to_string())?;
-
-        // Write student data
-        for (row_idx, student) in sbank.get_students().iter().enumerate()
+        if let Ok(sheet) = workbook.add_worksheet().set_name("Header")
         {
-            let row = (row_idx + 1) as u32;
-            sheet.write_string(row, 0, student.get_name()).map_err(|e| e.to_string())?;
-            sheet.write_string(row, 1, student.get_id()).map_err(|e| e.to_string())?;
+            if sheet.write_string_with_format(0, 0, "Version", &header_format).is_ok()
+            && sheet.write_string(1, 0, "1").is_ok()
+            {
+                if let Ok(sheet) = workbook.add_worksheet().set_name("Students")
+                {
+                    // Write header
+                    if sheet.write_string_with_format(0, 0, "Name", &header_format).is_ok()
+                    && sheet.write_string_with_format(0, 1, "ID", &header_format).is_ok()
+                    {
+                        // Write student data
+                        for (row_idx, student) in sbank.get_students().iter().enumerate()
+                        {
+                            let row = (row_idx + 1) as u32;
+                            if sheet.write_string(row, 0, student.get_name()).is_err()
+                            || sheet.write_string(row, 1, student.get_id()).is_err()
+                            {
+                                return Err(ErrorMessage::FailedToWriteSBank);
+                            }
+                        }
+                        if workbook.save(&self.path).is_ok()
+                            { return Ok(()); }
+                        else
+                            { Err(ErrorMessage::FailedToWriteSBank) }
+                    }
+                    else
+                    {
+                        Err(ErrorMessage::FailedToWriteSBank)
+                    }
+                }
+                else
+                {
+                    Err(ErrorMessage::FailedToWriteSBank)
+                }
+            }
+            else
+            {
+                Err(ErrorMessage::FailedToCreateHeaderForSBank)
+            }
         }
-
-        workbook.save(&self.path).map_err(|e| e.to_string())
+        else
+        {
+            Err(ErrorMessage::FailedToCreateHeaderForSBank)
+        }
     }
 }

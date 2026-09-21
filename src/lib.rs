@@ -18,7 +18,6 @@
 pub mod database;
 
 /// The `excel` module provides functionalities for Excel file operations.
-#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 pub mod excel;
 
 /// The `header` module contains the `Header` structure for parsing file headers.
@@ -66,7 +65,7 @@ pub mod self_study;
 /// Re-exporting key structures and functionalities for external use.
 pub use database::SQLiteDB;
 
-#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
+/// Re-exporting the `Excel` structure for external use.
 pub use excel::Excel;
 
 

@@ -239,7 +239,14 @@ impl SelfStudy
         if shuffler.make_exams(number_of_questions)
         {
             shuffler.shuffle_choices();
-            let num_q = shuffler.get_qbank_length();
+            let num_q = if let Some(qset) = shuffler.get_shuffled_qsets().get(0)
+            {
+                qset.get_shuffled_questions().len()
+            }
+            else
+            {
+                0
+            };
             Some(
                 Self
                 {
@@ -260,7 +267,7 @@ impl SelfStudy
     /// Returns the total number of questions in the session.
     /// 
     /// # Returns
-    /// The total number of questions available in the question bank for the self-study session.
+    /// The total number of questions in the self-study session.
     /// 
     /// # Examples
     /// ```
@@ -270,7 +277,10 @@ impl SelfStudy
     #[inline]
     pub fn get_number_of_questions(&self) -> usize
     {
-        self.shuffler.get_qbank_length()
+        if let Some(qset) = self.shuffler.get_shuffled_qsets().get(0)
+            { qset.get_shuffled_questions().len() }
+        else
+            { 0 }
     }
 
     // pub fn get_question_by_number(&mut self, num: u16) -> Option<(u16, u8, String, String, Choices)>

@@ -1,13 +1,13 @@
 
 use std::fs::File;
 use std::io::{ Error, Write };
-use qrate::{ Generator, QBank, SBank, SQLiteDB };
+use qrate::{ Generator, QBank, SBank, SQLiteDB, ErrorMessage };
 
 fn main() -> Result<(), String>
 {
-    let sbank = load_students().ok_or("No Students DB!".to_string())?;
-    let qbank = load_questions().ok_or("No Questions DB!".to_string())?;
-    let generator = Generator::new(&qbank, 1, 67, 10, &sbank).ok_or("Index Error!")?;
+    let sbank = load_students().expect("No Students DB!");
+    let qbank = load_questions().expect("No Questions DB!");
+    let generator = Generator::new(&qbank, 1, 67, 10, &sbank, "Answer Sheet".to_string()).expect("Failed to create exam paper.");
     generator.save_shuffled_exams("./IS_exam".to_string(), "txt")?;
     generator.save_shuffled_exams("./IS_exam".to_string(), "docx")?;
     // generator.save_shuffled_exams("./IS_exam".to_string(), "pdf")?;
@@ -25,13 +25,13 @@ fn main() -> Result<(), String>
     Ok(())
 }
 
-fn load_students() -> Option<SBank>
+fn load_students() -> Result<SBank, ErrorMessage>
 {
     use qrate::SBDB;
     SQLiteDB::open("./Students".to_string())?.read_sbank()
 }
 
-fn load_questions() -> Option<QBank>
+fn load_questions() -> Result<QBank, ErrorMessage>
 {
     use qrate::QBDB;
     SQLiteDB::open("./Information_Security".to_string())?.read_qbank()

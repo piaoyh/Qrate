@@ -431,7 +431,7 @@ impl QBDB for SQLiteDB
             }
             tx = Ok(tx_);
         }
-        tx.unwrap().commit();
+        let _ = tx.unwrap().commit();
         ret
     }
 
@@ -478,7 +478,7 @@ impl QBDB for SQLiteDB
             }
             tx = Ok(tx_);
         }
-        tx.unwrap().commit();
+        let _ = tx.unwrap().commit();
         ret
     }
 
@@ -539,7 +539,7 @@ impl QBDB for SQLiteDB
                 { ret = Err(ErrorMessage::FailedToWriteHeaderForQBank); }
             tx = Ok(tx_);
         }
-        tx.unwrap().commit();
+        let _ = tx.unwrap().commit();
         ret
     }
 
@@ -610,7 +610,7 @@ impl QBDB for SQLiteDB
             }
             tx = Ok(tx_);
         }
-        tx.unwrap().commit();
+        let _ = tx.unwrap().commit();
         ret
     }
 
@@ -693,14 +693,13 @@ impl QBDB for SQLiteDB
             }
             tx = Ok(tx_);
         }
-        tx.unwrap().commit();
+        let _ = tx.unwrap().commit();
         ret
     }
 }
 
 
 
-#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 impl QBDB for Excel
 {
     // fn open(path: String) -> Result<Self, ErrorMessage> where Self: Sized
@@ -726,114 +725,141 @@ impl QBDB for Excel
         Err(ErrorMessage::FailedToOpenQBank)
     }
 
-    // fn make_tables(&self, choices: u8) -> Result<(), String>
-    /// Creates sheets for `Excel`.
-    /// 
+    // fn make_tables(&mut self, categories: u8, choices: u8) -> Result<(), ErrorMessage>
+    /// Creates the necessary tables in the database.
+    ///
     /// # Arguments
-    /// * `categories` - The number of categories in the question bank.
-    /// * `choices` - The number of choices in each question.
+    /// * `categories` - The number of category columns to create in Header table.
+    /// * `choices` - The number of choice columns to create in Questions table.
     ///
     /// # Returns
-    /// `Result<(), String>` - `Ok(())` on success,
-    /// or an error message string on failure.
-    fn make_tables(&self, _categories: u8, choices: u8) -> Result<(), String>
+    /// `Result<(), ErrorMessage>`
+    /// * `Ok(())` on success, or
+    /// * `Err(ErrorMessage::FailedToCreateHeaderForQBank)` if it fails to
+    ///   create the header table, or
+    /// * `Err(ErrorMessage::FailedToMakeTableForQBank)` if `categories` is `0`
+    ///   or it fails to create the question table.
+    /// 
+    /// # Features
+    /// If `choices` is zero, this method will not make Questions table.
+    fn make_tables(&mut self, _categories: u8, choices: u8) -> Result<(), ErrorMessage>
     {
         let mut workbook = Workbook::new();
         let bold_border_format = Format::new().set_bold().set_border(FormatBorder::Thin);
-
         // 1. Create "Header" sheet
-        let header_sheet = workbook.add_worksheet().set_name("Header").map_err(|e| e.to_string())?;
-        header_sheet.write_string_with_format(0, 0, "Version", &bold_border_format).map_err(|e| e.to_string())?;
-        header_sheet.write_string_with_format(1, 0, "Title", &bold_border_format).map_err(|e| e.to_string())?;
-        header_sheet.write_string_with_format(2, 0, "Name", &bold_border_format).map_err(|e| e.to_string())?;
-        header_sheet.write_string_with_format(3, 0, "ID", &bold_border_format).map_err(|e| e.to_string())?;
-        header_sheet.write_string_with_format(4, 0, "Notice", &bold_border_format).map_err(|e| e.to_string())?;
-        header_sheet.write_string_with_format(5, 0, "Categories", &bold_border_format).map_err(|e| e.to_string())?;
+        if let Ok(header_sheet) = workbook.add_worksheet().set_name("Header")
+        {
+            if header_sheet.write_string_with_format(0, 0, "Version", &bold_border_format).is_err()
+            || header_sheet.write_string_with_format(1, 0, "Title", &bold_border_format).is_err()
+            || header_sheet.write_string_with_format(2, 0, "Name", &bold_border_format).is_err()
+            || header_sheet.write_string_with_format(3, 0, "ID", &bold_border_format).is_err()
+            || header_sheet.write_string_with_format(4, 0, "Notice", &bold_border_format).is_err()
+            || header_sheet.write_string_with_format(5, 0, "Categories", &bold_border_format).is_err()
+            {
+                return Err(ErrorMessage::FailedToCreateHeaderForQBank);
+            }
+        }
+        else
+        {
+            return Err(ErrorMessage::FailedToCreateHeaderForQBank);
+        }
 
         // 2. Create "Questions" sheet
         if choices != 0
         {
-            let questions_sheet = workbook.add_worksheet().set_name("Questions").map_err(|e| e.to_string())?;
-            questions_sheet.write_string_with_format(0, 0, "ID", &bold_border_format).map_err(|e| e.to_string())?;
-            questions_sheet.write_string_with_format(0, 1, "Group", &bold_border_format).map_err(|e| e.to_string())?;
-            questions_sheet.write_string_with_format(0, 2, "Category", &bold_border_format).map_err(|e| e.to_string())?;
-            questions_sheet.write_string_with_format(0, 3, "Question", &bold_border_format).map_err(|e| e.to_string())?;
-
-            let mut current_col = 4;
-            for i in 1..=choices
+            if let Ok(questions_sheet) = workbook.add_worksheet().set_name("Questions")
             {
-                questions_sheet.write_string_with_format(0, current_col, &format!("Choice{}", i), &bold_border_format).map_err(|e| e.to_string())?;
-                current_col += 1;
-                questions_sheet.write_string_with_format(0, current_col, &format!("IsAnswer{}", i), &bold_border_format).map_err(|e| e.to_string())?;
-                current_col += 1;
+                if questions_sheet.write_string_with_format(0, 0, "ID", &bold_border_format).is_err()
+                || questions_sheet.write_string_with_format(0, 1, "Group", &bold_border_format).is_err()
+                || questions_sheet.write_string_with_format(0, 2, "Category", &bold_border_format).is_err()
+                || questions_sheet.write_string_with_format(0, 3, "Question", &bold_border_format).is_err()
+                {
+                    return Err(ErrorMessage::FailedToMakeTableForQBank);
+                }
+
+                let mut current_col = 4;
+                for i in 1..=choices
+                {
+                    if questions_sheet.write_string_with_format(0, current_col, &format!("Choice{}", i), &bold_border_format).is_err()
+                    {
+                        return Err(ErrorMessage::FailedToMakeTableForQBank);
+                    }
+                    current_col += 1;
+                    if questions_sheet.write_string_with_format(0, current_col, &format!("IsAnswer{}", i), &bold_border_format).is_err()
+                    {
+                        return Err(ErrorMessage::FailedToMakeTableForQBank);
+                    }
+                    current_col += 1;
+                }
             }
         }
-        workbook.save(&self.path).map_err(|e| e.to_string())
+        if workbook.save(&self.path).is_ok()
+            { Ok(()) }
+        else
+            { Err(ErrorMessage::FailedToMakeTableForQBank) }
     }
 
-    // fn read_header(&self) -> Option<Header>
-    /// Implements `read_header` for `Excel`.
-    /// 
-    /// Reads the "Header" sheet and constructs a `Header` struct from the cell values.
-    /// It dynamically reads category columns until it encounters an empty cell.
+    // fn read_header(&mut self) -> Result<Header, ErrorMessage>
+    /// Reads the `Header` data from the database.
     ///
     /// # Returns
-    /// `Option<Header>` - An optional `Header`
-    /// containing the header data from the Excel sheet.
-    /// None if the sheet is not found or if there is an error reading the data.
-    fn read_header(&self) -> Option<Header>
+    /// `Result<Header, ErrorMessage>`
+    /// * `Ok(Header)` if the header is successfully read, or
+    /// * `Err(ErrorMessage::FailedToReadHeaderForQBank)` if it fails.
+    fn read_header(&mut self) -> Result<Header, ErrorMessage>
     {
-        let mut excel = open_workbook_auto(&self.path).ok()?;
-        let range = excel.worksheet_range("Header").ok()?;
-        let version = range.get((0, 1)).and_then(|c| c.as_string()).unwrap_or_default();
-        let title = range.get((1, 1)).and_then(|c| c.as_string()).unwrap_or_default();
-        let name = range.get((2, 1)).and_then(|c| c.as_string()).unwrap_or_default();
-        let id = range.get((3, 1)).and_then(|c| c.as_string()).unwrap_or_default();
-        let notice = range.get((4, 1)).and_then(|c| c.as_string()).unwrap_or_default();
-        let mut categories = Vec::new();
-        let mut col = 1;
-        while let Some(cat) = range.get((5, col)).and_then(|c| c.as_string())
+        if let Ok(mut excel) = open_workbook_auto(&self.path)
         {
-            if cat.is_empty() { break; }
-            categories.push(cat);
-            col += 1;
+            if let Ok(range) = excel.worksheet_range("Header")
+            {
+                let version = range.get((0, 1)).and_then(|c| c.as_string()).unwrap_or_default();
+                let title = range.get((1, 1)).and_then(|c| c.as_string()).unwrap_or_default();
+                let name = range.get((2, 1)).and_then(|c| c.as_string()).unwrap_or_default();
+                let id = range.get((3, 1)).and_then(|c| c.as_string()).unwrap_or_default();
+                let notice = range.get((4, 1)).and_then(|c| c.as_string()).unwrap_or_default();
+                let mut categories = Vec::new();
+                let mut col = 1;
+                while let Some(cat) = range.get((5, col)).and_then(|c| c.as_string())
+                {
+                    if cat.is_empty()
+                        { break; }
+                    categories.push(cat);
+                    col += 1;
+                }
+                let mut header = Header::new(title, name, id, categories, notice);
+                header.set_version(version.parse().unwrap_or(0));
+                return Ok(header);
+            }
         }
-        let mut header = Header::new(title, name, id, categories, notice);
-        header.set_version(version.parse().unwrap_or(0));
-        Some(header)
+        Err(ErrorMessage::FailedToReadHeaderForQBank)
     }
 
-    // fn write_header_with_default(&mut self) -> Result<(), String>
-    /// Implements `write_header_with_default` for `Excel`.
-    /// 
-    /// Creates a default `Header` and calls `write_header` to write it to the
-    /// Excel file. This is necessary because the Excel writer library does not
-    /// support in-place updates, so we need to read existing data, modify it,
-    /// and write it back.
-    /// 
+    // fn write_header_with_default(&mut self) -> Result<(), ErrorMessage>
+    /// Writes a default `Header` to the database.
+    ///
     /// # Returns
-    /// `Result<(), String>` - `Ok(())` on success,
-    /// or an error message string on failure.
+    /// `Result<(), ErrorMessage>`
+    /// * `Ok(())` on success, or
+    /// * `Err(ErrorMessage::FailedToWriteHeaderForQBank)` on failure.
     #[inline]
-    fn write_header_with_default(&mut self) -> Result<(), String>
+    fn write_header_with_default(&mut self) -> Result<(), ErrorMessage>
     {
         self.write_header(&Header::new_with_default())
     }
 
-    // fn write_header(&mut self, header: &Header) -> Result<(), String>
-    /// Implements `write_header` for `Excel`.
-    /// This is done by reading the existing questions, creating a new QBank
-    /// in memory with the new header, and then writing the entire QBank back
-    /// to the file. This is necessary due to the write-only nature of the
-    /// Excel writer library.
-    /// 
+    // fn write_header(&mut self, header: &Header) -> Result<(), ErrorMessage>
+    /// Writes a given `Header` to the database.
+    ///
     /// # Arguments
-    /// * `header` - A reference to the `Header` struct containing the new header data.
+    /// * `header` - A reference to the `Header` to be written to the database.
     ///
     /// # Returns
-    /// `Result<(), String>` - `Ok(())` on success,
-    /// or an error message string on failure.
-    fn write_header(&mut self, header: &Header) -> Result<(), String>
+    /// `Result<(), ErrorMessage>`
+    /// * `Ok(())` on success,
+    /// * `Err(ErrorMessage::FailedToMakeTableForQBank)` if `categories` is `0`
+    ///   or it fails to create the question table, or
+    /// * `Err(ErrorMessage::FailedToWriteHeaderForQBank)` on failure.
+    fn write_header(&mut self, header: &Header) -> Result<(), ErrorMessage>
     {
         // Create a new QBank with the new header.
         let mut qbank = QBank::new_with_header(header.clone());
@@ -841,7 +867,7 @@ impl QBDB for Excel
         // Read questions from the existing file, if it exists.
         if let Ok(mut excel) = open_workbook_auto(&self.path)
         {
-            if let Some(range) = excel.worksheet_range("Questions").ok()
+            if let Ok(range) = excel.worksheet_range("Questions")
             {
                 // Safely read questions, skipping header row
                 for row in range.rows().skip(1)
@@ -849,92 +875,160 @@ impl QBDB for Excel
                     if let Some(question) = Excel::parse_question_row(row)
                         { qbank.push_question(question); }
                 }
+                // Write the entire QBank (new header + old/existing questions) back to the file.
+                return self.write_qbank(&qbank);
             }
         }
-        
-        // Write the entire QBank (new header + old/existing questions) back to the file.
-        self.write_qbank(&qbank)
+        Err(ErrorMessage::FailedToWriteHeaderForQBank)
     }
 
-    // fn read_qbank(&self) -> Option<QBank>
-    /// Implements `read_qbank` for `Excel`.
-    /// 
-    /// First, it reads the header using `read_header`. Then, it reads the "Questions" sheet,
-    /// parses each row into a `Question` struct, and collects them into a new `QBank`.
-    /// 
+    // fn read_qbank(&mut self) -> Result<QBank, ErrorMessage>
+    /// Reads the entire `QBank` (header and all questions) from the database.
+    ///
     /// # Returns
-    /// `Option<QBank>` - An optional `QBank`
-    /// containing the header and all questions from the Excel file.
-    /// None if there is an error reading the file or if the necessary sheets are not found.
-    fn read_qbank(&self) -> Option<QBank>
+    /// `Result<QBank, ErrorMessage>`
+    /// * `Ok(QBank)` if the QBank is successfully read, or
+    /// * `Err(ErrorMessage::FailedToReadHeaderForQBank)` if reading
+    ///    the header fails, or
+    /// * `Err(ErrorMessage::FailedToOpenQBank)` if it fails.
+    fn read_qbank(&mut self) -> Result<QBank, ErrorMessage>
     {
-        let header = self.read_header()?;
-        let mut qbank = QBank::new_with_header(header);
-
-        let mut excel = open_workbook_auto(&self.path).ok()?;
-        let range = excel.worksheet_range("Questions").ok()?;
-
-        for row in range.rows().skip(1) // Skip header row
+        if let Ok(header) = self.read_header()
         {
-            if let Some(question) = Excel::parse_question_row(row)
-                { qbank.push_question(question); }
+            let mut qbank = QBank::new_with_header(header);
+            if let Ok(mut excel) = open_workbook_auto(&self.path)
+            {
+                if let Ok(range) = excel.worksheet_range("Questions")
+                {
+                    for row in range.rows().skip(1) // Skip header row
+                    {
+                        if let Some(question) = Excel::parse_question_row(row)
+                            { qbank.push_question(question); }
+                        else
+                            { return Err(ErrorMessage::FailedToOpenQBank); }
+                    }
+                    Ok(qbank)
+                }
+                else
+                {
+                    Err(ErrorMessage::FailedToOpenQBank)
+                }
+            }
+            else
+            {
+                Err(ErrorMessage::FailedToOpenQBank)
+            }
         }
-        Some(qbank)
+        else
+        {
+            Err(ErrorMessage::FailedToReadHeaderForQBank)
+        }
     }
 
-    // fn write_qbank(&mut self, qbank: &QBank) -> Result<(), String>
-    /// Implements `write_qbank` for `Excel`.
-    fn write_qbank(&mut self, qbank: &QBank) -> Result<(), String>
+    // fn write_qbank(&mut self, qbank: &QBank) -> Result<(), ErrorMessage>
+    /// Writes an entire `QBank` (header and all questions) to the database.
+    ///
+    /// Note: This typically writes the questions. The header should be written
+    /// separately if it's not already present.
+    ///
+    /// # Arguments
+    /// * `qbank` - A reference to the `QBank` to be written to the database.
+    ///
+    /// # Returns
+    /// `Result<(), ErrorMessage>`
+    /// * `Ok(())` on success,
+    /// * `Err(ErrorMessage::EmptyQBank)` if the question bank is empty,
+    /// * `Err(ErrorMessage::FailedToMakeTableForQBank)`
+    ///   if it fails to create the necessary tables,
+    /// * `Err(ErrorMessage::FailedToWriteHeaderForQBank)`
+    ///   if writing the header fails, or
+    /// * `Err(ErrorMessage::FailedToWriteQBank)`
+    ///   if writing a question fails.
+    fn write_qbank(&mut self, qbank: &QBank) -> Result<(), ErrorMessage>
     {
         let mut workbook = Workbook::new();
         let border_format = Format::new().set_border(FormatBorder::Thin);
         let bold_border_format = Format::new().set_bold().set_border(FormatBorder::Thin);
         
         // 1. Write "Header" sheet
-        let header_sheet = workbook.add_worksheet().set_name("Header").map_err(|e| e.to_string())?;
-        let header = qbank.get_header();
-        header_sheet.write_string_with_format(0, 0, "Title", &bold_border_format).map_err(|e| e.to_string())?;
-        header_sheet.write_string_with_format(0, 1, header.get_title(), &border_format).map_err(|e| e.to_string())?;
-        header_sheet.write_string_with_format(1, 0, "Name", &bold_border_format).map_err(|e| e.to_string())?;
-        header_sheet.write_string_with_format(1, 1, header.get_name(), &border_format).map_err(|e| e.to_string())?;
-        header_sheet.write_string_with_format(2, 0, "ID", &bold_border_format).map_err(|e| e.to_string())?;
-        header_sheet.write_string_with_format(2, 1, header.get_id(), &border_format).map_err(|e| e.to_string())?;
-        header_sheet.write_string_with_format(3, 0, "Notice", &bold_border_format).map_err(|e| e.to_string())?;
-        header_sheet.write_string_with_format(3, 1, header.get_notice(), &border_format).map_err(|e| e.to_string())?;
-        header_sheet.write_string_with_format(4, 0, "Categories", &bold_border_format).map_err(|e| e.to_string())?;
-        for (i, cat) in header.get_categories().iter().enumerate()
-            { header_sheet.write_string_with_format(4, i as u16 + 1, cat, &border_format).map_err(|e| e.to_string())?; }
-
-        // 2. Write "Questions" sheet
-        let questions_sheet = workbook.add_worksheet().set_name("Questions").map_err(|e| e.to_string())?;
-        questions_sheet.write_string_with_format(0, 0, "ID", &bold_border_format).map_err(|e| e.to_string())?;
-        questions_sheet.write_string_with_format(0, 1, "Group", &bold_border_format).map_err(|e| e.to_string())?;
-        questions_sheet.write_string_with_format(0, 2, "Category", &bold_border_format).map_err(|e| e.to_string())?;
-        questions_sheet.write_string_with_format(0, 3, "Question", &bold_border_format).map_err(|e| e.to_string())?;
-
-        let max_choices = qbank.get_max_choices();
-        for i in 1..=max_choices
+        if let Ok(header_sheet) = workbook.add_worksheet().set_name("Header")
         {
-            questions_sheet.write_string_with_format(0, (i * 2 + 2) as u16, &format!("Choice{}", i), &bold_border_format).map_err(|e| e.to_string())?;
-            questions_sheet.write_string_with_format(0, (i * 2 + 3) as u16, &format!("IsAnswer{}", i), &bold_border_format).map_err(|e| e.to_string())?;
-        }
-
-        for (row_idx, question) in qbank.get_questions().iter().enumerate()
-        {
-            let current_row = (row_idx + 1) as u32;
-            questions_sheet.write_number_with_format(current_row, 0, question.get_id() as f64, &border_format).map_err(|e| e.to_string())?;
-            questions_sheet.write_number_with_format(current_row, 1, question.get_group() as f64, &border_format).map_err(|e| e.to_string())?;
-            questions_sheet.write_number_with_format(current_row, 2, question.get_category() as f64, &border_format).map_err(|e| e.to_string())?;
-            questions_sheet.write_string_with_format(current_row, 3, question.get_question(), &border_format).map_err(|e| e.to_string())?;
-
-            for (i, (choice_text, is_answer)) in question.get_choices().iter().enumerate()
+            let header = qbank.get_header();
+            if header_sheet.write_string_with_format(0, 0, "Title", &bold_border_format).is_err()
+            || header_sheet.write_string_with_format(1, 0, "Name", &bold_border_format).is_err()
+            || header_sheet.write_string_with_format(0, 1, header.get_title(), &border_format).is_err()
+            || header_sheet.write_string_with_format(1, 1, header.get_name(), &border_format).is_err()
+            || header_sheet.write_string_with_format(2, 0, "ID", &bold_border_format).is_err()
+            || header_sheet.write_string_with_format(2, 1, header.get_id(), &border_format).is_err()
+            || header_sheet.write_string_with_format(3, 0, "Notice", &bold_border_format).is_err()
+            || header_sheet.write_string_with_format(3, 1, header.get_notice(), &border_format).is_err()
+            || header_sheet.write_string_with_format(4, 0, "Categories", &bold_border_format).is_err()
+            || header_sheet.write_string_with_format(4, 1, header.get_categories().first().unwrap_or(&"".into()), &border_format).is_err()
             {
-                let choice_col = (i * 2 + 4) as u16;
-                questions_sheet.write_string_with_format(current_row, choice_col, choice_text, &border_format).map_err(|e| e.to_string())?;
-                questions_sheet.write_string_with_format(current_row, choice_col + 1, &is_answer.to_string().to_uppercase(), &border_format).map_err(|e| e.to_string())?;
+                return Err(ErrorMessage::FailedToWriteHeaderForQBank);
+            }
+            for (i, cat) in header.get_categories().iter().enumerate()
+            {
+                if header_sheet.write_string_with_format(4, i as u16 + 1, cat, &border_format).is_err()
+                    { return Err(ErrorMessage::FailedToWriteHeaderForQBank); }
             }
         }
-        
-        workbook.save(&self.path).map_err(|e| e.to_string())
+        else
+        {
+            return Err(ErrorMessage::FailedToWriteHeaderForQBank);
+        }
+
+        // 2. Write "Questions" sheet
+        if let Ok(questions_sheet) = workbook.add_worksheet().set_name("Questions")
+        {
+            if questions_sheet.write_string_with_format(0, 0, "ID", &bold_border_format).is_err()
+            || questions_sheet.write_string_with_format(0, 1, "Group", &bold_border_format).is_err()
+            || questions_sheet.write_string_with_format(0, 2, "Category", &bold_border_format).is_err()
+            || questions_sheet.write_string_with_format(0, 3, "Question", &bold_border_format).is_err()
+            {
+                return Err(ErrorMessage::FailedToWriteQBank);
+            }
+
+            let max_choices = qbank.get_max_choices();
+            for i in 1..=max_choices
+            {
+                if questions_sheet.write_string_with_format(0, (i * 2 + 2) as u16, &format!("Choice{}", i), &bold_border_format).is_err()
+                || questions_sheet.write_string_with_format(0, (i * 2 + 3) as u16, &format!("IsAnswer{}", i), &bold_border_format).is_err()
+                {
+                    return Err(ErrorMessage::FailedToWriteQBank);
+                }
+            }
+
+            for (row_idx, question) in qbank.get_questions().iter().enumerate()
+            {
+                let current_row = (row_idx + 1) as u32;
+                if questions_sheet.write_number_with_format(current_row, 0, question.get_id() as f64, &border_format).is_err()
+                || questions_sheet.write_number_with_format(current_row, 1, question.get_group() as f64, &border_format).is_err()
+                || questions_sheet.write_number_with_format(current_row, 2, question.get_category() as f64, &border_format).is_err()
+                || questions_sheet.write_string_with_format(current_row, 3, question.get_question(), &border_format).is_err()
+                {
+                    return Err(ErrorMessage::FailedToWriteQBank);
+                }
+
+                for (i, (choice_text, is_answer)) in question.get_choices().iter().enumerate()
+                {
+                    let choice_col = (i * 2 + 4) as u16;
+                    if questions_sheet.write_string_with_format(current_row, choice_col, choice_text, &border_format).is_err()
+                    || questions_sheet.write_string_with_format(current_row, choice_col + 1, &is_answer.to_string().to_uppercase(), &border_format).is_err()
+                    {
+                        return Err(ErrorMessage::FailedToWriteQBank);
+                    }
+                }
+            }
+            
+            if workbook.save(&self.path).is_ok()
+                { Ok(()) }
+            else
+                { Err(ErrorMessage::FailedToWriteQBank) }
+        }
+        else
+        {
+            Err(ErrorMessage::FailedToWriteHeaderForQBank)
+        }
     }
 }

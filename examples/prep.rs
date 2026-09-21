@@ -5,7 +5,7 @@ use qrate::{ SQLiteDB, QBDB, Generator };
 
 fn main()
 {
-    let db = SQLiteDB::open("./Information_Security".to_string()).expect("Failed to open database. Make sure 'Information_Security.qbdb' exists.");
+    let mut db = SQLiteDB::open("./Information_Security".to_string()).expect("Failed to open database. Make sure 'Information_Security.qbdb' exists.");
     let qb = db.read_qbank().expect("Error: Could not read QBank from database. Ensure it's not empty or corrupted.");
     let last = qb.get_questions().len() as u16;
     if last == 0
@@ -13,7 +13,7 @@ fn main()
         println!("Error: The QBank is empty. No questions to display.");
         return;
     }
-    let mut generator = Generator::new_one_set(&qb, 1, last, last as usize).expect("Failed to create generator for QBank.");
+    let mut generator = Generator::new_one_set(&qb, 1, last, last as usize, "Answer Sheet".to_string()).expect("Failed to create generator for QBank.");
     exam(&mut generator);
 }
 
