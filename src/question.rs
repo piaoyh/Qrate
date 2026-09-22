@@ -53,14 +53,16 @@ impl Question
     #[inline]
     pub fn new_empty() -> Self
     {
-        Self
+        let mut me = Self
         {
             id: 1,
             group: 1,
             category: 1,
             question: String::new(),
             choices: Choices::new(),
-        }
+        };
+        me.determine_category();
+        me
     }
 
     // pub fn new(id: u16, category: u8, question: String, choices: Choices) -> Self
@@ -74,6 +76,7 @@ impl Question
     ///   -- 2: multiple answers of multiple-choice
     ///   -- 3: short answer
     ///   -- 4: essay
+    ///   -- otherwise: automatically determined
     /// * `question` - The text of the question.
     /// * `choices` - A vector of `ChoiceAnswer` tuples for the question.
     ///
@@ -90,7 +93,10 @@ impl Question
     #[inline]
     pub fn new(id: u16, group: u16, category: u8, question: String, choices: Choices) -> Self
     {
-        Self { id, group, category, question, choices }
+        let mut me = Self { id, group, category, question, choices };
+        if (me.get_category() == 0) || (me.get_category() > 4)
+            { me.determine_category(); }
+        me
     }
 
     // pub fn get_id(&self) -> u16
@@ -276,6 +282,9 @@ impl Question
     /// `bool` - `true` if the choice was successfully set, `false`
     /// if the index is out of bounds.
     ///
+    /// # Remarks
+    /// `self.category` will be automatically determined.
+    ///
     /// # Examples
     /// ```
     /// use qrate::Question;
@@ -289,6 +298,7 @@ impl Question
         if (choice_number <= self.choices.len()) && (choice_number > 0)
         {
             self.choices[choice_number - 1] = choice_answer;
+            self.determine_category();
             true
         }
         else
@@ -303,6 +313,9 @@ impl Question
     /// # Arguments
     /// * `choice` - The `ChoiceAnswer` to add to the question.
     ///
+    /// # Remarks
+    /// `self.category` will be automatically determined.
+    ///
     /// # Examples
     /// ```
     /// use qrate::Question;
@@ -314,6 +327,7 @@ impl Question
     pub fn push_choice(&mut self, choice: ChoiceAnswer)
     {
         self.choices.push(choice);
+        self.determine_category();
     }
 
     // pub fn get_choices(&self) -> &Choices
@@ -340,6 +354,9 @@ impl Question
     /// # Arguments
     /// * `choices` - The new vector of `ChoiceAnswer`s to set.
     ///
+    /// # Returns
+    /// `&Choices` - A reference to the vector of `ChoiceAnswer`s.
+    ///
     /// # Examples
     /// ```
     /// use qrate::Question;
@@ -351,6 +368,7 @@ impl Question
     pub fn set_choices(&mut self, choices: Choices)
     {
         self.choices = choices;
+        self.determine_category();
     }
 
     // pub fn remove_choice(&mut self, choice_number: usize) -> bool
@@ -362,6 +380,9 @@ impl Question
     /// # Returns
     /// `bool` - `true` if the choice was successfully removed,
     ///        - `false` if the index is out of bounds.
+    ///
+    /// # Returns
+    /// `&Choices` - A reference to the vector of `ChoiceAnswer`s.
     /// 
     /// # Examples
     /// ```
@@ -376,6 +397,7 @@ impl Question
         if (choice_number <= self.choices.len()) && (choice_number > 0)
         {
             self.choices.remove(choice_number - 1);
+            self.determine_category();
             true
         }
         else

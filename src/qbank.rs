@@ -459,7 +459,8 @@ impl QBank
     /// Gets the maximum number of choices among all questions in the bank.
     /// 
     /// # Returns
-    /// The maximum number of choices among all questions in the bank as `usize`.
+    /// The maximum number of choices among all the questions that belong to
+    /// category 1 and 2 in the bank as `usize`.
     /// If there are no questions, returns `0`.
     /// 
     /// # Examples
@@ -473,7 +474,15 @@ impl QBank
     #[inline]
     pub fn get_max_choices(&self) -> usize
     {
-        self.get_questions().iter().map(|q| q.get_choices().len()).max().unwrap_or(0)
+        self.get_questions().iter()
+        .map(|q| {
+            let cat = q.get_category();
+            if cat == 1 || cat == 2
+                { q.get_choices().len() }
+            else
+                { 0 }
+        })
+        .max().unwrap_or(0)
     }
 
     // pub fn get_length(&self) -> usize
