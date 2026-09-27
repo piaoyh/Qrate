@@ -213,7 +213,7 @@ impl ShuffledQuestion
         for last in (1..max).rev()
         {
             let chosen = prng.random_under_uint_(last + 1);
-            (self.choices[last], self.choices[chosen]) = (self.choices[chosen], self.choices[last]);
+            self.choices.swap(last, chosen);
         }
     }
 }

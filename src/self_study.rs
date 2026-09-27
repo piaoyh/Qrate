@@ -236,9 +236,8 @@ impl SelfStudy
         let sbank = SBank::new_with_students(vec![student]);
         let mut shuffler = Shuffler::new_with_seeds(qbank, start, end, &sbank, seeds);
         
-        if shuffler.make_exams(number_of_questions)
+        if shuffler.make_exams(number_of_questions, false)
         {
-            shuffler.shuffle_choices();
             let num_q = if let Some(qset) = shuffler.get_shuffled_qsets().get(0)
             {
                 qset.get_shuffled_questions().len()

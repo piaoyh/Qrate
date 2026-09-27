@@ -151,6 +151,59 @@ impl ShuffledQSet
         }
     }
 
+    // pub fn shuffle_choices(&mut self, question: usize, prng: &mut Random)
+    /// Shuffles the choices of a specific question within the set.
+    /// 
+    /// # Arguments
+    /// * `question` - The 1-based index of the question whose choices are to
+    ///   be shuffled.
+    /// * `prng` - A random number generator.
+    /// 
+    /// # Examples
+    /// ```
+    /// use cryptocol::random::Random_PRNG_Creator;
+    /// use qrate::{ QBank, Student, ShuffledQSet, Question };
+    ///
+    /// let mut qbank = QBank::new_with_default();
+    /// qbank.push_question(Question::new(1, 1, 1, "Q1".to_string(), vec![]));
+    /// let student = Student::new("Test".to_string(), "123".to_string());
+    /// let mut qset = ShuffledQSet::new(&qbank, &student, 1, 1).unwrap();
+    /// qset.shuffle_choices(1, Random_PRNG_Creator::create());
+    /// ```
+    #[inline]
+    pub fn shuffle_choices(&mut self, question: usize, prng: &mut Random)
+    {
+        self.questions[question].shuffle(prng);
+    }
+
+    // pub fn shuffle_all(&mut self, prng: &mut Random)
+    /// Shuffles the order of the questions and the choices of each question
+    /// within the set.
+    /// 
+    /// # Arguments
+    /// * `prng` - A random number generator.
+    /// 
+    /// # Examples
+    /// ```
+    /// use cryptocol::random::Random_PRNG_Creator;
+    /// use qrate::{ QBank, Student, ShuffledQSet, Question };
+    ///
+    /// /// let mut qbank = QBank::new_with_default();
+    /// qbank.push_question(Question::new(1, 1, 1, "Q1".to_string(), vec![]));
+    /// qbank.push_question(Question::new(2, 1, 1, "Q2".to_string(), vec![]));
+    /// let student = Student::new("Test".to_string(), "123".to_string());
+    /// let mut qset = ShuffledQSet::new(&qbank, &student, 1, 2).unwrap();
+    /// qset.shuffle_all(Random_PRNG_Creator::create());
+    /// ```
+    pub fn shuffle_all(&mut self, prng: &mut Random)
+    {
+        self.shuffle(prng);
+        for q in 1..self.questions.len()
+            { self.questions[q].shuffle(prng); }
+        // for question in &mut self.questions
+        //     { question.shuffle(prng); }
+    }
+
     // pub fn get_student(&self) -> &Student
     /// Gets a reference to the `Student` associated with this question set.
     /// 

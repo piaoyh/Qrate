@@ -69,7 +69,7 @@ impl Generator
     const FOOTER_UNDERLINE: u16 = 0b_100_0000_0000_0000;
     const FOOTER_STRIKE: u16 = 0b_1000_0000_0000_0000;
 
-    // pub fn new(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, sbank: &SBank, answer_sheet_title: String) -> Option<Self>
+    // pub fn new(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, strict: bool, sbank: &SBank, answer_sheet_title: String) -> Option<Self>
     /// Creates a new `Generator` instance for multiple shuffled sets,
     /// one for each student.
     ///
@@ -83,6 +83,10 @@ impl Generator
     /// * `end` - The 1-based ending index of questions to consider (inclusive).
     /// * `number_of_questions` - The number of questions to be randomly
     ///   selected for each student.
+    /// * `strict` - A boolean indicating whether to use strict mode for
+    ///   question selection. If `strict` is `true`, the generator will generate
+    ///   equivalently same question sets for each student; if `false`, it will
+    ///   allow different question sets for each student.
     /// * `sbank` - A reference to the `SBank` containing the list of students.
     /// * `answer_sheet_title` - The title to be used for the answer sheet.
     ///
@@ -104,13 +108,13 @@ impl Generator
     /// let students = SBank::new_with_students(vec![student1, student2]);
     ///
     /// // Generate exams with 2 questions selected for each student
-    /// let generator = Generator::new(&qbank, 1, 2, 2, &students, "Answer Sheet".to_string());
+    /// let generator = Generator::new(&qbank, 1, 2, 2, false, &students, "Answer Sheet".to_string());
     /// assert!(generator.is_some());
     /// ```
-    pub fn new(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, sbank: &SBank, answer_sheet_title: String) -> Option<Self>
+    pub fn new(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, strict: bool, sbank: &SBank, answer_sheet_title: String) -> Option<Self>
     {
         let mut shuffler = Shuffler::new(qbank, start, end, sbank);
-        if shuffler.make_exams(number_of_questions)
+        if shuffler.make_exams(number_of_questions, strict)
         {
             Some(
                 Self
@@ -210,10 +214,10 @@ impl Generator
     {
         let student = Student::new_empty();
         let sbank = SBank::new_with_students(vec![student]);
-        Self::new(qbank, start, end, number_of_questions, &sbank, answer_sheet_title)
+        Self::new(qbank, start, end, number_of_questions, false, &sbank, answer_sheet_title)
     }
 
-    // pub fn new_with_seeds(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, sbank: &SBank, answer_sheet_title: String, seeds: [u64; 16]) -> Option<Self>
+    // pub fn new_with_seeds(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, strict: bool, sbank: &SBank, answer_sheet_title: String, seeds: [u64; 16]) -> Option<Self>
     /// Creates a new `Generator` instance for multiple shuffled sets,
     /// one for each student.
     ///
@@ -227,6 +231,10 @@ impl Generator
     /// * `end` - The 1-based ending index of questions to consider (inclusive).
     /// * `number_of_questions` - The number of questions to be randomly
     ///   selected for each student.
+    /// * `strict` - A boolean indicating whether to use strict mode for
+    ///   question selection. If `strict` is `true`, the generator will generate
+    ///   equivalently same question sets for each student; if `false`, it will
+    ///   allow different question sets for each student.
     /// * `sbank` - A reference to the `SBank` containing the list of students.
     /// * `answer_sheet_title` - The title to be used for the answer sheet.
     /// * `seeds` - A seed array, each element of which is of u64.
@@ -250,13 +258,13 @@ impl Generator
     /// let seeds = [0_u64, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
     /// 
     /// // Generate exams with 2 questions selected for each student
-    /// let generator = Generator::new_with_seeds(&qbank, 1, 2, 2, &sbank, "Answer Sheet".to_string(), seeds);
+    /// let generator = Generator::new_with_seeds(&qbank, 1, 2, 2, false, &sbank, "Answer Sheet".to_string(), seeds);
     /// assert!(generator.is_some());
     /// ```
-    pub fn new_with_seeds(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, sbank: &SBank, answer_sheet_title: String, seeds: [u64; 16]) -> Option<Self>
+    pub fn new_with_seeds(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, strict: bool, sbank: &SBank, answer_sheet_title: String, seeds: [u64; 16]) -> Option<Self>
     {
         let mut shuffler = Shuffler::new_with_seeds(qbank, start, end, sbank, seeds);
-        if shuffler.make_exams(number_of_questions)
+        if shuffler.make_exams(number_of_questions, strict)
         {
             Some(
                 Self
@@ -283,7 +291,7 @@ impl Generator
         }
     }
 
-    // pub fn new_empty_with_seeds(answer_sheet_title: String,seeds: [u64; 16]) -> Self
+    // pub fn new_empty_with_seeds(answer_sheet_title: String, seeds: [u64; 16]) -> Self
     /// Creates a new, empty `Generator` instance with default values.
     ///
     /// This function initializes all fields of the `Generator` struct to their
@@ -291,8 +299,8 @@ impl Generator
     /// `ShuffledQSets`, and predefined font sizes and margins.
     /// 
     /// # Arguments
-    /// * `seeds` - A seed array, each element of which is of u64.
     /// * `answer_sheet_title` - The title to be used for the answer sheet.
+    /// * `seeds` - A seed array, each element of which is of u64.
     ///
     /// # Returns
     /// `Self` - A new `Generator` instance, ready for configuration.
@@ -326,7 +334,7 @@ impl Generator
         }
     }
 
-    // pub fn new_one_set(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, answer_sheet_title: String, seeds: [u64; 16]) -> Option<Self>
+    // pub fn new_one_set_with_seeds(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, answer_sheet_title: String, seeds: [u64; 16]) -> Option<Self>
     /// Creates a new `Generator` instance for a single shuffled set.
     ///
     /// This function generates a single shuffled question set based on the provided
@@ -360,15 +368,19 @@ impl Generator
     {
         let student = Student::new("Self Study".to_string(), "-".to_string());
         let sbank = SBank::new_with_students(vec![student]);
-        Self::new_with_seeds(qbank, start, end, number_of_questions, &sbank, answer_sheet_title, seeds)
+        Self::new_with_seeds(qbank, start, end, number_of_questions, false, &sbank, answer_sheet_title, seeds)
     }
 
-    // pub fn make_exams(&mut self, number_of_questions: usize)
+    // pub fn make_exams(&mut self, number_of_questions: usize, strict: bool)
     /// Generates a set of exams based on the specified number of questions.
     ///
     /// # Arguments
     /// * `number_of_questions` - The number of questions to be randomly
     ///   selected for each student.
+    /// * `strict` - A boolean indicating whether to use strict mode for
+    ///   question selection. If `strict` is `true`, the generator will generate
+    ///   equivalently same question sets for each student; if `false`, it will
+    ///   allow different question sets for each student.
     /// 
     /// # Returns
     /// `bool` - `true` if the generation is successful, `false` otherwise.
@@ -378,14 +390,14 @@ impl Generator
     /// use qrate::Generator;
     ///
     /// let mut generator = Generator::new_empty();
-    /// generator.make_exams(5);
+    /// generator.make_exams(5, false);
     /// // Verify that the generator's internal qbank is empty.
     /// assert!(generator.origin.get_questions().is_empty());
     /// ```
     #[inline]
-    pub fn make_exams(&mut self, number_of_questions: usize) -> bool
+    pub fn make_exams(&mut self, number_of_questions: usize, strict: bool) -> bool
     {
-        self.shuffler.make_exams(number_of_questions)
+        self.shuffler.make_exams(number_of_questions, strict)
     }
 
     // pub fn get_title_font_size(&self) -> f32
@@ -1729,18 +1741,27 @@ impl Generator
     /// ```
     pub fn get_shuffled_qbank(&self, student_number: u16) -> Option<(Student, QBank)>
     {
-        let shuffled_qset = self.shuffler.get_shuffled_questions(student_number as usize)?;
+        let shuffled_qset = self.shuffler.get_shuffled_questions(student_number)?;
         let qset_len = shuffled_qset.get_shuffled_questions().len();
 
         let header = self.shuffler.get_header().clone();
         let mut qbank = QBank::new_with_header(header);
         let mut questions = Questions::new();
-        for question_idx in 1..=qset_len
+        for question_idx in 1..=qset_len as u16
         {
-            let question_number = self.shuffler.get_shuffled_question(student_number, question_idx as u16);
-            // Find question by actual ID, not by index
+            let shuffled_q = shuffled_qset.get_shuffled_question(question_idx as u16).unwrap();
+            let question_number = shuffled_q.get_question();
             let question = self.shuffler.get_qbank().get_question(question_number as usize)?;
-            questions.push(question.clone());
+
+            let original_choices = question.get_choices();
+            let shuffled_choices: Vec<_> = shuffled_q.get_choices()
+                .iter()
+                .map(|&c_idx| original_choices[c_idx as usize - 1].clone())
+                .collect();
+
+            let mut new_question = question.clone();
+            new_question.set_choices(shuffled_choices);
+            questions.push(new_question);
         }
         qbank.set_questions(questions);
         Some((self.shuffler.get_student(student_number).unwrap(), qbank))
@@ -2260,14 +2281,20 @@ impl Generator
 
             // Answers
             let mut answer_line = String::new();
-            for (i, question) in qbank.get_questions().iter().enumerate() {
+            for (i, question) in qbank.get_questions().iter().enumerate()
+            {
                 let category_id = question.get_category();
-                let answer_string = if category_id == 3 {
+                let answer_string = if category_id == 3
+                {
                     let answers: Vec<String> = question.get_choices().iter().map(|(t, _)| t.clone()).collect();
                     format!("({})", answers.join(", "))
-                } else if category_id == 4 {
+                }
+                else if category_id == 4
+                {
                     "(---)".to_string()
-                } else {
+                }
+                else
+                {
                     let correct_choices: Vec<String> = question.get_choices()
                         .iter()
                         .enumerate()
@@ -2280,15 +2307,15 @@ impl Generator
                 let entry = format!("{}. {}    ", i + 1, answer_string);
 
                 // Simple line wrapping logic
-                if answer_line.len() + entry.len() > 80 && !answer_line.is_empty() {
+                if answer_line.len() + entry.len() > 80 && !answer_line.is_empty()
+                {
                     writeln!(file, "{}", answer_line).map_err(|e| e.to_string())?;
                     answer_line.clear();
                 }
                 answer_line.push_str(&entry);
             }
-            if !answer_line.is_empty() {
-                writeln!(file, "{}", answer_line).map_err(|e| e.to_string())?;
-            }
+            if !answer_line.is_empty()
+                { writeln!(file, "{}", answer_line).map_err(|e| e.to_string())?; }
             writeln!(file, "").map_err(|e| e.to_string())?; // Blank line after each student
         }
         Ok(())

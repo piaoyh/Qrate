@@ -1001,7 +1001,9 @@ impl QBank
     /// Optimizes the question bank by ensuring that question IDs are sequential
     /// starting from 1, and that group numbers are consistent with the question
     /// IDs, and that any questions that have empty question sentences and no
-    /// choices are removed from the bank.
+    /// choices are removed from the bank. Besides, it also automatically
+    /// determines the categories of the questions based on their choices and
+    /// their correctness.
     /// 
     /// The optimization process iterates through the questions and updates
     /// their IDs to be sequential. It also checks the group numbers and updates
@@ -1093,6 +1095,7 @@ impl QBank
                     { next.set_group(group); }
             }
         }
+        self.determine_categories();
     }
 
     // pub fn sort(&mut self)

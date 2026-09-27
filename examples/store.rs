@@ -7,7 +7,7 @@ fn main() -> Result<(), String>
 {
     let sbank = load_students().expect("No Students DB!");
     let qbank = load_questions().expect("No Questions DB!");
-    let generator = Generator::new(&qbank, 1, 67, 10, &sbank, "Answer Sheet".to_string()).expect("Failed to create exam paper.");
+    let generator = Generator::new(&qbank, 1, 67, 10, false, &sbank, "Answer Sheet".to_string()).expect("Failed to create exam paper.");
     generator.save_shuffled_exams("./IS_exam".to_string(), "txt")?;
     generator.save_shuffled_exams("./IS_exam".to_string(), "docx")?;
     // generator.save_shuffled_exams("./IS_exam".to_string(), "pdf")?;

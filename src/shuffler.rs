@@ -9,7 +9,7 @@
 
 
 use cryptocol::random::{ Random_PRNG_Creator, Random };
-use crate::{ Header, Student, QBank, SBank, ShuffledQSet, ShuffledQSets };
+use crate::{ Header, QBank, SBank, ShuffledQSet, ShuffledQSets, ShuffledQuestion, Student };
 
 
 /// The `Shuffler` struct is responsible for managing the shuffling of questions
@@ -120,11 +120,15 @@ impl Shuffler
         me
     }
 
-    // pub fn make_exams(&mut self, number_of_questions: usize) -> bool
+    // pub fn make_exams(&mut self, number_of_questions: usize, strict: bool) -> bool
     /// Generates shuffled question sets for all students in the student bank.
     /// 
     /// # Arguments
     /// * `number_of_questions` - The number of questions for each student's exam.
+    /// * `strict` - A boolean indicating whether to use strict mode for
+    ///   question selection. If `strict` is `true`, the generator will generate
+    ///   equivalently same question sets for each student; if `false`, it will
+    ///   allow different question sets for each student.
     /// 
     /// # Returns
     /// - `true` if succeeded.
@@ -150,22 +154,43 @@ impl Shuffler
     /// sbank.push(Student::new("Bob", "2"));
     /// sbank.push(Student::new("Caleb", "3"));
     /// let shuffler = Shuffler::new(qbank, 1, 3, sbank);
-    /// let exams = shuffler.make_exams(2);
+    /// let exams = shuffler.make_exams(2, false);
     /// assert!(exams);
     /// ```
-    pub fn make_exams(&mut self, number_of_questions: usize) -> bool
+    pub fn make_exams(&mut self, number_of_questions: usize, strict: bool) -> bool
     {
         self.shuffled_qsets.clear();
-        for student in self.sbank.get_students().clone()
+        if strict
         {
-            if let Some(qset) = self.create_shuffled_qset(student, number_of_questions as usize)
+            if let Some(mut qset) = self.create_shuffled_qset(self.sbank.get_students()[0].clone(), number_of_questions as usize)
             {
-                self.shuffled_qsets.push(qset);
+                for i in 0..self.sbank.get_length()
+                {
+                    qset.shuffle_all(&mut self.prng);
+                    qset.set_student(self.sbank.get_students()[i].clone());
+                    self.shuffled_qsets.push(qset.clone());
+                }
             }
             else
             {
                 self.shuffled_qsets.clear();
                 return false;
+            }
+        }
+        else
+        {
+            for student in self.sbank.get_students().clone()
+            {
+                if let Some(mut qset) = self.create_shuffled_qset(student, number_of_questions as usize)
+                {
+                    qset.shuffle_all(&mut self.prng);
+                    self.shuffled_qsets.push(qset);
+                }
+                else
+                {
+                    self.shuffled_qsets.clear();
+                    return false;
+                }
             }
         }
         true
@@ -199,7 +224,7 @@ impl Shuffler
     /// let student = Student::new();
     /// let shuffler = Shuffler::new(qbank, 1, 3, sbank);
     /// let qset = shuffler.create_shuffled_qset(student, 2).unwrap();
-    /// assert_eq!(qset.get_shuffled_questions().len(), 2);
+    /// assert_eq!(qset.get_shuffled_question_numbers().len(), 2);
     /// ```
     #[inline]
     pub fn create_shuffled_qset(&mut self, student: Student, number_of_questions: usize) -> Option<ShuffledQSet>
@@ -208,10 +233,7 @@ impl Shuffler
     }
 
     // pub fn shuffle_choices(&mut self)
-    /// Shuffles the order of choices for each question in the provided set.
-    /// 
-    /// # Arguments
-    /// * `shuffled_questions` - The set of questions whose choices are to be shuffled.
+    /// Shuffles the order of choices for each question in all question sets.
     /// 
     /// # Examples
     /// ```
@@ -478,14 +500,16 @@ impl Shuffler
         self.qbank.get_header()
     }
 
-    // pub fn get_shuffled_questions(&self, student_idx: usize) -> Option<ShuffledQSet>
-    ///
+    // pub fn get_shuffled_questions(&self, student_number: u16) -> Option<ShuffledQSet>
+    /// Gets the shuffled question set for a specific student.
+    /// 
     /// # Arguments
-    /// * `student_idx` - 1-based index.
+    /// * `student_number` - 1-based index.
     /// 
     /// # Returns
-    /// * `Option<ShuffledQSet>` - Shuffled question set for the `student_idx`-th student
-    ///   if `student_idx` is less than the number of students
+    /// * `Option<ShuffledQSet>` - Shuffled question set for the
+    ///   `student_number`-th student if `student_number` is less than the
+    ///   number of students
     /// * None, otherwise
     /// 
     /// # Examples
@@ -513,21 +537,78 @@ impl Shuffler
     /// assert_eq!(qset.get_shuffled_questions().len(), 2);
     /// ```
     #[inline]
-    pub fn get_shuffled_questions(&self, student_idx: usize) -> Option<ShuffledQSet>
+    pub fn get_shuffled_questions(&self, student_number: u16) -> Option<ShuffledQSet>
     {
-        if student_idx > self.sbank.get_length()
-            || student_idx > self.shuffled_qsets.len()
-            || student_idx == 0
+        if student_number as usize > self.sbank.get_length()
+            || student_number as usize > self.shuffled_qsets.len()
+            || student_number == 0
             { None }
         else
-            { Some(self.shuffled_qsets[student_idx - 1].clone()) }
+            { Some(self.shuffled_qsets[student_number as usize - 1].clone()) }
     }
 
-    // pub fn get_shuffled_question(&self, student_number: u16, question_number: u16) -> u16
+    // pub fn get_shuffled_question(&self, student_number: u16, question_number: u16) -> Option<ShuffledQuestion>
+    /// Gets a specific shuffled question for a specific student.
+    /// 
+    /// # Arguments
+    /// * `student_number` - 1-based index of students.
+    /// * `question_number` - 1-based index of questions of
+    ///   the `student_number`-th student.
+    /// 
+    /// # Returns
+    /// * `Option<ShuffledQuestion>` - The `question_number`-th question
+    ///   of the `student_number`-th student if `student_number` is less than or
+    ///   equal to the number of students and `question_number` is less than the
+    ///   number of questions for the `student_number`-th student.
+    /// * None, otherwise
     ///
+    /// # Examples
+    /// ```
+    /// use qrate::{ Question, Student, QBank, SBank, shuffler::Shuffler };
+    /// let mut qbank = QBank::new_with_default();
+    /// let mut question = Question::new_empty();
+    /// qbank.push_question(question.clone());
+    /// question.set_id(2);
+    /// question.set_group(2);
+    /// qbank.push_question(question.clone());
+    /// question.set_id(3);
+    /// question.set_group(2);
+    /// qbank.push_question(question.clone());
+    /// question.set_id(4);
+    /// question.set_group(4);
+    /// qbank.push_question(question);
+    /// let mut sbank = SBank::new();
+    /// sbank.push_student(Student::new("Alice".to_string(), "1".to_string()));
+    /// sbank.push_student(Student::new("Bob".to_string(), "2".to_string()));
+    /// sbank.push_student(Student::new("Caleb".to_string(), "3".to_string()));
+    /// let mut shuffler = Shuffler::new(&qbank, 1, 3, &sbank);
+    /// shuffler.make_exams(2);
+    /// let question = shuffler.get_shuffled_question(2, 1).unwrap();
+    /// assert_eq!(question.get_question(), 2);
+    /// ``` 
+    pub fn get_shuffled_question(&self, student_number: u16, question_number: u16) -> Option<ShuffledQuestion>
+    {
+        if let Some(qset) = self.get_shuffled_questions(student_number)
+        {
+            if let Some(question) = qset.get_shuffled_question(question_number)
+                { Some(question.clone()) }
+            else
+                { None } 
+        }
+        else
+        {
+            None
+        }
+    }
+
+    // pub fn get_shuffled_question_number(&self, student_number: u16, question_number: u16) -> u16
+    /// Gets the question ID of a specific question for a specific student from
+    /// the shuffled question sets.
+    /// 
     /// # Arguments
     /// * `student_number`: 1-based index of students.
-    /// * `question_number`: 1-based index of questions of the `student_number`-th student.
+    /// * `question_number`: 1-based index of questions of
+    ///   the `student_number`-th student.
     /// 
     /// # Returns
     /// The question ID (1-based) if `student_number` is less than or equal to the
@@ -556,11 +637,11 @@ impl Shuffler
     /// sbank.push_student(Student::new("Caleb".to_string(), "3".to_string()));
     /// let mut shuffler = Shuffler::new(&qbank, 1, 3, &sbank);
     /// shuffler.make_exams(2);
-    /// let question_id = shuffler.get_shuffled_question(2, 1);
+    /// let question_id = shuffler.get_shuffled_question_number(2, 1);
     /// assert!(question_id > 0);
     /// ```
     #[inline]
-    pub fn get_shuffled_question(&self, student_number: u16, question_number: u16) -> u16
+    pub fn get_shuffled_question_number(&self, student_number: u16, question_number: u16) -> u16
     {
         if student_number as usize > self.sbank.get_length()
             || student_number == 0
