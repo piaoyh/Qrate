@@ -239,13 +239,9 @@ impl SelfStudy
         if shuffler.make_exams(number_of_questions, false)
         {
             let num_q = if let Some(qset) = shuffler.get_shuffled_qsets().get(0)
-            {
-                qset.get_shuffled_questions().len()
-            }
+                { qset.get_shuffled_questions().len() }
             else
-            {
-                0
-            };
+                { 0 };
             Some(
                 Self
                 {

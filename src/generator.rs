@@ -2173,24 +2173,28 @@ impl Generator
             let category_id = question.get_category();
             let category_text = header.get_category(category_id).map(|s| s.as_str()).unwrap_or("");
             content.push_str(&format!("{}. [{}]   {}\n", question_index + 1, category_text, question.get_question()));
-            
-            if category_id == 3 {
-                // Short answer: ( space * 3 * max_choice_len )
-                let max_len = question.get_choices().iter().map(|(t, _)| t.len()).max().unwrap_or(0);
-                let spaces = " ".repeat(max_len * 3);
-                content.push_str(&format!("    ({})\n", spaces));
-            } else if category_id == 4 {
-                // Essay: 15 blank lines
-                for _ in 0..15 {
-                    content.push_str("\n");
-                }
-            } else {
-                // Category 1, 2: Standard choices
-                for (choice_index, (choice_text, _is_correct)) in question.get_choices().iter().enumerate()
-                {
-                    let choice_char = (choice_index + 1).to_string();
-                    content.push_str(&format!("    ({}) {}\n", choice_char, choice_text));
-                }
+
+            match category_id
+            {
+                3 => {
+                    // Short answer: ( space * 3 * max_choice_len )
+                    let max_len = question.get_choices().iter().map(|(t, _)| t.len()).max().unwrap_or(0);
+                    let spaces = " ".repeat(max_len * 3);
+                    content.push_str(&format!("    ({})\n", spaces));
+                },
+                4 => {
+                    // Essay: 15 blank lines
+                    for _ in 0..15
+                        { content.push_str("\n"); }
+                },
+                _ => {
+                    // Category 1, 2: Standard choices
+                    for (choice_index, (choice_text, _is_correct)) in question.get_choices().iter().enumerate()
+                    {
+                        let choice_char = (choice_index + 1).to_string();
+                        content.push_str(&format!("    ({}) {}\n", choice_char, choice_text));
+                    }
+                },
             }
             content.push_str("\n"); // Blank line after each question
         }
@@ -2265,24 +2269,22 @@ impl Generator
             for (i, question) in qbank.get_questions().iter().enumerate()
             {
                 let category_id = question.get_category();
-                let answer_string = if category_id == 3
+                let answer_string = match category_id
                 {
-                    let answers: Vec<String> = question.get_choices().iter().map(|(t, _)| t.clone()).collect();
-                    format!("({})", answers.join(", "))
-                }
-                else if category_id == 4
-                {
-                    "(---)".to_string()
-                }
-                else
-                {
-                    let correct_choices: Vec<String> = question.get_choices()
-                        .iter()
-                        .enumerate()
-                        .filter(|(_, (_, is_correct))| *is_correct)
-                        .map(|(j, _)| (j + 1).to_string())
-                        .collect();
-                    format!("({})", correct_choices.join(", "))
+                    3 => {
+                        let answers: Vec<String> = question.get_choices().iter().map(|(t, _)| t.clone()).collect();
+                        format!("({})", answers.join(", "))
+                    },
+                    4 => "(---)".to_string(),
+                    _ => {
+                        let correct_choices: Vec<String> = question.get_choices()
+                            .iter()
+                            .enumerate()
+                            .filter(|(_, (_, is_correct))| *is_correct)
+                            .map(|(j, _)| (j + 1).to_string())
+                            .collect();
+                        format!("({})", correct_choices.join(", "))
+                    },
                 };
 
                 let entry = format!("{}. {}    ", i + 1, answer_string);
@@ -2364,19 +2366,22 @@ impl Generator
             let mut answer_line = String::new();
             for (i, question) in qbank.get_questions().iter().enumerate() {
                 let category_id = question.get_category();
-                let answer_string = if category_id == 3 {
-                    let answers: Vec<String> = question.get_choices().iter().map(|(t, _)| t.clone()).collect();
-                    format!("({})", answers.join(", "))
-                } else if category_id == 4 {
-                    "(---)".to_string()
-                } else {
-                    let correct_choices: Vec<String> = question.get_choices()
-                        .iter()
-                        .enumerate()
-                        .filter(|(_, (_, is_correct))| *is_correct)
-                        .map(|(j, _)| (j + 1).to_string())
-                        .collect();
-                    format!("({})", correct_choices.join(", "))
+                let answer_string = match category_id
+                {
+                    3 => {
+                        let answers: Vec<String> = question.get_choices().iter().map(|(t, _)| t.clone()).collect();
+                        format!("({})", answers.join(", "))
+                    },
+                    4 => { "(---)".to_string() },
+                    _ => {
+                        let correct_choices: Vec<String> = question.get_choices()
+                            .iter()
+                            .enumerate()
+                            .filter(|(_, (_, is_correct))| *is_correct)
+                            .map(|(j, _)| (j + 1).to_string())
+                            .collect();
+                        format!("({})", correct_choices.join(", "))
+                    },
                 };
 
                 let entry = format!("{}. {}    ", i + 1, answer_string);
@@ -2596,19 +2601,22 @@ impl Generator
             let mut answers_text = String::new();
             for (i, question) in qbank.get_questions().iter().enumerate() {
                 let category_id = question.get_category();
-                let answer_string = if category_id == 3 {
-                    let answers: Vec<String> = question.get_choices().iter().map(|(t, _)| t.clone()).collect();
-                    format!("({})", answers.join(", "))
-                } else if category_id == 4 {
-                    "(---)".to_string()
-                } else {
-                    let correct_choices: Vec<String> = question.get_choices()
-                        .iter()
-                        .enumerate()
-                        .filter(|(_, (_, is_correct))| *is_correct)
-                        .map(|(j, _)| (j + 1).to_string())
-                        .collect();
-                    format!("({})", correct_choices.join(", "))
+                let answer_string = match category_id
+                {
+                    3 => {
+                        let answers: Vec<String> = question.get_choices().iter().map(|(t, _)| t.clone()).collect();
+                        format!("({})", answers.join(", "))
+                    },
+                    4 => { "(---)".to_string() },
+                    _ => {
+                        let correct_choices: Vec<String> = question.get_choices()
+                            .iter()
+                            .enumerate()
+                            .filter(|(_, (_, is_correct))| *is_correct)
+                            .map(|(j, _)| (j + 1).to_string())
+                            .collect();
+                        format!("({})", correct_choices.join(", "))
+                    },
                 };
                 answers_text.push_str(&format!("{}. {}    ", i + 1, answer_string));
             }
@@ -2745,38 +2753,38 @@ impl Generator
             docx = docx.add_paragraph(q_para);
 
             let category_id = question.get_category();
-            if category_id == 3
+            match category_id
             {
-                // Short answer: ( space * 3 * max_choice_len )
-                let max_len = question.get_choices().iter().map(|(t, _)| t.len()).max().unwrap_or(0);
-                let spaces = " ".repeat(max_len * 3);
-                let c_para = paragraph(body_run.clone(), format!("    ({})", spaces), body_font_size);
-                docx = docx.add_paragraph(c_para);
-            }
-            else if category_id == 4
-            {
-                // Essay: 15 blank lines
-                for _ in 0..15
-                    { docx = docx.add_paragraph(blank_line.clone()); }
-            }
-            else
-            {
-                // Category 1, 2: Standard choices
-                for (choice_index, (choice_text, _is_correct)) in question.get_choices().iter().enumerate()
-                {
-                    let mut c_para = Paragraph::new();
-                    let mut lines = choice_text.lines().peekable();
-                    let mut is_first_line = true;
-                    while let Some(line) = lines.next()
-                    {
-                        let mut run = body_run.clone().add_text(if is_first_line { format!("    ({}) {}", choice_index + 1, line) } else { line.to_string() }).size(body_font_size);
-                        if lines.peek().is_some()
-                            { run = run.add_break(docx_rs::BreakType::TextWrapping); }
-                        c_para = c_para.add_run(run);
-                        is_first_line = false;
-                    }
+                3 => {
+                    // Short answer: ( space * 3 * max_choice_len )
+                    let max_len = question.get_choices().iter().map(|(t, _)| t.len()).max().unwrap_or(0);
+                    let spaces = " ".repeat(max_len * 3);
+                    let c_para = paragraph(body_run.clone(), format!("    ({})", spaces), body_font_size);
                     docx = docx.add_paragraph(c_para);
-                }
+                },
+                4 => {
+                    // Essay: 15 blank lines
+                    for _ in 0..15
+                        { docx = docx.add_paragraph(blank_line.clone()); }
+                },
+                _ => {
+                    // Category 1, 2: Standard choices
+                    for (choice_index, (choice_text, _is_correct)) in question.get_choices().iter().enumerate()
+                    {
+                        let mut c_para = Paragraph::new();
+                        let mut lines = choice_text.lines().peekable();
+                        let mut is_first_line = true;
+                        while let Some(line) = lines.next()
+                        {
+                            let mut run = body_run.clone().add_text(if is_first_line { format!("    ({}) {}", choice_index + 1, line) } else { line.to_string() }).size(body_font_size);
+                            if lines.peek().is_some()
+                                { run = run.add_break(docx_rs::BreakType::TextWrapping); }
+                            c_para = c_para.add_run(run);
+                            is_first_line = false;
+                        }
+                        docx = docx.add_paragraph(c_para);
+                    }
+                },
             }
             // Blank line after each question
             docx = docx.add_paragraph(blank_line.clone());
@@ -2911,19 +2919,22 @@ impl Generator
             let mut answers_text = String::new();
             for (i, question) in qbank.get_questions().iter().enumerate() {
                 let category_id = question.get_category();
-                let answer_string = if category_id == 3 {
-                    let answers: Vec<String> = question.get_choices().iter().map(|(t, _)| t.clone()).collect();
-                    format!("({})", answers.join(", "))
-                } else if category_id == 4 {
-                    "(---)".to_string()
-                } else {
-                    let correct_choices: Vec<String> = question.get_choices()
-                        .iter()
-                        .enumerate()
-                        .filter(|(_, (_, is_correct))| *is_correct)
-                        .map(|(j, _)| (j + 1).to_string())
-                        .collect();
-                    format!("({})", correct_choices.join(", "))
+                let answer_string = match category_id
+                {
+                    3 => {
+                        let answers: Vec<String> = question.get_choices().iter().map(|(t, _)| t.clone()).collect();
+                        format!("({})", answers.join(", "))
+                    },
+                    4 => { "(---)".to_string() },
+                    _ => {
+                        let correct_choices: Vec<String> = question.get_choices()
+                            .iter()
+                            .enumerate()
+                            .filter(|(_, (_, is_correct))| *is_correct)
+                            .map(|(j, _)| (j + 1).to_string())
+                            .collect();
+                        format!("({})", correct_choices.join(", "))
+                    },
                 };
                 answers_text.push_str(&format!("{}. {}    ", i + 1, answer_string));
             }
@@ -3031,33 +3042,33 @@ impl Generator
                 style: body_style.clone(),
             }]).map_err(|e| e.to_string())?;
 
-            if category_id == 3
+            match category_id
             {
-                // Short answer: ( space * 3 * max_choice_len )
-                let max_len = question.get_choices().iter().map(|(t, _)| t.len()).max().unwrap_or(0);
-                let spaces = " ".repeat(max_len * 3);
-                hwpx.add_mixed_styled_paragraph(vec![StyledText {
-                    text: format!("    ({})", spaces),
-                    style: body_style.clone(),
-                }]).map_err(|e| e.to_string())?;
-            }
-            else if category_id == 4
-            {
-                // Essay: 15 blank lines
-                for _ in 0..15
-                    { hwpx.add_paragraph("").map_err(|e| e.to_string())?; }
-            }
-            else
-            {
-                // Category 1, 2: Standard choices
-                for (choice_index, (choice_text, _)) in question.get_choices().iter().enumerate()
-                {
-                    let c_text = format!("    ({}) {}", choice_index + 1, choice_text);
+                3 => {
+                    // Short answer: ( space * 3 * max_choice_len )
+                    let max_len = question.get_choices().iter().map(|(t, _)| t.len()).max().unwrap_or(0);
+                    let spaces = " ".repeat(max_len * 3);
                     hwpx.add_mixed_styled_paragraph(vec![StyledText {
-                        text: c_text,
+                        text: format!("    ({})", spaces),
                         style: body_style.clone(),
                     }]).map_err(|e| e.to_string())?;
-                }
+                },
+                4 => {
+                    // Essay: 15 blank lines
+                    for _ in 0..15
+                        { hwpx.add_paragraph("").map_err(|e| e.to_string())?; }
+                },
+                _ => {
+                    // Category 1, 2: Standard choices
+                    for (choice_index, (choice_text, _)) in question.get_choices().iter().enumerate()
+                    {
+                        let c_text = format!("    ({}) {}", choice_index + 1, choice_text);
+                        hwpx.add_mixed_styled_paragraph(vec![StyledText {
+                            text: c_text,
+                            style: body_style.clone(),
+                        }]).map_err(|e| e.to_string())?;
+                    }
+                },
             }
             hwpx.add_paragraph("").map_err(|e| e.to_string())?;
         }
@@ -3195,24 +3206,22 @@ impl Generator
             for (i, question) in qbank.get_questions().iter().enumerate()
             {
                 let category_id = question.get_category();
-                let answer_string = if category_id == 3
+                let answer_string = match category_id
                 {
-                    let answers: Vec<String> = question.get_choices().iter().map(|(t, _)| t.clone()).collect();
-                    format!("({})", answers.join(", "))
-                }
-                else if category_id == 4
-                {
-                    "(---)".to_string()
-                }
-                else
-                {
-                    let correct_choices: Vec<String> = question.get_choices()
+                    3 => {
+                        let answers: Vec<String> = question.get_choices().iter().map(|(t, _)| t.clone()).collect();
+                        format!("({})", answers.join(", "))
+                    },
+                    4 => { "(---)".to_string() },
+                    _ => {
+                        let correct_choices: Vec<String> = question.get_choices()
                         .iter()
                         .enumerate()
                         .filter(|(_, (_, is_correct))| *is_correct)
                         .map(|(j, _)| (j + 1).to_string())
                         .collect();
-                    format!("({})", correct_choices.join(", "))
+                        format!("({})", correct_choices.join(", "))
+                    },
                 };
                 answers_text.push_str(&format!("{}. {}    ", i + 1, answer_string));
             }
@@ -3316,32 +3325,32 @@ impl Generator
             q_styled = q_styled.add_range(0, q_text.len(), body_style.clone());
             hwp.add_styled_paragraph(&q_styled).map_err(|e| e.to_string())?;
 
-            if category_id == 3
+            match category_id
             {
-                // Short answer: ( space * 3 * max_choice_len )
-                let max_len = question.get_choices().iter().map(|(t, _)| t.len()).max().unwrap_or(0);
-                let spaces = " ".repeat(max_len * 3);
-                let c_text = format!("    ({})", spaces);
-                let mut c_styled = hwpers::writer::style::StyledText::new(c_text.clone());
-                c_styled = c_styled.add_range(0, c_text.len(), body_style.clone());
-                hwp.add_styled_paragraph(&c_styled).map_err(|e| e.to_string())?;
-            }
-            else if category_id == 4
-            {
-                // Essay: 15 blank lines
-                for _ in 0..15
-                    { hwp.add_paragraph("").map_err(|e| e.to_string())?; }
-            }
-            else
-            {
-                // Category 1, 2: Standard choices
-                for (choice_index, (choice_text, _)) in question.get_choices().iter().enumerate()
-                {
-                    let c_text = format!("    ({}) {}", choice_index + 1, choice_text);
+                3 => {
+                    // Short answer: ( space * 3 * max_choice_len )
+                    let max_len = question.get_choices().iter().map(|(t, _)| t.len()).max().unwrap_or(0);
+                    let spaces = " ".repeat(max_len * 3);
+                    let c_text = format!("    ({})", spaces);
                     let mut c_styled = hwpers::writer::style::StyledText::new(c_text.clone());
                     c_styled = c_styled.add_range(0, c_text.len(), body_style.clone());
                     hwp.add_styled_paragraph(&c_styled).map_err(|e| e.to_string())?;
-                }
+                },
+                4 => {
+                    // Essay: 15 blank lines
+                    for _ in 0..15
+                        { hwp.add_paragraph("").map_err(|e| e.to_string())?; }
+                },
+                _ => {
+                    // Category 1, 2: Standard choices
+                    for (choice_index, (choice_text, _)) in question.get_choices().iter().enumerate()
+                    {
+                        let c_text = format!("    ({}) {}", choice_index + 1, choice_text);
+                        let mut c_styled = hwpers::writer::style::StyledText::new(c_text.clone());
+                        c_styled = c_styled.add_range(0, c_text.len(), body_style.clone());
+                        hwp.add_styled_paragraph(&c_styled).map_err(|e| e.to_string())?;
+                    }
+                },
             }
             hwp.add_paragraph("").map_err(|e| e.to_string())?;
         }
@@ -3447,24 +3456,22 @@ impl Generator
             for (i, question) in qbank.get_questions().iter().enumerate()
             {
                 let category_id = question.get_category();
-                let answer_string = if category_id == 3
+                let answer_string = match category_id
                 {
-                    let answers: Vec<String> = question.get_choices().iter().map(|(t, _)| t.clone()).collect();
-                    format!("({})", answers.join(", "))
-                }
-                else if category_id == 4
-                {
-                    "(---)".to_string()
-                }
-                else
-                {
-                    let correct_choices: Vec<String> = question.get_choices()
-                        .iter()
-                        .enumerate()
-                        .filter(|(_, (_, is_correct))| *is_correct)
-                        .map(|(j, _)| (j + 1).to_string())
-                        .collect();
-                    format!("({})", correct_choices.join(", "))
+                    3 => {
+                        let answers: Vec<String> = question.get_choices().iter().map(|(t, _)| t.clone()).collect();
+                        format!("({})", answers.join(", "))
+                    },
+                    4 => { "(---)".to_string() },
+                    _ => {
+                        let correct_choices: Vec<String> = question.get_choices()
+                            .iter()
+                            .enumerate()
+                            .filter(|(_, (_, is_correct))| *is_correct)
+                            .map(|(j, _)| (j + 1).to_string())
+                            .collect();
+                        format!("({})", correct_choices.join(", "))
+                    },
                 };
                 answers_text.push_str(&format!("{}. {}    ", i + 1, answer_string));
             }
@@ -3559,27 +3566,27 @@ impl Generator
             let category_text = header.get_category(category_id).map(|s| s.as_str()).unwrap_or("");
             doc.push(elements::Paragraph::new(format!("{}. [{}]   {}", question_index + 1, category_text, question.get_question())).styled(body_style));
             
-            if category_id == 3
+            match category_id
             {
-                // Short answer: ( space * 3 * max_choice_len )
-                let max_len = question.get_choices().iter().map(|(t, _)| t.len()).max().unwrap_or(0);
-                let spaces = " ".repeat(max_len * 3);
-                doc.push(elements::Paragraph::new(format!("    ({})", spaces)).styled(body_style));
-            }
-            else if category_id == 4
-            {
-                // Essay: 15 blank lines
-                for _ in 0..15
-                    { doc.push(elements::Paragraph::new("")); }
-            }
-            else
-            {
-                // Category 1, 2: Standard choices
-                for (choice_index, (choice_text, _is_correct)) in question.get_choices().iter().enumerate()
-                {
-                    let choice_char = (choice_index + 1).to_string();
-                    doc.push(elements::Paragraph::new(format!("    ({}) {}", choice_char, choice_text)).styled(body_style));
-                }
+                3 => {
+                    // Short answer: ( space * 3 * max_choice_len )
+                    let max_len = question.get_choices().iter().map(|(t, _)| t.len()).max().unwrap_or(0);
+                    let spaces = " ".repeat(max_len * 3);
+                    doc.push(elements::Paragraph::new(format!("    ({})", spaces)).styled(body_style));
+                },
+                4 => {
+                    // Essay: 15 blank lines
+                    for _ in 0..15
+                        { doc.push(elements::Paragraph::new("")); }
+                },
+                _ => {
+                    // Category 1, 2: Standard choices
+                    for (choice_index, (choice_text, _is_correct)) in question.get_choices().iter().enumerate()
+                    {
+                        let choice_char = (choice_index + 1).to_string();
+                        doc.push(elements::Paragraph::new(format!("    ({}) {}", choice_char, choice_text)).styled(body_style));
+                    }
+                },
             }
             doc.push(elements::Paragraph::new("")); // Blank line after each question
         }
@@ -3686,32 +3693,32 @@ impl Generator
                     "style": "body"
                 }));
 
-                if category_id == 3
+                match category_id
                 {
-                    // Short answer: ( space * 3 * max_choice_len )
-                    let max_len = question.get_choices().iter().map(|(t, _)| t.len()).max().unwrap_or(0);
-                    let spaces = " ".repeat(max_len * 3);
-                    content.push(json!({
-                        "text": format!("    ({})", spaces),
-                        "style": "body"
-                    }));
-                }
-                else if category_id == 4
-                {
-                    // Essay: 15 blank lines
-                    for _ in 0..15
-                        { content.push(json!({"text": "\n"})); }
-                }
-                else
-                {
-                    // Category 1, 2: Standard choices
-                    for (choice_index, (choice_text, _)) in question.get_choices().iter().enumerate()
-                    {
+                    3 => {
+                        // Short answer: ( space * 3 * max_choice_len )
+                        let max_len = question.get_choices().iter().map(|(t, _)| t.len()).max().unwrap_or(0);
+                        let spaces = " ".repeat(max_len * 3);
                         content.push(json!({
-                            "text": format!("    ({}) {}", choice_index + 1, choice_text),
+                            "text": format!("    ({})", spaces),
                             "style": "body"
                         }));
-                    }
+                    },
+                    4 => {
+                        // Essay: 15 blank lines
+                        for _ in 0..15
+                            { content.push(json!({"text": "\n"})); }
+                    },
+                    _ => {
+                        // Category 1, 2: Standard choices
+                        for (choice_index, (choice_text, _)) in question.get_choices().iter().enumerate()
+                        {
+                            content.push(json!({
+                                "text": format!("    ({}) {}", choice_index + 1, choice_text),
+                                "style": "body"
+                            }));
+                        }
+                    },
                 }
                 content.push(json!({"text": "\n"}));
             }
@@ -3735,23 +3742,22 @@ impl Generator
             for (i, question) in qbank.get_questions().iter().enumerate()
             {
                 let category_id = question.get_category();
-                let answer_string = if category_id == 3 {
-                    let answers: Vec<String> = question.get_choices().iter().map(|(t, _)| t.clone()).collect();
-                    format!("({})", answers.join(", "))
-                }
-                else if category_id == 4
+                let answer_string = match category_id
                 {
-                    "(---)".to_string()
-                }
-                else
-                {
-                    let correct_choices: Vec<String> = question.get_choices()
-                        .iter()
-                        .enumerate()
-                        .filter(|(_, (_, is_correct)): &(usize, &(String, bool))| *is_correct)
-                        .map(|(j, _): (usize, &(String, bool))| (j + 1).to_string())
-                        .collect();
-                    format!("({})", correct_choices.join(", "))
+                    3 => {
+                        let answers: Vec<String> = question.get_choices().iter().map(|(t, _)| t.clone()).collect();
+                        format!("({})", answers.join(", "))
+                    },
+                    4 => { "(---)".to_string() },
+                    _ => {
+                        let correct_choices: Vec<String> = question.get_choices()
+                            .iter()
+                            .enumerate()
+                            .filter(|(_, (_, is_correct)): &(usize, &(String, bool))| *is_correct)
+                            .map(|(j, _): (usize, &(String, bool))| (j + 1).to_string())
+                            .collect();
+                        format!("({})", correct_choices.join(", "))
+                    },
                 };
                 answers_text.push_str(&format!("{}. {}    ", i + 1, answer_string));
             }
