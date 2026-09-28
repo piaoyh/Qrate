@@ -9,7 +9,7 @@
 
 
 use cryptocol::random::{ Random_PRNG_Creator, Random };
-use crate::{ Header, QBank, SBank, ShuffledQSet, ShuffledQSets, ShuffledQuestion, Student };
+use crate::{ Header, QBank, SBank, ShuffledQSet, ShuffledQSets, ShuffledQuestion, Question, Student };
 
 
 /// The `Shuffler` struct is responsible for managing the shuffling of questions
@@ -547,6 +547,26 @@ impl Shuffler
             { Some(self.shuffled_qsets[student_number as usize - 1].clone()) }
     }
 
+    pub fn get_questions(&self, student_number: u16) -> Option<Vec<Question>>
+    {
+        if let Some(qset) = self.get_shuffled_questions(student_number)
+        {
+            let mut questions = Vec::new();
+            for question_number in 1..=qset.get_shuffled_questions().len() as u16
+            {
+                if let Some(question) = self.get_question(student_number, question_number)
+                    { questions.push(question); }
+                else
+                    { return None; }
+            }
+            Some(questions)
+        }
+        else
+        {
+            None
+        }
+    }
+
     // pub fn get_shuffled_question(&self, student_number: u16, question_number: u16) -> Option<ShuffledQuestion>
     /// Gets a specific shuffled question for a specific student.
     /// 
@@ -599,6 +619,62 @@ impl Shuffler
         {
             None
         }
+    }
+
+    // pub fn get_question(&self, student_number: u16, question_number: u16) -> Option<Question>
+    /// Gets the original question corresponding to a specific shuffled question
+    /// for a specific student.
+    /// 
+    /// # Arguments
+    /// * `student_number` - 1-based index of students.
+    /// * `question_number` - 1-based index of questions of
+    ///  the `student_number`-th student.
+    /// 
+    /// # Returns
+    /// * `Option<Question>` - The original question corresponding to the
+    /// `question_number`-th shuffled question of the `student_number`-th student
+    ///  if `student_number` is less than or equal to the number of students and
+    ///  `question_number` is less than the number of questions for the
+    /// `student_number`-th student.
+    /// 
+    /// # Examples
+    /// ```
+    /// use qrate::{ Question, Student, QBank, SBank, shuffler::Shuffler };
+    /// let mut qbank = QBank::new_with_default();
+    /// let mut question = Question::new_empty();
+    /// qbank.push_question(question.clone());
+    /// question.set_id(2);
+    /// question.set_group(2);
+    /// qbank.push_question(question.clone());
+    /// question.set_id(3);
+    /// question.set_group(2);
+    /// qbank.push_question(question.clone());
+    /// question.set_id(4);
+    /// question.set_group(4);
+    /// qbank.push_question(question);
+    /// let mut sbank = SBank::new();
+    /// sbank.push_student(Student::new("Alice".to_string(), "1".to_string()));
+    /// sbank.push_student(Student::new("Bob".to_string(), "2".to_string()));
+    /// sbank.push_student(Student::new("Caleb".to_string(), "3".to_string()));
+    /// let mut shuffler = Shuffler::new(&qbank);
+    /// let question = shuffler.get_question(1, 1);
+    /// assert!(question.is_some());
+    /// ```
+    pub fn get_question(&self, student_number: u16, question_number: u16) -> Option<Question>
+    {
+        let original_question_number = self.get_shuffled_question_number(student_number, question_number);
+        if original_question_number == 0
+            { return None; }
+        let shuffled_q = self.get_shuffled_question(student_number, question_number).unwrap();
+        let question = self.get_qbank().get_question(original_question_number as usize).unwrap();
+        let original_choices = question.get_choices();
+        let shuffled_choices: Vec<_> = shuffled_q.get_choices()
+            .iter()
+            .map(|&c_idx| original_choices[c_idx as usize - 1].clone())
+            .collect();
+        let mut new_question = question.clone();
+        new_question.set_choices(shuffled_choices);
+        Some(new_question)
     }
 
     // pub fn get_shuffled_question_number(&self, student_number: u16, question_number: u16) -> u16

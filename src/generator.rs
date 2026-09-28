@@ -25,7 +25,7 @@ use genpdfi::error::Error;
 #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 use genpdfi::{ Document, elements, fonts, style, Element, SimplePageDecorator, Alignment };
 
-use crate::{ Choices, QBank, Questions, check_path };
+use crate::{ Choices, QBank, check_path };
 use crate::{ SBank, Student };
 use crate::Shuffler;
 
@@ -1741,28 +1741,9 @@ impl Generator
     /// ```
     pub fn get_shuffled_qbank(&self, student_number: u16) -> Option<(Student, QBank)>
     {
-        let shuffled_qset = self.shuffler.get_shuffled_questions(student_number)?;
-        let qset_len = shuffled_qset.get_shuffled_questions().len();
-
         let header = self.shuffler.get_header().clone();
         let mut qbank = QBank::new_with_header(header);
-        let mut questions = Questions::new();
-        for question_idx in 1..=qset_len as u16
-        {
-            let shuffled_q = shuffled_qset.get_shuffled_question(question_idx as u16).unwrap();
-            let question_number = shuffled_q.get_question();
-            let question = self.shuffler.get_qbank().get_question(question_number as usize)?;
-
-            let original_choices = question.get_choices();
-            let shuffled_choices: Vec<_> = shuffled_q.get_choices()
-                .iter()
-                .map(|&c_idx| original_choices[c_idx as usize - 1].clone())
-                .collect();
-
-            let mut new_question = question.clone();
-            new_question.set_choices(shuffled_choices);
-            questions.push(new_question);
-        }
+        let questions = self.shuffler.get_questions(student_number)?;
         qbank.set_questions(questions);
         Some((self.shuffler.get_student(student_number).unwrap(), qbank))
     }
