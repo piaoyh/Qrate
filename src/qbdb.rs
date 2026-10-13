@@ -973,12 +973,12 @@ impl QBDB for Excel
     ///   if writing a question fails.
     fn write_qbank(&mut self, qbank: &QBank) -> Result<(), ErrorMessage>
     {
-        let mut workbook = Workbook::new();
+        // let mut workbook = Workbook::new();
         let border_format = Format::new().set_border(FormatBorder::Thin);
         let bold_border_format = Format::new().set_bold().set_border(FormatBorder::Thin);
         
         // 1. Write "Header" sheet
-        if let Ok(header_sheet) = workbook.add_worksheet().set_name("Header")
+        if let Ok(header_sheet) = self.workbook_to_write.add_worksheet().set_name("Header")
         {
             let header = qbank.get_header();
             if header_sheet.write_string_with_format(0, 0, "Title", &bold_border_format).is_err()
@@ -1006,7 +1006,7 @@ impl QBDB for Excel
         }
 
         // 2. Write "Questions" sheet
-        if let Ok(questions_sheet) = workbook.add_worksheet().set_name("Questions")
+        if let Ok(questions_sheet) = self.workbook_to_write.add_worksheet().set_name("Questions")
         {
             if questions_sheet.write_string_with_format(0, 0, "ID", &bold_border_format).is_err()
             || questions_sheet.write_string_with_format(0, 1, "Group", &bold_border_format).is_err()
@@ -1048,7 +1048,7 @@ impl QBDB for Excel
                 }
             }
             
-            if workbook.save(&self.path).is_ok()
+            if self.workbook_to_write.save(&self.path).is_ok()
                 { Ok(()) }
             else
                 { Err(ErrorMessage::FailedToWriteQBank) }
