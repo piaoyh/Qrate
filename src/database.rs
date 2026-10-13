@@ -138,32 +138,28 @@ impl SQLiteDB
             { Err(ErrorMessage::FailedToOpenEmptyDatabaseInMemory) }
     }
 
-    // pub fn save_to_file(&self, file_path: &str) -> Result<(), ErrorMessage>
-    /// Saves the database to a file.
-    ///
-    /// # Arguments
-    /// * `file_path` - The path to the file where the database will be saved.
+    // pub fn save_to_file(&self) -> Result<(), ErrorMessage>
+    /// Saves the SQLite database to a file.
     ///
     /// # Returns
-    /// `Ok(())` if the database is saved successfully,
+    /// `Ok(())` if the SQLite database is saved successfully,
     /// `Err(ErrorMessage::FailedToWriteDatabase)` otherwise.
     ///
     /// # Examples
     /// ```
     /// use qrate::SQLiteDB;
     ///
-    /// let db = SQLiteDB::open(":memory:".to_string(), ".db").unwrap();
-    /// let result = db.save_to_file("my_db.db");
+    /// let db = SQLiteDB::open_with_ext("my_db".to_string(), "db").unwrap();
+    /// let result = db.save_to_file();
     /// assert!(result.is_ok());
     /// ```
-    pub fn save_to_file(&self, file_path: &str) -> Result<(), ErrorMessage>
+    pub fn save_to_file(&self) -> Result<(), ErrorMessage>
     {
-        let sql = format!("VACUUM INTO '{}'", file_path);
-        match self.conn.execute(sql.as_str(), [])
-        {
-            Ok(_) => Ok(()),
-            Err(_) => Err(ErrorMessage::FailedToWriteDatabase),
-        }
+        let sql = format!("VACUUM INTO '{}'", self.path);
+        if self.conn.execute(sql.as_str(), []).is_ok()
+            { Ok(()) }
+        else
+            { Err(ErrorMessage::FailedToWriteDatabase) }
     }
 
     // pub fn save_in_memory(&self) -> Result<Vec<u8>, Error>
@@ -251,26 +247,6 @@ impl SQLiteDB
         }
     }
 
-    // pub fn set_path(&mut self, path: String)
-    /// Sets the path of the database file.
-    ///
-    /// # Arguments
-    /// * `path` - The new path for the database file.
-    ///
-    /// # Examples
-    /// ```
-    /// use qrate::SQLiteDB;
-    ///
-    /// let mut db = SQLiteDB::open(":memory:".to_string(), ".db").unwrap();
-    /// db.set_path("new_path".to_string());
-    /// assert_eq!(db.get_path(), "new_path.db");
-    /// ```
-    #[inline]
-    pub fn set_path(&mut self, path: String)
-    {
-        self.path = path + ".db"; // Appending .db for consistency
-    }
-
     // pub fn get_path(&self) -> &String
     /// Gets the path of the database file.
     ///
@@ -288,6 +264,46 @@ impl SQLiteDB
     pub fn get_path(&self) -> &String
     {
         &self.path
+    }
+
+    // pub fn set_path(&mut self, path: String)
+    /// Sets the path of the database file.
+    ///
+    /// # Arguments
+    /// * `path` - The new path for the database file.
+    ///
+    /// # Examples
+    /// ```
+    /// use qrate::SQLiteDB;
+    ///
+    /// let mut db = SQLiteDB::open(":memory:".to_string(), ".db").unwrap();
+    /// db.set_path("new_path".to_string());
+    /// assert_eq!(db.get_path(), "new_path.db");
+    /// ```
+    #[inline]
+    pub fn set_path(&mut self, path: String)
+    {
+        self.path = path;
+    }
+
+    // pub fn get_connection(&self) -> &Connection
+    /// Gets a reference to the database connection.
+    ///
+    /// # Output
+    /// `&Connection` - A reference to the `rusqlite::Connection` object.
+    ///
+    /// # Examples
+    /// ```
+    /// use qrate::SQLiteDB;
+    ///
+    /// let db = SQLiteDB::open(":memory:".to_string(), ".db").unwrap();
+    /// let conn_ref = db.get_connection();
+    /// assert!(conn_ref.is_autocommit());
+    /// ```
+    #[inline]
+    pub fn get_connection(&self) -> &Connection
+    {
+        &self.conn
     }
 
     // pub fn set_connection(&mut self, conn: Connection)
@@ -312,25 +328,5 @@ impl SQLiteDB
     pub fn set_connection(&mut self, conn: Connection)
     {
         self.conn = conn;
-    }
-
-    // pub fn get_connection(&self) -> &Connection
-    /// Gets a reference to the database connection.
-    ///
-    /// # Output
-    /// `&Connection` - A reference to the `rusqlite::Connection` object.
-    ///
-    /// # Examples
-    /// ```
-    /// use qrate::SQLiteDB;
-    ///
-    /// let db = SQLiteDB::open(":memory:".to_string(), ".db").unwrap();
-    /// let conn_ref = db.get_connection();
-    /// assert!(conn_ref.is_autocommit());
-    /// ```
-    #[inline]
-    pub fn get_connection(&self) -> &Connection
-    {
-        &self.conn
     }
 }

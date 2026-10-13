@@ -456,7 +456,8 @@ impl QBank
     }
 
     // pub fn get_max_choices(&self) -> usize
-    /// Gets the maximum number of choices among all questions in the bank.
+    /// Gets the maximum number of choices among all questions in the bank,
+    /// which belongs to category 1 or 2.
     /// 
     /// # Returns
     /// The maximum number of choices among all the questions that belong to
@@ -467,11 +468,12 @@ impl QBank
     /// ```
     /// use qrate::{ QBank, Question };
     /// let mut qbank = QBank::new_empty();
-    /// qbank.push_question(Question::new(1, 1, 1, "Q1".to_string(), vec![("Choice A".to_string(), false), ("Choice B".to_string(), false)]));
-    /// qbank.push_question(Question::new(2, 1, 1, "Q2".to_string(), vec![("Choice A".to_string(), false)]));
-    /// assert_eq!(qbank.get_max_choices(), 2);
+    /// qbank.push_question(Question::new(1, 1, 1, "Q1".to_string(), vec![("Choice A".to_string(), true), ("Choice B".to_string(), false), ("Choice C".to_string(), false)]));
+    /// qbank.push_question(Question::new(2, 1, 2, "Q2".to_string(), vec![("Choice A".to_string(), true), ("Choice B".to_string(), false), ("Choice C".to_string(), true), ("Choice D".to_string(), false)]));
+    /// qbank.push_question(Question::new(2, 1, 3, "Q2".to_string(), vec![("Choice A".to_string(), true), ("Choice B".to_string(), true), ("Choice C".to_string(), true), ("Choice D".to_string(), true), ("Choice E".to_string(), false)]));
+    /// qbank.push_question(Question::new(2, 1, 4, "Q2".to_string(), vec![("Choice A".to_string(), true), ("Choice B".to_string(), false), ("Choice C".to_string(), false), ("Choice D".to_string(), false)]));
+    /// assert_eq!(qbank.get_max_choices(), 4);
     /// ```
-    #[inline]
     pub fn get_max_choices(&self) -> usize
     {
         self.get_questions().iter()
@@ -482,6 +484,32 @@ impl QBank
             else
                 { 0 }
         })
+        .max().unwrap_or(0)
+    }
+
+    // pub fn get_max_choices_and_answers(&self) -> usize
+    /// Gets the maximum number of choices among all questions in the bank,
+    /// which belongs to all categories.
+    ///
+    /// # Returns
+    /// The maximum number of choices among all the questions that belong to
+    /// all categories in the bank as `usize`.
+    /// If there are no questions, returns `0`.
+    ///
+    /// # Examples
+    /// ```
+    /// use qrate::{ QBank, Question };
+    /// let mut qbank = QBank::new_empty();
+    /// qbank.push_question(Question::new(1, 1, 1, "Q1".to_string(), vec![("Choice A".to_string(), true), ("Choice B".to_string(), false), ("Choice C".to_string(), false)]));
+    /// qbank.push_question(Question::new(2, 1, 2, "Q2".to_string(), vec![("Choice A".to_string(), true), ("Choice B".to_string(), false), ("Choice C".to_string(), true), ("Choice D".to_string(), false)]));
+    /// qbank.push_question(Question::new(2, 1, 3, "Q2".to_string(), vec![("Choice A".to_string(), true), ("Choice B".to_string(), true), ("Choice C".to_string(), true), ("Choice D".to_string(), true), ("Choice E".to_string(), false)]));
+    /// qbank.push_question(Question::new(2, 1, 4, "Q2".to_string(), vec![("Choice A".to_string(), true), ("Choice B".to_string(), false), ("Choice C".to_string(), false), ("Choice D".to_string(), false)]));
+    /// assert_eq!(qbank.get_max_choices_and_answers(), 5);
+    /// ```
+    pub fn get_max_choices_and_answers(&self) -> usize
+    {
+        self.get_questions().iter()
+        .map(|q| { q.get_choices().len() })
         .max().unwrap_or(0)
     }
 

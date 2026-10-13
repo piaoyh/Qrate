@@ -380,7 +380,8 @@ impl SBDB for Excel
 {
     // fn open(path: String) -> Result<Self, ErrorMessage>
     /// Implements `open` for `Excel`.
-    /// Appends `.sb.xlsx` to the path if no extension is present and opens an Excel file.
+    /// Appends `.sb.xlsx` to the path if no extension is present
+    /// and opens an Excel file.
     ///
     /// # Arguments
     /// * `path` - The file path for the Excel file.
@@ -393,7 +394,7 @@ impl SBDB for Excel
     fn open(path: String) -> Result<Self, ErrorMessage>
     where Self: Sized
     {
-        Excel::open_with_ext(path, "sb.xlsx")
+        Ok(Excel::open_with_ext(path, "sb.xlsx"))
     }
 
     // fn make_table(&mut self) -> Result<(), ErrorMessage>

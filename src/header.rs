@@ -53,7 +53,7 @@ impl Header
             title: String::new(),
             name: String::new(),
             id: String::new(),
-            categories: Vec::<String>::new(),
+            categories: vec![String::new(), String::new(), String::new(), String::new()],
             notice: String::new(),
         }
     }

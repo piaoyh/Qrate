@@ -388,8 +388,7 @@ impl QBDB for SQLiteDB
     ///   or it fails to create the question table.
     fn make_tables(&mut self, categories: u8, choices: u8) -> Result<(), ErrorMessage>
     {
-        if categories == 0
-            { return Err(ErrorMessage::FailedToMakeTableForQBank); }
+        let categories = if categories == 0 { 4 } else { categories };
 
         let mut sql = r#"CREATE TABLE IF NOT EXISTS tblHeader (
     version INTEGER NOT NULL,
@@ -513,22 +512,31 @@ impl QBDB for SQLiteDB
     /// * `Err(ErrorMessage::FailedToWriteHeaderForQBank)` on failure.
     fn write_header(&mut self, header: &Header) -> Result<(), ErrorMessage>
     {
-        self.make_tables(header.get_categories().len() as u8, 0)?;
-        let length = header.get_categories().len();
+        let cat_count = if header.get_categories().is_empty() { 4 } else { header.get_categories().len() };
+        self.make_tables(cat_count as u8, 0)?;
         let mut sql = format!("INSERT INTO tblHeader values (?1, ?2, ?3, ?4, ?5");
-        for i in 6..(6 + length)
+        for i in 6..(6 + cat_count)
             { sql += format!(", ?{}", i).as_str(); }
         sql += ");";
 
         let mut params: Vec<&dyn rusqlite::ToSql> = Vec::new();
         let version = header.get_version();
+        let empty_str = String::new();
         params.push(&version);
         params.push(header.get_title());
         params.push(header.get_name());
         params.push(header.get_id());
         params.push(header.get_notice());
-        for category in header.get_categories()
-            { params.push(category); }
+        if header.get_categories().is_empty()
+        {
+            for _ in 0..4
+                { params.push(&empty_str); }
+        }
+        else
+        {
+            for category in header.get_categories()
+                { params.push(category); }
+        }
 
         let mut ret = Ok(());
         let mut tx = self.conn.transaction();
@@ -636,13 +644,17 @@ impl QBDB for SQLiteDB
     ///   if writing a question fails.
     fn write_qbank(&mut self, qbank: &QBank) -> Result<(), ErrorMessage>
     {
-        let categories = qbank.get_header().get_categories().len() as u8;
+        let categories = if qbank.get_header().get_categories().is_empty()
+                { 4 }
+            else
+                { qbank.get_header().get_categories().len() as u8 };
+
         // 1. Determine the maximum number of choices in the entire bank to create a uniform SQL statement.
-        let max_choices = qbank.get_max_choices();
+        let mut max_choices = qbank.get_max_choices_and_answers();
+        if max_choices == 0
+            { max_choices = 4; }
         self.make_tables(categories, max_choices as u8)?;
         self.write_header(qbank.get_header())?;
-        if qbank.get_questions().is_empty()   // Nothing to write
-            { return Err(ErrorMessage::EmptyQBank); }
 
         // 2. Build the SQL statement dynamically.
         let mut sql = "INSERT INTO tblQuestions (id, modum, category, question".to_string();
@@ -660,8 +672,24 @@ impl QBDB for SQLiteDB
         {
             let tx_ = tx.unwrap();
 
+            let mut fallback_questions = Vec::new();
+            let questions = if qbank.get_questions().is_empty()
+            {
+                let mut choices = Choices::new();
+                for _ in 0..max_choices
+                {
+                    choices.push((String::new(), false));
+                }
+                fallback_questions.push(Question::new(1, 1, 4, String::new(), choices));
+                &fallback_questions
+            }
+            else
+            {
+                qbank.get_questions()
+            };
+
             // 3. Iterate through questions and execute the INSERT statement.
-            for elem in qbank.get_questions()
+            for elem in questions
             {
                 let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
                 params.push(Box::new(elem.get_id()));
@@ -670,6 +698,7 @@ impl QBDB for SQLiteDB
                 params.push(Box::new(elem.get_question().clone()));
 
                 let choices = elem.get_choices();
+                let empty_str = String::new();
                 for i in 0..max_choices
                 {
                     if i < choices.len()
@@ -677,10 +706,10 @@ impl QBDB for SQLiteDB
                         params.push(Box::new(choices[i].0.clone())); // choice_text
                         params.push(Box::new(choices[i].1)); // choice_is_answer
                     }
-                    else    // Pad with NULLs if the question has fewer choices than the max.
+                    else    // Pad with empty string and false if the question has fewer choices than the max.
                     {
-                        params.push(Box::new(rusqlite::types::Value::Null));
-                        params.push(Box::new(rusqlite::types::Value::Null));
+                        params.push(Box::new(empty_str.clone()));
+                        params.push(Box::new(false));
                     }
                 }
 
@@ -718,11 +747,9 @@ impl QBDB for Excel
     where Self: Sized
     {
         if !path.is_empty()
-        {
-            if let Ok(db) = Excel::open_with_ext(path, "qb.xlsx")
-                { return Ok(db); }
-        }
-        Err(ErrorMessage::FailedToOpenQBank)
+            { Ok(Excel::open_with_ext(path, "qb.xlsx")) }
+        else
+            { Err(ErrorMessage::FailedToOpenQBank) }
     }
 
     // fn make_tables(&mut self, categories: u8, choices: u8) -> Result<(), ErrorMessage>
