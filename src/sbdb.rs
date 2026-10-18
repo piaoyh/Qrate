@@ -446,44 +446,67 @@ impl SBDB for Excel
     fn read_sbank(&mut self) -> Result<SBank, ErrorMessage>
     {
         let mut sbank = SBank::new();
-        if let Ok(mut excel) = calamine::open_workbook_auto(&self.path)
-        {
-            if let Ok(range) = excel.worksheet_range("Header")
-            {
-                for row in range.rows().skip(1)
-                {
-                    if let Some(v) = row.get(0).and_then(|d| d.as_i64())
-                        { sbank.set_version(v as u32); }
-                    else
-                        { return Err(ErrorMessage::FailedToReadHeaderForSBank); }
-                }
 
-                if let Ok(range) = excel.worksheet_range("Students")
+        let parse_workbook = |header_range: &calamine::Range<calamine::Data>, students_range: &calamine::Range<calamine::Data>| -> Result<SBank, ErrorMessage> {
+            for row in header_range.rows().skip(1)
+            {
+                if let Some(v) = row.get(0).and_then(|d| d.as_i64())
+                    { sbank.set_version(v as u32); }
+                else
+                    { return Err(ErrorMessage::FailedToReadHeaderForSBank); }
+            }
+
+            for row in students_range.rows().skip(1) // Skip header row
+            {
+                if let Some(name) = row.get(0).and_then(|d| d.as_string())
                 {
-                    for row in range.rows().skip(1) // Skip header row
-                    {
-                        if let Some(name) = row.get(0).and_then(|d| d.as_string())
-                        {
-                            if let Some(id) = row.get(1).and_then(|d| d.as_string())
-                                { sbank.push_student(Student::new(name, id)); }
-                            else
-                                { return Err(ErrorMessage::FailedToOpenSBank); }
-                        }
-                        else
-                        {
-                            return Err(ErrorMessage::FailedToOpenSBank);
-                        }
-                    }
-                    Ok(sbank)
+                    if let Some(id) = row.get(1).and_then(|d| d.as_string())
+                        { sbank.push_student(Student::new(name, id)); }
+                    else
+                        { return Err(ErrorMessage::FailedToOpenSBank); }
                 }
                 else
-                {   
-                    Err(ErrorMessage::FailedToOpenSBank)
+                {
+                    return Err(ErrorMessage::FailedToOpenSBank);
+                }
+            }
+            Ok(sbank)
+        };
+
+        if let Some(workbook) = self.workbook_to_read.as_mut()
+        {
+            if let Ok(header_range) = workbook.worksheet_range("Header")
+            {
+                if let Ok(students_range) = workbook.worksheet_range("Students")
+                {
+                    return parse_workbook(&header_range, &students_range);
+                }
+                else
+                {
+                    return Err(ErrorMessage::FailedToOpenSBank);
                 }
             }
             else
             {
-                Err(ErrorMessage::FailedToReadHeaderForSBank)
+                return Err(ErrorMessage::FailedToReadHeaderForSBank);
+            }
+        }
+        else if let Ok(mut excel) = calamine::open_workbook_auto(&self.path)
+        {
+            if let Ok(header_range) = excel.worksheet_range("Header")
+            {
+                if let Ok(students_range) = excel.worksheet_range("Students")
+                {
+                    return parse_workbook(&header_range, &students_range);
+                }
+                else
+                {
+                    return Err(ErrorMessage::FailedToOpenSBank);
+                }
+            }
+            else
+            {
+                return Err(ErrorMessage::FailedToReadHeaderForSBank);
             }
         }
         else
@@ -515,15 +538,14 @@ impl SBDB for Excel
     ///   if writing a question fails.
     fn write_sbank(&mut self, sbank: &SBank) -> Result<(), ErrorMessage>
     {
-        let mut workbook = rust_xlsxwriter::Workbook::new();
         let header_format = rust_xlsxwriter::Format::new().set_bold();
 
-        if let Ok(sheet) = workbook.add_worksheet().set_name("Header")
+        if let Ok(sheet) = self.workbook_to_write.add_worksheet().set_name("Header")
         {
             if sheet.write_string_with_format(0, 0, "Version", &header_format).is_ok()
             && sheet.write_string(1, 0, "1").is_ok()
             {
-                if let Ok(sheet) = workbook.add_worksheet().set_name("Students")
+                if let Ok(sheet) = self.workbook_to_write.add_worksheet().set_name("Students")
                 {
                     // Write header
                     if sheet.write_string_with_format(0, 0, "Name", &header_format).is_ok()
@@ -539,10 +561,17 @@ impl SBDB for Excel
                                 return Err(ErrorMessage::FailedToWriteSBank);
                             }
                         }
-                        if workbook.save(&self.path).is_ok()
-                            { return Ok(()); }
+                        if !self.path.is_empty()
+                        {
+                            if self.workbook_to_write.save(&self.path).is_ok()
+                                { return Ok(()); }
+                            else
+                                { Err(ErrorMessage::FailedToWriteSBank) }
+                        }
                         else
-                            { Err(ErrorMessage::FailedToWriteSBank) }
+                        {
+                            Ok(())
+                        }
                     }
                     else
                     {

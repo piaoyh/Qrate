@@ -835,27 +835,38 @@ impl QBDB for Excel
     /// * `Err(ErrorMessage::FailedToReadHeaderForQBank)` if it fails.
     fn read_header(&mut self) -> Result<Header, ErrorMessage>
     {
-        if let Ok(mut excel) = open_workbook_auto(&self.path)
+        let parse_range = |range: &calamine::Range<calamine::Data>| -> Result<Header, ErrorMessage> {
+            let version = range.get((0, 1)).and_then(|c| c.as_string()).unwrap_or_default();
+            let title = range.get((1, 1)).and_then(|c| c.as_string()).unwrap_or_default();
+            let name = range.get((2, 1)).and_then(|c| c.as_string()).unwrap_or_default();
+            let id = range.get((3, 1)).and_then(|c| c.as_string()).unwrap_or_default();
+            let notice = range.get((4, 1)).and_then(|c| c.as_string()).unwrap_or_default();
+            let mut categories = Vec::new();
+            let mut col = 1;
+            while let Some(cat) = range.get((5, col)).and_then(|c| c.as_string())
+            {
+                if cat.is_empty()
+                    { break; }
+                categories.push(cat);
+                col += 1;
+            }
+            let mut header = Header::new(title, name, id, categories, notice);
+            header.set_version(version.parse().unwrap_or(0));
+            Ok(header)
+        };
+
+        if let Some(workbook) = self.workbook_to_read.as_mut()
+        {
+            if let Ok(range) = workbook.worksheet_range("Header")
+            {
+                return parse_range(&range);
+            }
+        }
+        else if let Ok(mut excel) = open_workbook_auto(&self.path)
         {
             if let Ok(range) = excel.worksheet_range("Header")
             {
-                let version = range.get((0, 1)).and_then(|c| c.as_string()).unwrap_or_default();
-                let title = range.get((1, 1)).and_then(|c| c.as_string()).unwrap_or_default();
-                let name = range.get((2, 1)).and_then(|c| c.as_string()).unwrap_or_default();
-                let id = range.get((3, 1)).and_then(|c| c.as_string()).unwrap_or_default();
-                let notice = range.get((4, 1)).and_then(|c| c.as_string()).unwrap_or_default();
-                let mut categories = Vec::new();
-                let mut col = 1;
-                while let Some(cat) = range.get((5, col)).and_then(|c| c.as_string())
-                {
-                    if cat.is_empty()
-                        { break; }
-                    categories.push(cat);
-                    col += 1;
-                }
-                let mut header = Header::new(title, name, id, categories, notice);
-                header.set_version(version.parse().unwrap_or(0));
-                return Ok(header);
+                return parse_range(&range);
             }
         }
         Err(ErrorMessage::FailedToReadHeaderForQBank)
@@ -891,18 +902,27 @@ impl QBDB for Excel
         // Create a new QBank with the new header.
         let mut qbank = QBank::new_with_header(header.clone());
 
-        // Read questions from the existing file, if it exists.
-        if let Ok(mut excel) = open_workbook_auto(&self.path)
+        let mut parse_questions = |range: &calamine::Range<calamine::Data>| {
+            for row in range.rows().skip(1)
+            {
+                if let Some(question) = Excel::parse_question_row(row)
+                    { qbank.push_question(question); }
+            }
+        };
+
+        if let Some(workbook) = self.workbook_to_read.as_mut()
+        {
+            if let Ok(range) = workbook.worksheet_range("Questions")
+            {
+                parse_questions(&range);
+                return self.write_qbank(&qbank);
+            }
+        }
+        else if let Ok(mut excel) = open_workbook_auto(&self.path)
         {
             if let Ok(range) = excel.worksheet_range("Questions")
             {
-                // Safely read questions, skipping header row
-                for row in range.rows().skip(1)
-                {
-                    if let Some(question) = Excel::parse_question_row(row)
-                        { qbank.push_question(question); }
-                }
-                // Write the entire QBank (new header + old/existing questions) back to the file.
+                parse_questions(&range);
                 return self.write_qbank(&qbank);
             }
         }
@@ -923,28 +943,34 @@ impl QBDB for Excel
         if let Ok(header) = self.read_header()
         {
             let mut qbank = QBank::new_with_header(header);
-            if let Ok(mut excel) = open_workbook_auto(&self.path)
+            let mut parse_questions = |range: &calamine::Range<calamine::Data>| -> Result<(), ErrorMessage> {
+                for row in range.rows().skip(1) // Skip header row
+                {
+                    if let Some(question) = Excel::parse_question_row(row)
+                        { qbank.push_question(question); }
+                    else
+                        { return Err(ErrorMessage::FailedToOpenQBank); }
+                }
+                Ok(())
+            };
+
+            if let Some(workbook) = self.workbook_to_read.as_mut()
+            {
+                if let Ok(range) = workbook.worksheet_range("Questions")
+                {
+                    parse_questions(&range)?;
+                    return Ok(qbank);
+                }
+            }
+            else if let Ok(mut excel) = open_workbook_auto(&self.path)
             {
                 if let Ok(range) = excel.worksheet_range("Questions")
                 {
-                    for row in range.rows().skip(1) // Skip header row
-                    {
-                        if let Some(question) = Excel::parse_question_row(row)
-                            { qbank.push_question(question); }
-                        else
-                            { return Err(ErrorMessage::FailedToOpenQBank); }
-                    }
-                    Ok(qbank)
-                }
-                else
-                {
-                    Err(ErrorMessage::FailedToOpenQBank)
+                    parse_questions(&range)?;
+                    return Ok(qbank);
                 }
             }
-            else
-            {
-                Err(ErrorMessage::FailedToOpenQBank)
-            }
+            Err(ErrorMessage::FailedToOpenQBank)
         }
         else
         {
@@ -981,22 +1007,23 @@ impl QBDB for Excel
         if let Ok(header_sheet) = self.workbook_to_write.add_worksheet().set_name("Header")
         {
             let header = qbank.get_header();
-            if header_sheet.write_string_with_format(0, 0, "Title", &bold_border_format).is_err()
-            || header_sheet.write_string_with_format(1, 0, "Name", &bold_border_format).is_err()
-            || header_sheet.write_string_with_format(0, 1, header.get_title(), &border_format).is_err()
-            || header_sheet.write_string_with_format(1, 1, header.get_name(), &border_format).is_err()
-            || header_sheet.write_string_with_format(2, 0, "ID", &bold_border_format).is_err()
-            || header_sheet.write_string_with_format(2, 1, header.get_id(), &border_format).is_err()
-            || header_sheet.write_string_with_format(3, 0, "Notice", &bold_border_format).is_err()
-            || header_sheet.write_string_with_format(3, 1, header.get_notice(), &border_format).is_err()
-            || header_sheet.write_string_with_format(4, 0, "Categories", &bold_border_format).is_err()
-            || header_sheet.write_string_with_format(4, 1, header.get_categories().first().unwrap_or(&"".into()), &border_format).is_err()
+            if header_sheet.write_string_with_format(0, 0, "Version", &bold_border_format).is_err()
+            || header_sheet.write_string_with_format(0, 1, &header.get_version().to_string(), &border_format).is_err()
+            || header_sheet.write_string_with_format(1, 0, "Title", &bold_border_format).is_err()
+            || header_sheet.write_string_with_format(1, 1, header.get_title(), &border_format).is_err()
+            || header_sheet.write_string_with_format(2, 0, "Name", &bold_border_format).is_err()
+            || header_sheet.write_string_with_format(2, 1, header.get_name(), &border_format).is_err()
+            || header_sheet.write_string_with_format(3, 0, "ID", &bold_border_format).is_err()
+            || header_sheet.write_string_with_format(3, 1, header.get_id(), &border_format).is_err()
+            || header_sheet.write_string_with_format(4, 0, "Notice", &bold_border_format).is_err()
+            || header_sheet.write_string_with_format(4, 1, header.get_notice(), &border_format).is_err()
+            || header_sheet.write_string_with_format(5, 0, "Categories", &bold_border_format).is_err()
             {
                 return Err(ErrorMessage::FailedToWriteHeaderForQBank);
             }
             for (i, cat) in header.get_categories().iter().enumerate()
             {
-                if header_sheet.write_string_with_format(4, i as u16 + 1, cat, &border_format).is_err()
+                if header_sheet.write_string_with_format(5, i as u16 + 1, cat, &border_format).is_err()
                     { return Err(ErrorMessage::FailedToWriteHeaderForQBank); }
             }
         }
@@ -1048,10 +1075,17 @@ impl QBDB for Excel
                 }
             }
             
-            if self.workbook_to_write.save(&self.path).is_ok()
-                { Ok(()) }
+            if !self.path.is_empty()
+            {
+                if self.workbook_to_write.save(&self.path).is_ok()
+                    { Ok(()) }
+                else
+                    { Err(ErrorMessage::FailedToWriteQBank) }
+            }
             else
-                { Err(ErrorMessage::FailedToWriteQBank) }
+            {
+                Ok(())
+            }
         }
         else
         {
@@ -1059,3 +1093,37 @@ impl QBDB for Excel
         }
     }
 }
+
+#[cfg(test)]
+mod tests
+{
+    use super::*;
+
+    #[test]
+    fn test_excel_write_qbank_in_memory()
+    {
+        let mut excel = Excel::open_empty_in_memory();
+        let mut qbank = QBank::new_with_default();
+        let choices = Choices::from(vec![
+            ("Choice 1".to_string(), true),
+            ("Choice 2".to_string(), false),
+        ]);
+        qbank.push_question(Question::new(1, 1, 1, "Sample question".to_string(), choices));
+
+        let write_res = excel.write_qbank(&qbank);
+        assert!(write_res.is_ok(), "write_qbank in memory should succeed without calling save to file");
+
+        let buffer_res = excel.save_in_memory();
+        assert!(buffer_res.is_ok(), "save_in_memory should successfully produce bytes");
+        let bytes = buffer_res.unwrap();
+        assert!(!bytes.is_empty(), "Produced buffer should not be empty");
+
+        // Verify the generated Excel can be read back
+        let mut read_excel = Excel::open_in_memory(&bytes).expect("Failed to open excel from memory");
+        let read_qbank = read_excel.read_qbank().expect("Failed to read qbank from generated excel");
+        assert_eq!(read_qbank.get_questions().len(), 1);
+        assert_eq!(read_qbank.get_questions()[0].get_question(), "Sample question");
+        assert_eq!(read_qbank.get_header().get_title(), qbank.get_header().get_title());
+    }
+}
+
