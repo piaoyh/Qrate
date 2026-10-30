@@ -455,7 +455,7 @@ impl QBank
             { false }
     }
 
-    // pub fn get_max_choices(&self) -> usize
+    // pub fn get_max_choices_of_multiple_choice_questions(&self) -> usize
     /// Gets the maximum number of choices among all questions in the bank,
     /// which belongs to category 1 or 2.
     /// 
@@ -472,9 +472,9 @@ impl QBank
     /// qbank.push_question(Question::new(2, 1, 2, "Q2".to_string(), vec![("Choice A".to_string(), true), ("Choice B".to_string(), false), ("Choice C".to_string(), true), ("Choice D".to_string(), false)]));
     /// qbank.push_question(Question::new(2, 1, 3, "Q2".to_string(), vec![("Choice A".to_string(), true), ("Choice B".to_string(), true), ("Choice C".to_string(), true), ("Choice D".to_string(), true), ("Choice E".to_string(), false)]));
     /// qbank.push_question(Question::new(2, 1, 4, "Q2".to_string(), vec![("Choice A".to_string(), true), ("Choice B".to_string(), false), ("Choice C".to_string(), false), ("Choice D".to_string(), false)]));
-    /// assert_eq!(qbank.get_max_choices(), 4);
+    /// assert_eq!(qbank.get_max_choices_of_multiple_choice_questions(), 4);
     /// ```
-    pub fn get_max_choices(&self) -> usize
+    pub fn get_max_choices_of_multiple_choice_questions(&self) -> usize
     {
         self.get_questions().iter()
         .map(|q| {
@@ -487,7 +487,7 @@ impl QBank
         .max().unwrap_or(0)
     }
 
-    // pub fn get_max_choices_and_answers(&self) -> usize
+    // pub fn get_max_choices_of_all_questions(&self) -> usize
     /// Gets the maximum number of choices among all questions in the bank,
     /// which belongs to all categories.
     ///
@@ -504,9 +504,9 @@ impl QBank
     /// qbank.push_question(Question::new(2, 1, 2, "Q2".to_string(), vec![("Choice A".to_string(), true), ("Choice B".to_string(), false), ("Choice C".to_string(), true), ("Choice D".to_string(), false)]));
     /// qbank.push_question(Question::new(2, 1, 3, "Q2".to_string(), vec![("Choice A".to_string(), true), ("Choice B".to_string(), true), ("Choice C".to_string(), true), ("Choice D".to_string(), true), ("Choice E".to_string(), false)]));
     /// qbank.push_question(Question::new(2, 1, 4, "Q2".to_string(), vec![("Choice A".to_string(), true), ("Choice B".to_string(), false), ("Choice C".to_string(), false), ("Choice D".to_string(), false)]));
-    /// assert_eq!(qbank.get_max_choices_and_answers(), 5);
+    /// assert_eq!(qbank.get_max_choices_of_all_questions(), 5);
     /// ```
-    pub fn get_max_choices_and_answers(&self) -> usize
+    pub fn get_max_choices_of_all_questions(&self) -> usize
     {
         self.get_questions().iter()
         .map(|q| { q.get_choices().len() })

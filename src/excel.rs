@@ -10,7 +10,7 @@
 
 use std::io::Cursor;
 use calamine::{ DataType, Xlsx, Reader };
-use rust_xlsxwriter::Workbook;
+use rust_xlsxwriter::{ Format, FormatBorder, Workbook };
 
 use crate::{ Question, Choices, ErrorMessage, check_path };
 
@@ -29,6 +29,12 @@ pub struct Excel
 
     /// The workbook object for writing Excel files.
     pub(crate) workbook_to_write: Workbook,
+
+    /// The format for bold borders.
+    pub(crate) bold_border_format: Format,
+
+    /// The format for thin borders.
+    pub(crate) thin_border_format: Format,
 }
 
 impl Excel
@@ -63,7 +69,9 @@ impl Excel
         {
             path: check_path(path, extention),
             workbook_to_read: None,
-            workbook_to_write: Workbook::new()
+            workbook_to_write: Workbook::new(),
+            bold_border_format: Format::new().set_bold().set_border(FormatBorder::Thick),
+            thin_border_format: Format::new().set_border(FormatBorder::Thin),
         }
     }
 
@@ -99,6 +107,8 @@ impl Excel
                     path: String::new(),
                     workbook_to_read: Some(workbook),
                     workbook_to_write: Workbook::new(),
+                    bold_border_format: Format::new().set_bold().set_border(FormatBorder::Thick),
+                    thin_border_format: Format::new().set_border(FormatBorder::Thin),
                 }
             )
         }
@@ -128,6 +138,8 @@ impl Excel
             path: String::new(),
             workbook_to_read: None,
             workbook_to_write: Workbook::new(),
+            bold_border_format: Format::new().set_bold().set_border(FormatBorder::Thick),
+            thin_border_format: Format::new().set_border(FormatBorder::Thin),
         }
     }
 
@@ -248,25 +260,110 @@ impl Excel
     /// ```
     pub(crate) fn parse_question_row(row: &[calamine::Data]) -> Option<Question>
     {
-        let id = row.get(0).and_then(|d| d.as_f64()).map(|f| f as u16)?;
-        let group = row.get(1).and_then(|d| d.as_f64()).map(|f| f as u16)?;
-        let category = row.get(2).and_then(|d| d.as_f64()).map(|f| f as u8)?;
-        let question_text = row.get(3).and_then(|d| d.as_string())?;
-        
-        let mut choices = Choices::new();
-        for choice_pair in row.get(4..).unwrap_or(&[]).chunks(2)
-        {
-            let choice_text = choice_pair.get(0).and_then(|d| d.get_string()).map(|s| s.to_string()).unwrap_or_default();
-            let is_answer = choice_pair.get(1).and_then(|d| d.get_bool()).unwrap_or_else(|| {
-                choice_pair.get(1).and_then(|d| d.get_string())
-                    .map_or(false, |s| s.eq_ignore_ascii_case("TRUE"))
-            });
+        let is_empty = |d: &calamine::Data| -> bool {
+            match d {
+                calamine::Data::Empty => true,
+                calamine::Data::String(s) => s.trim().is_empty(),
+                _ => false,
+            }
+        };
 
-            if !choice_text.is_empty() || is_answer
-                { choices.push((choice_text, is_answer)); }
-            else
-                { break; }
+        if row.is_empty() || row.iter().all(is_empty) {
+            return None;
         }
+
+        let id_cell = row.get(0)?;
+        if is_empty(id_cell) {
+            return None;
+        }
+        let id = id_cell.as_f64()
+            .or_else(|| id_cell.as_string().and_then(|s| s.trim().parse::<f64>().ok()))
+            .map(|f| f as u16)?;
+
+        let group = row.get(1)
+            .and_then(|d| {
+                if is_empty(d) {
+                    None
+                } else {
+                    d.as_f64().or_else(|| d.as_string().and_then(|s| s.trim().parse::<f64>().ok()))
+                }
+            })
+            .map(|f| f as u16)
+            .unwrap_or(id);
+
+        let question_text = row.get(3)
+            .and_then(|d| d.as_string())
+            .unwrap_or_default();
+
+        let is_answer_1_empty = row.get(5).map_or(true, is_empty);
+        if is_answer_1_empty {
+            return Some(Question::new(id, group, 4, question_text, Choices::new()));
+        }
+
+        let parse_bool = |d: &calamine::Data| -> bool {
+            d.get_bool().unwrap_or_else(|| {
+                d.as_string().map_or(false, |s| {
+                    let trimmed = s.trim();
+                    trimmed.eq_ignore_ascii_case("TRUE") || trimmed == "1" || trimmed.eq_ignore_ascii_case("T")
+                })
+            })
+        };
+
+        let mut choices = Choices::new();
+        let mut k = 0;
+        loop {
+            let choice_idx = 4 + k * 2;
+            let is_answer_idx = 5 + k * 2;
+
+            let is_ans_cell = match row.get(is_answer_idx) {
+                Some(c) => c,
+                None => break,
+            };
+
+            if is_empty(is_ans_cell) {
+                break;
+            }
+
+            let choice_text = row.get(choice_idx)
+                .and_then(|d| d.get_string().map(|s| s.to_string()).or_else(|| d.as_string()))
+                .unwrap_or_default();
+
+            let is_answer = parse_bool(is_ans_cell);
+            choices.push((choice_text, is_answer));
+            k += 1;
+        }
+
+        let cat_cell = row.get(2);
+        let category = if cat_cell.map_or(true, is_empty) {
+            let true_count = choices.iter().filter(|c| c.1).count();
+            let total = choices.len();
+            if true_count == 0 {
+                4
+            } else if true_count == total {
+                3
+            } else if true_count == 1 {
+                1
+            } else {
+                2
+            }
+        } else {
+            cat_cell.and_then(|d| d.as_f64().or_else(|| d.as_string().and_then(|s| s.trim().parse::<f64>().ok())))
+                .map(|f| f as u8)
+                .unwrap_or_else(|| {
+                    let true_count = choices.iter().filter(|c| c.1).count();
+                    let total = choices.len();
+                    if true_count == 0 {
+                        4
+                    } else if true_count == total {
+                        3
+                    } else if true_count == 1 {
+                        1
+                    } else {
+                        2
+                    }
+                })
+        };
+
         Some(Question::new(id, group, category, question_text, choices))
     }
 

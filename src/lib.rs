@@ -29,6 +29,12 @@ pub mod qbank;
 /// The `qbdb` module handles the question bank database operations.
 pub mod qbdb;
 
+/// The `qbdb_for_sqlite` module handles the question bank database operations for SQLite files.
+pub mod qbdb_for_sqlite;
+
+/// The `qbdb_for_excel` module handles the question bank database operations for Excel files.
+pub mod qbdb_for_excel;
+
 /// The `question` module defines the `Question` structure.
 pub mod question;
 
