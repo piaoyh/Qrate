@@ -192,6 +192,10 @@ impl QBank
     /// `QBank` - A smaller QBank object containing the original header and the
     /// selected questions.
     /// If no questions fall within the specified range, returns an empty bank.
+    /// 
+    /// # features
+    /// If both arguments `start` and `end` are zeros,
+    /// all the questions will be selected.
     ///
     /// # Examples
     /// ```
@@ -208,13 +212,14 @@ impl QBank
     /// ```
     pub fn select_questions(&self, start: u16, end: u16) -> QBank
     {
+        
         QBank
         {
             header: self.get_header().clone(),
             questions: self.questions.iter().enumerate()
                 .filter(|(idx, _)| {
                     let pos = (idx + 1) as u16;
-                    pos >= start && pos <= end
+                    (pos >= start && pos <= end) || (start == 0 && end == 0)
                 })
                 .map(|(_, q)| q.clone())
                 .collect(),

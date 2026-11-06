@@ -41,6 +41,10 @@ impl Shuffler
     /// `Self` - A new `Shuffler` instance initialized with the given question
     /// bank and student bank, and an empty set of shuffled question sets.
     /// 
+    /// # features
+    /// If both arguments `start` and `end` are zeros,
+    /// all the questions will be selected.
+    /// 
     /// # Examples
     /// ```
     /// use qrate::{ QBank, SBank, shuffler::Shuffler };

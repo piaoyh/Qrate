@@ -7,12 +7,22 @@
 // except according to those terms.
 ///////////////////////////////////////////////////////////////////////////////
 
-use std::fs::File;
-use std::io::{ Cursor, Write };
-use std::path::Path;
+
+use std::io::Cursor;
 
 use docx_rs::{ Docx, Paragraph, Run, BreakType, PageMargin, AlignmentType,
                 Footer, InstrText, InstrPAGE, InstrNUMPAGES, FieldCharType };
+
+use crate::{ Choices, QBank };
+use crate::{ SBank, Student };
+use crate::Shuffler;
+
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
+use std::fs::File;
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
+use std::io::Write;
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
+use std::path::Path;
 
 #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 use hwpers::{HwpWriter, HwpxWriter};
@@ -25,9 +35,8 @@ use genpdfi::error::Error;
 #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 use genpdfi::{ Document, elements, fonts, style, Element, SimplePageDecorator, Alignment };
 
-use crate::{ Choices, QBank, check_path };
-use crate::{ SBank, Student };
-use crate::Shuffler;
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
+use crate::check_path;
 
 
 pub struct Generator
@@ -94,6 +103,10 @@ impl Generator
     /// An `Option<Self>` which is `Some(Generator)` if successful, or
     /// `None` if the generation fails (e.g., invalid question range,
     /// insufficient questions, or selected count).
+    /// 
+    /// # features
+    /// If both arguments `start` and `end` are zeros,
+    /// all the questions will be selected.
     ///
     /// # Examples
     /// ```
@@ -198,6 +211,10 @@ impl Generator
     /// # Output
     /// An `Option<Self>` which is `Some(Generator)` if successful, or `None` if
     /// the generation fails (e.g., invalid question range).
+    /// 
+    /// # features
+    /// If both arguments `start` and `end` are zeros,
+    /// all the questions will be selected.
     ///
     /// # Examples
     /// ```
@@ -243,6 +260,10 @@ impl Generator
     /// An `Option<Self>` which is `Some(Generator)` if successful, or
     /// `None` if the generation fails (e.g., invalid question range,
     /// insufficient questions, or selected count).
+    /// 
+    /// # features
+    /// If both arguments `start` and `end` are zeros,
+    /// all the questions will be selected.
     ///
     /// # Examples
     /// ```
@@ -348,9 +369,13 @@ impl Generator
     /// * `answer_sheet_title` - The title to be used for the answer sheet.
     /// * `seeds` - A seed array, each element of which is of u64.
     ///
-    /// # Output
+    /// # Returns
     /// An `Option<Self>` which is `Some(Generator)` if successful, or `None` if
     /// the generation fails (e.g., invalid question range).
+    /// 
+    /// # features
+    /// If both arguments `start` and `end` are zeros,
+    /// all the questions will be selected.
     ///
     /// # Examples
     /// ```
@@ -2094,6 +2119,7 @@ impl Generator
     /// assert!(result.is_ok());
     /// std::fs::remove_file("exam.txt").unwrap();
     /// ```
+    #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
     pub fn save_shuffled_exams(&self, path: String, extention: &str) -> Result<(), String>
     {
         let checked = check_path(path, extention);
@@ -2102,11 +2128,8 @@ impl Generator
         {
             Some("txt") => self.save_shuffled_exams_in_txt(file_path),
             Some("docx") => self.save_shuffled_exams_in_docx(file_path),
-            #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
             Some("hwpx") => self.save_shuffled_exams_in_hwpx(file_path),
-            #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
             Some("hwp") => self.save_shuffled_exams_in_hwp(file_path),
-            #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
             Some("pdf") => self.save_shuffled_exams_in_pdf(file_path),
             _ => Err("Unsupported file format. Please use .txt, .docx, or .pdf.".to_string()),
         }
@@ -2239,6 +2262,7 @@ impl Generator
     /// assert!(result.is_ok());
     /// std::fs::remove_file("exam_shuffled.txt").unwrap();
     /// ```
+    #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
     pub fn save_shuffled_exams_in_txt(&self, path: &Path) -> Result<(), String>
     {
         let mut file = File::create(path).map_err(|e| e.to_string())?;
@@ -2434,6 +2458,7 @@ impl Generator
     /// assert!(result.is_ok());
     /// std::fs::remove_file("exam.docx").unwrap();
     /// ```
+    #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
     pub fn save_shuffled_exams_in_docx(&self, path: &Path) -> Result<(), String>
     {
         let file = File::create(path).map_err(|e| e.to_string())?;
@@ -3678,9 +3703,7 @@ impl Generator
 
             // Notice
             for line in header.get_notice().lines()
-            {
-                content.push(json!({"text": line, "style": "body"}));
-            }
+                { content.push(json!({"text": line, "style": "body"})); }
             content.push(json!({"text": "\n"}));
 
             // Questions

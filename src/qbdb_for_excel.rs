@@ -323,7 +323,7 @@ impl QBDB for Excel
 #[cfg(test)]
 mod tests
 {
-    use super::*;
+    use crate::*;
 
     #[test]
     fn test_excel_write_qbank_in_memory()
