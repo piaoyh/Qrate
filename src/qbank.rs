@@ -180,7 +180,7 @@ impl QBank
         &self.questions
     }
 
-    // pub fn select_questions(&self, start: u16, end: u16) -> QBank
+    // pub fn select_questions(&self, mut start: u16, mut end: u16) -> QBank
     /// Selects a subset of questions from the bank based on
     /// a specified range of 1-based indices to create the smaller QBank.
     ///
@@ -210,16 +210,21 @@ impl QBank
     /// assert_eq!(selected.get_length(), 2);
     /// assert_eq!(selected.get_question(1).unwrap().get_id(), 101);
     /// ```
-    pub fn select_questions(&self, start: u16, end: u16) -> QBank
+    pub fn select_questions(&self, mut start: u16, mut end: u16) -> QBank
     {
-        
+        if start == 0 && end == 0
+        {
+            start = 1;
+            end = self.questions.len() as u16;
+        }
+
         QBank
         {
             header: self.get_header().clone(),
             questions: self.questions.iter().enumerate()
                 .filter(|(idx, _)| {
                     let pos = (idx + 1) as u16;
-                    (pos >= start && pos <= end) || (start == 0 && end == 0)
+                    pos >= start && pos <= end
                 })
                 .map(|(_, q)| q.clone())
                 .collect(),
