@@ -198,10 +198,8 @@ impl ShuffledQSet
     pub fn shuffle_all(&mut self, prng: &mut Random)
     {
         self.shuffle(prng);
-        for q in 1..self.questions.len()
-            { self.questions[q].shuffle(prng); }
-        // for question in &mut self.questions
-        //     { question.shuffle(prng); }
+        for question in &mut self.questions
+            { question.shuffle(prng); }
     }
 
     // pub fn get_student(&self) -> &Student

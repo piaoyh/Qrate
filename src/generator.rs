@@ -78,6 +78,17 @@ impl Generator
     const FOOTER_UNDERLINE: u16 = 0b_100_0000_0000_0000;
     const FOOTER_STRIKE: u16 = 0b_1000_0000_0000_0000;
 
+    const DEFAULT_TITLE_FONT_SIZE: f32 = 14.0;
+    const DEFAULT_BODY_FONT_SIZE: f32 = 11.0;
+    const DEFAULT_ANSWER_SHEET_FONT_SIZE: f32 = 12.0;
+    const DEFAULT_FOOTER_FONT_SIZE: f32 = 9.0;
+    const DEFAULT_ATTRIBUTES: u16 = Self::TITLE_BOLD;
+    const DEFAULT_MARGIN_LEFT_IN_MM: f32 = 10.0;
+    const DEFAULT_MARGIN_RIGHT_IN_MM: f32 = 10.0;
+    const DEFAULT_MARGIN_TOP_IN_MM: f32 = 10.0;
+    const DEFAULT_MARGIN_BUTTOM_IN_MM: f32 = 10.0;
+    const DEFAULT_LINE_SPACING: f32 = 1.0;
+
     // pub fn new(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, strict: bool, sbank: &SBank, answer_sheet_title: String) -> Option<Self>
     /// Creates a new `Generator` instance for multiple shuffled sets,
     /// one for each student.
@@ -134,16 +145,16 @@ impl Generator
                 {
                     shuffler,
                     current_question_number: 0,
-                    title_font_size: 14.0,
-                    body_font_size: 11.0,
-                    answer_sheet_font_size: 12.0,
-                    footer_font_size: 9.0,
-                    attributes: Self::TITLE_BOLD,
-                    margin_left_in_mm: 10.0,
-                    margin_right_in_mm: 10.0,
-                    margin_top_in_mm: 10.0,
-                    margin_buttom_in_mm: 10.0,
-                    line_spacing: 1.0,
+                    title_font_size: Self::DEFAULT_TITLE_FONT_SIZE,
+                    body_font_size: Self::DEFAULT_BODY_FONT_SIZE,
+                    answer_sheet_font_size: Self::DEFAULT_ANSWER_SHEET_FONT_SIZE,
+                    footer_font_size: Self::DEFAULT_FOOTER_FONT_SIZE,
+                    attributes: Self::DEFAULT_ATTRIBUTES,
+                    margin_left_in_mm: Self::DEFAULT_MARGIN_LEFT_IN_MM,
+                    margin_right_in_mm: Self::DEFAULT_MARGIN_RIGHT_IN_MM,
+                    margin_top_in_mm: Self::DEFAULT_MARGIN_TOP_IN_MM,
+                    margin_buttom_in_mm: Self::DEFAULT_MARGIN_BUTTOM_IN_MM,
+                    line_spacing: Self::DEFAULT_LINE_SPACING,
                     answer_sheet_title: answer_sheet_title
                 }
             )
@@ -181,16 +192,16 @@ impl Generator
         {
             shuffler: Shuffler::new(&QBank::new_empty(), 1, 1, &SBank::new()),
             current_question_number: 0,
-            title_font_size: 14.0,
-            body_font_size: 11.0,
-            answer_sheet_font_size: 12.0,
-            footer_font_size: 9.0,
-            attributes: Self::TITLE_BOLD,
-            margin_left_in_mm: 10.0,
-            margin_right_in_mm: 10.0,
-            margin_top_in_mm: 10.0,
-            margin_buttom_in_mm: 10.0,
-            line_spacing: 1.0,
+            title_font_size: Self::DEFAULT_TITLE_FONT_SIZE,
+            body_font_size: Self::DEFAULT_BODY_FONT_SIZE,
+            answer_sheet_font_size: Self::DEFAULT_ANSWER_SHEET_FONT_SIZE,
+            footer_font_size: Self::DEFAULT_FOOTER_FONT_SIZE,
+            attributes: Self::DEFAULT_ATTRIBUTES,
+            margin_left_in_mm: Self::DEFAULT_MARGIN_LEFT_IN_MM,
+            margin_right_in_mm: Self::DEFAULT_MARGIN_RIGHT_IN_MM,
+            margin_top_in_mm: Self::DEFAULT_MARGIN_TOP_IN_MM,
+            margin_buttom_in_mm: Self::DEFAULT_MARGIN_BUTTOM_IN_MM,
+            line_spacing: Self::DEFAULT_LINE_SPACING,
             answer_sheet_title: answer_sheet_title
         }
     }
@@ -208,7 +219,7 @@ impl Generator
     /// * `number_of_questions` - The number of questions to be randomly selected.
     /// * `answer_sheet_title` - The title to be used for the answer sheet.
     ///
-    /// # Output
+    /// # Returns
     /// An `Option<Self>` which is `Some(Generator)` if successful, or `None` if
     /// the generation fails (e.g., invalid question range).
     /// 
@@ -292,16 +303,16 @@ impl Generator
                 {
                     shuffler,
                     current_question_number: 0,
-                    title_font_size: 14.0,
-                    body_font_size: 11.0,
-                    answer_sheet_font_size: 12.0,
-                    footer_font_size: 9.0,
-                    attributes: Self::TITLE_BOLD,
-                    margin_left_in_mm: 10.0,
-                    margin_right_in_mm: 10.0,
-                    margin_top_in_mm: 10.0,
-                    margin_buttom_in_mm: 10.0,
-                    line_spacing: 1.0,
+                    title_font_size: Self::DEFAULT_TITLE_FONT_SIZE,
+                    body_font_size: Self::DEFAULT_BODY_FONT_SIZE,
+                    answer_sheet_font_size: Self::DEFAULT_ANSWER_SHEET_FONT_SIZE,
+                    footer_font_size: Self::DEFAULT_FOOTER_FONT_SIZE,
+                    attributes: Self::DEFAULT_ATTRIBUTES,
+                    margin_left_in_mm: Self::DEFAULT_MARGIN_LEFT_IN_MM,
+                    margin_right_in_mm: Self::DEFAULT_MARGIN_RIGHT_IN_MM,
+                    margin_top_in_mm: Self::DEFAULT_MARGIN_TOP_IN_MM,
+                    margin_buttom_in_mm: Self::DEFAULT_MARGIN_BUTTOM_IN_MM,
+                    line_spacing: Self::DEFAULT_LINE_SPACING,
                     answer_sheet_title: answer_sheet_title
                 }
             )
@@ -341,16 +352,16 @@ impl Generator
         {
             shuffler: Shuffler::new_with_seeds(&QBank::new_empty(), 1, 1, &SBank::new(), seeds),
             current_question_number: 0,
-            title_font_size: 14.0,
-            body_font_size: 11.0,
-            answer_sheet_font_size: 12.0,
-            footer_font_size: 9.0,
-            attributes: Self::TITLE_BOLD,
-            margin_left_in_mm: 10.0,
-            margin_right_in_mm: 10.0,
-            margin_top_in_mm: 10.0,
-            margin_buttom_in_mm: 10.0,
-            line_spacing: 1.0,
+            title_font_size: Self::DEFAULT_TITLE_FONT_SIZE,
+            body_font_size: Self::DEFAULT_BODY_FONT_SIZE,
+            answer_sheet_font_size: Self::DEFAULT_ANSWER_SHEET_FONT_SIZE,
+            footer_font_size: Self::DEFAULT_FOOTER_FONT_SIZE,
+            attributes: Self::DEFAULT_ATTRIBUTES,
+            margin_left_in_mm: Self::DEFAULT_MARGIN_LEFT_IN_MM,
+            margin_right_in_mm: Self::DEFAULT_MARGIN_RIGHT_IN_MM,
+            margin_top_in_mm: Self::DEFAULT_MARGIN_TOP_IN_MM,
+            margin_buttom_in_mm: Self::DEFAULT_MARGIN_BUTTOM_IN_MM,
+            line_spacing: Self::DEFAULT_LINE_SPACING,
             answer_sheet_title: answer_sheet_title
         }
     }
