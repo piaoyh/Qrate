@@ -13,9 +13,7 @@ use std::io::Cursor;
 use docx_rs::{ Docx, Paragraph, Run, BreakType, PageMargin, AlignmentType,
                 Footer, InstrText, InstrPAGE, InstrNUMPAGES, FieldCharType };
 
-use crate::{ Choices, QBank };
-use crate::{ SBank, Student };
-use crate::Shuffler;
+use crate::{ Choices, QBank, SBank, Student, Shuffler };
 
 #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 use std::fs::File;
@@ -58,38 +56,38 @@ pub struct Generator
 
 impl Generator
 {
-    const BODY_BOLD: u16 = 0b_1;
-    const BODY_ITALIC: u16 = 0b_10;
-    const BODY_UNDERLINE: u16 = 0b_100;
-    const BODY_STRIKE: u16 = 0b_1000;
+    pub const BODY_BOLD: u16 = 0b_1;
+    pub const BODY_ITALIC: u16 = 0b_10;
+    pub const BODY_UNDERLINE: u16 = 0b_100;
+    pub const BODY_STRIKE: u16 = 0b_1000;
 
-    const TITLE_BOLD: u16 = 0b_1_0000;
-    const TITLE_ITALIC: u16 = 0b_10_0000;
-    const TITLE_UNDERLINE: u16 = 0b_100_0000;
-    const TITLE_STRIKE: u16 = 0b_1000_0000;
+    pub const TITLE_BOLD: u16 = 0b_1_0000;
+    pub const TITLE_ITALIC: u16 = 0b_10_0000;
+    pub const TITLE_UNDERLINE: u16 = 0b_100_0000;
+    pub const TITLE_STRIKE: u16 = 0b_1000_0000;
 
-    const ANSWER_SHEET_BOLD: u16 = 0b_1_0000_0000;
-    const ANSWER_SHEET_ITALIC: u16 = 0b_10_0000_0000;
-    const ANSWER_SHEET_UNDERLINE: u16 = 0b_100_0000_0000;
-    const ANSWER_SHEET_STRIKE: u16 = 0b_1000_0000_0000;
+    pub const ANSWER_SHEET_BOLD: u16 = 0b_1_0000_0000;
+    pub const ANSWER_SHEET_ITALIC: u16 = 0b_10_0000_0000;
+    pub const ANSWER_SHEET_UNDERLINE: u16 = 0b_100_0000_0000;
+    pub const ANSWER_SHEET_STRIKE: u16 = 0b_1000_0000_0000;
 
-    const FOOTER_BOLD: u16 = 0b_1_0000_0000_0000;
-    const FOOTER_ITALIC: u16 = 0b_10_0000_0000_0000;
-    const FOOTER_UNDERLINE: u16 = 0b_100_0000_0000_0000;
-    const FOOTER_STRIKE: u16 = 0b_1000_0000_0000_0000;
+    pub const FOOTER_BOLD: u16 = 0b_1_0000_0000_0000;
+    pub const FOOTER_ITALIC: u16 = 0b_10_0000_0000_0000;
+    pub const FOOTER_UNDERLINE: u16 = 0b_100_0000_0000_0000;
+    pub const FOOTER_STRIKE: u16 = 0b_1000_0000_0000_0000;
 
-    const DEFAULT_TITLE_FONT_SIZE: f32 = 14.0;
-    const DEFAULT_BODY_FONT_SIZE: f32 = 11.0;
-    const DEFAULT_ANSWER_SHEET_FONT_SIZE: f32 = 12.0;
-    const DEFAULT_FOOTER_FONT_SIZE: f32 = 9.0;
-    const DEFAULT_ATTRIBUTES: u16 = Self::TITLE_BOLD;
-    const DEFAULT_MARGIN_LEFT_IN_MM: f32 = 10.0;
-    const DEFAULT_MARGIN_RIGHT_IN_MM: f32 = 10.0;
-    const DEFAULT_MARGIN_TOP_IN_MM: f32 = 10.0;
-    const DEFAULT_MARGIN_BUTTOM_IN_MM: f32 = 10.0;
-    const DEFAULT_LINE_SPACING: f32 = 1.0;
+    pub const DEFAULT_TITLE_FONT_SIZE: f32 = 14.0;
+    pub const DEFAULT_BODY_FONT_SIZE: f32 = 11.0;
+    pub const DEFAULT_ANSWER_SHEET_FONT_SIZE: f32 = 12.0;
+    pub const DEFAULT_FOOTER_FONT_SIZE: f32 = 9.0;
+    pub const DEFAULT_ATTRIBUTES: u16 = Self::TITLE_BOLD;
+    pub const DEFAULT_MARGIN_LEFT_IN_MM: f32 = 10.0;
+    pub const DEFAULT_MARGIN_RIGHT_IN_MM: f32 = 10.0;
+    pub const DEFAULT_MARGIN_TOP_IN_MM: f32 = 10.0;
+    pub const DEFAULT_MARGIN_BUTTOM_IN_MM: f32 = 10.0;
+    pub const DEFAULT_LINE_SPACING: f32 = 1.0;
 
-    // pub fn new(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, strict: bool, sbank: &SBank, answer_sheet_title: String) -> Option<Self>
+    // pub fn new(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, is_strict: bool, sbank: &SBank, answer_sheet_title: String) -> Option<Self>
     /// Creates a new `Generator` instance for multiple shuffled sets,
     /// one for each student.
     ///
@@ -98,15 +96,17 @@ impl Generator
     /// of randomly selected questions.
     ///
     /// # Arguments
-    /// * `qbank` - A reference to the `QBank` containing the original questions.
-    /// * `start` - The 1-based starting index of questions to consider (inclusive).
+    /// * `qbank` - A reference to the `QBank` containing the original
+    ///   questions.
+    /// * `start` - The 1-based starting index of questions to consider
+    ///   (inclusive).
     /// * `end` - The 1-based ending index of questions to consider (inclusive).
     /// * `number_of_questions` - The number of questions to be randomly
     ///   selected for each student.
-    /// * `strict` - A boolean indicating whether to use strict mode for
-    ///   question selection. If `strict` is `true`, the generator will generate
-    ///   equivalently same question sets for each student; if `false`, it will
-    ///   allow different question sets for each student.
+    /// * `is_strict` - A boolean indicating whether to use strict mode for
+    ///   question selection. If `is_strict` is `true`, the generator will
+    ///   generate equivalently same question sets for each student; if `false`,
+    ///   it will allow different question sets for each student.
     /// * `sbank` - A reference to the `SBank` containing the list of students.
     /// * `answer_sheet_title` - The title to be used for the answer sheet.
     ///
@@ -135,10 +135,10 @@ impl Generator
     /// let generator = Generator::new(&qbank, 1, 2, 2, false, &students, "Answer Sheet".to_string());
     /// assert!(generator.is_some());
     /// ```
-    pub fn new(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, strict: bool, sbank: &SBank, answer_sheet_title: String) -> Option<Self>
+    pub fn new(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, is_strict: bool, sbank: &SBank, answer_sheet_title: String) -> Option<Self>
     {
         let mut shuffler = Shuffler::new(qbank, start, end, sbank);
-        if shuffler.make_exams(number_of_questions, strict)
+        if shuffler.make_exams(number_of_questions, is_strict)
         {
             Some(
                 Self
@@ -155,7 +155,7 @@ impl Generator
                     margin_top_in_mm: Self::DEFAULT_MARGIN_TOP_IN_MM,
                     margin_buttom_in_mm: Self::DEFAULT_MARGIN_BUTTOM_IN_MM,
                     line_spacing: Self::DEFAULT_LINE_SPACING,
-                    answer_sheet_title: answer_sheet_title
+                    answer_sheet_title
                 }
             )
         }
@@ -202,7 +202,7 @@ impl Generator
             margin_top_in_mm: Self::DEFAULT_MARGIN_TOP_IN_MM,
             margin_buttom_in_mm: Self::DEFAULT_MARGIN_BUTTOM_IN_MM,
             line_spacing: Self::DEFAULT_LINE_SPACING,
-            answer_sheet_title: answer_sheet_title
+            answer_sheet_title
         }
     }
 
@@ -245,7 +245,7 @@ impl Generator
         Self::new(qbank, start, end, number_of_questions, false, &sbank, answer_sheet_title)
     }
 
-    // pub fn new_with_seeds(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, strict: bool, sbank: &SBank, answer_sheet_title: String, seeds: [u64; 16]) -> Option<Self>
+    // pub fn new_with_seeds(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, is_strict: bool, sbank: &SBank, answer_sheet_title: String, seeds: [u64; 16]) -> Option<Self>
     /// Creates a new `Generator` instance for multiple shuffled sets,
     /// one for each student.
     ///
@@ -254,15 +254,17 @@ impl Generator
     /// of randomly selected questions.
     ///
     /// # Arguments
-    /// * `qbank` - A reference to the `QBank` containing the original questions.
-    /// * `start` - The 1-based starting index of questions to consider (inclusive).
+    /// * `qbank` - A reference to the `QBank` containing the original
+    ///   questions.
+    /// * `start` - The 1-based starting index of questions to consider
+    ///   (inclusive).
     /// * `end` - The 1-based ending index of questions to consider (inclusive).
     /// * `number_of_questions` - The number of questions to be randomly
     ///   selected for each student.
-    /// * `strict` - A boolean indicating whether to use strict mode for
-    ///   question selection. If `strict` is `true`, the generator will generate
-    ///   equivalently same question sets for each student; if `false`, it will
-    ///   allow different question sets for each student.
+    /// * `is_strict` - A boolean indicating whether to use strict mode for
+    ///   question selection. If `is_strict` is `true`, the generator will
+    ///   generate equivalently same question sets for each student; if `false`,
+    ///   it will allow different question sets for each student.
     /// * `sbank` - A reference to the `SBank` containing the list of students.
     /// * `answer_sheet_title` - The title to be used for the answer sheet.
     /// * `seeds` - A seed array, each element of which is of u64.
@@ -293,10 +295,10 @@ impl Generator
     /// let generator = Generator::new_with_seeds(&qbank, 1, 2, 2, false, &sbank, "Answer Sheet".to_string(), seeds);
     /// assert!(generator.is_some());
     /// ```
-    pub fn new_with_seeds(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, strict: bool, sbank: &SBank, answer_sheet_title: String, seeds: [u64; 16]) -> Option<Self>
+    pub fn new_with_seeds(qbank: &QBank, start: u16, end: u16, number_of_questions: usize, is_strict: bool, sbank: &SBank, answer_sheet_title: String, seeds: [u64; 16]) -> Option<Self>
     {
         let mut shuffler = Shuffler::new_with_seeds(qbank, start, end, sbank, seeds);
-        if shuffler.make_exams(number_of_questions, strict)
+        if shuffler.make_exams(number_of_questions, is_strict)
         {
             Some(
                 Self
@@ -313,7 +315,7 @@ impl Generator
                     margin_top_in_mm: Self::DEFAULT_MARGIN_TOP_IN_MM,
                     margin_buttom_in_mm: Self::DEFAULT_MARGIN_BUTTOM_IN_MM,
                     line_spacing: Self::DEFAULT_LINE_SPACING,
-                    answer_sheet_title: answer_sheet_title
+                    answer_sheet_title
                 }
             )
         }
@@ -362,7 +364,7 @@ impl Generator
             margin_top_in_mm: Self::DEFAULT_MARGIN_TOP_IN_MM,
             margin_buttom_in_mm: Self::DEFAULT_MARGIN_BUTTOM_IN_MM,
             line_spacing: Self::DEFAULT_LINE_SPACING,
-            answer_sheet_title: answer_sheet_title
+            answer_sheet_title
         }
     }
 
@@ -407,16 +409,16 @@ impl Generator
         Self::new_with_seeds(qbank, start, end, number_of_questions, false, &sbank, answer_sheet_title, seeds)
     }
 
-    // pub fn make_exams(&mut self, number_of_questions: usize, strict: bool)
+    // pub fn make_exams(&mut self, number_of_questions: usize, is_strict: bool)
     /// Generates a set of exams based on the specified number of questions.
     ///
     /// # Arguments
     /// * `number_of_questions` - The number of questions to be randomly
     ///   selected for each student.
-    /// * `strict` - A boolean indicating whether to use strict mode for
-    ///   question selection. If `strict` is `true`, the generator will generate
-    ///   equivalently same question sets for each student; if `false`, it will
-    ///   allow different question sets for each student.
+    /// * `is_strict` - A boolean indicating whether to use strict mode for
+    ///   question selection. If `is_strict` is `true`, the generator will
+    ///   generate equivalently same question sets for each student; if `false`,
+    ///   it will allow different question sets for each student.
     /// 
     /// # Returns
     /// `bool` - `true` if the generation is successful, `false` otherwise.
@@ -431,9 +433,9 @@ impl Generator
     /// assert!(generator.origin.get_questions().is_empty());
     /// ```
     #[inline]
-    pub fn make_exams(&mut self, number_of_questions: usize, strict: bool) -> bool
+    pub fn make_exams(&mut self, number_of_questions: usize, is_strict: bool) -> bool
     {
-        self.shuffler.make_exams(number_of_questions, strict)
+        self.shuffler.make_exams(number_of_questions, is_strict)
     }
 
     // pub fn get_title_font_size(&self) -> f32
@@ -1862,7 +1864,7 @@ impl Generator
     /// and the choices in their shuffled order.
     ///
     /// It is primarily used for self-testing scenarios,
-    /// suchs as in the `exam()` function found in `src/examples/prep.rs`.
+    /// such as in the `exam()` function found in `src/examples/prep.rs`.
     ///
     /// # Returns
     /// `Option<(u16, u8, String, String, Choices)>` - An `Option` containing
@@ -1909,7 +1911,7 @@ impl Generator
     /// and the choices in their shuffled order.
     ///
     /// It is primarily used for self-testing scenarios,
-    /// suchs as in the `exam()` function found in `src/examples/prep.rs`.
+    /// such as in the `exam()` function found in `src/examples/prep.rs`.
     ///
     /// # Returns
     /// `Option<(u16, u8, String, String, Choices)>` - An `Option` containing
@@ -2065,13 +2067,14 @@ impl Generator
     /// assert_eq!(generator.get_current_question_number(), 2);
     /// assert!(generator.next().is_none());
     /// ```
+    #[inline]
     pub fn get_current_question_number(&self) -> u16
     {
         self.current_question_number
     }
 
     // pub fn set_current_question_number(&mut self, num: u16)
-    /// Sets the current question number within the shuffled set.
+    /// Sets the current question number within the question bank.
     /// 
     /// # Arguments
     /// * `num` - The new question number to set.
@@ -2090,6 +2093,7 @@ impl Generator
     /// generator.set_current_question_number(1);
     /// assert_eq!(generator.get_current_question_number(), 1);
     /// ```
+    #[inline]
     pub fn set_current_question_number(&mut self, num: u16)
     {
         self.current_question_number = num;
@@ -2126,9 +2130,25 @@ impl Generator
     /// // Generate exams with 1 question selected for each student
     /// let generator = Generator::new(&qbank, 1, 2, 1, &students).unwrap();
     ///
-    /// let result = generator.save_shuffled_exams("exam.txt".to_string(), "txt");
+    /// let mut result = generator.save_shuffled_exams("exam.txt".to_string(), "txt");
     /// assert!(result.is_ok());
     /// std::fs::remove_file("exam.txt").unwrap();
+    ///
+    /// result = generator.save_shuffled_exams("exam.docx".to_string(), "docx");
+    /// assert!(result.is_ok());
+    /// std::fs::remove_file("exam.docx").unwrap();
+    ///
+    /// result = generator.save_shuffled_exams("exam.hwpx".to_string(), "hwpx");
+    /// assert!(result.is_ok());
+    /// std::fs::remove_file("exam.hwpx").unwrap();
+    ///
+    /// result = generator.save_shuffled_exams("exam.hwp".to_string(), "hwp");
+    /// assert!(result.is_ok());
+    /// std::fs::remove_file("exam.hwp").unwrap();
+    ///
+    /// result = generator.save_shuffled_exams("exam.pdf".to_string(), "pdf");
+    /// assert!(result.is_ok());
+    /// std::fs::remove_file("exam.pdf").unwrap();
     /// ```
     #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
     pub fn save_shuffled_exams(&self, path: String, extention: &str) -> Result<(), String>
@@ -2142,7 +2162,7 @@ impl Generator
             Some("hwpx") => self.save_shuffled_exams_in_hwpx(file_path),
             Some("hwp") => self.save_shuffled_exams_in_hwp(file_path),
             Some("pdf") => self.save_shuffled_exams_in_pdf(file_path),
-            _ => Err("Unsupported file format. Please use .txt, .docx, or .pdf.".to_string()),
+            _ => Err("Unsupported file format. Please use .txt, .docx, hwpx, hwp or .pdf.".to_string()),
         }
     }
 
@@ -2390,7 +2410,7 @@ impl Generator
         //content.push_str("\n\u{000C}\n"); // Form feed for page break
 
         let header = self.shuffler.get_header(); // Need the original header for titles
-        content.push_str(format!("{}{}\n", self.answer_sheet_title, "\n").as_str());
+        content.push_str(format!("{}\n\n", self.answer_sheet_title).as_str());
         for (student, qbank) in &shuffled_qbanks
         {
             // Student Info
@@ -2399,7 +2419,8 @@ impl Generator
 
             // Answers
             let mut answer_line = String::new();
-            for (i, question) in qbank.get_questions().iter().enumerate() {
+            for (i, question) in qbank.get_questions().iter().enumerate()
+            {
                 let category_id = question.get_category();
                 let answer_string = match category_id
                 {
@@ -2422,15 +2443,15 @@ impl Generator
                 let entry = format!("{}. {}    ", i + 1, answer_string);
 
                 // Simple line wrapping logic
-                if answer_line.len() + entry.len() > 80 && !answer_line.is_empty() {
+                if answer_line.len() + entry.len() > 80 && !answer_line.is_empty()
+                {
                     content.push_str(format!("{}\n", answer_line).as_str());
                     answer_line.clear();
                 }
                 answer_line.push_str(entry.as_str());
             }
-            if !answer_line.is_empty() {
-                content.push_str(format!("{}\n", answer_line).as_str());
-            }
+            if !answer_line.is_empty()
+                { content.push_str(format!("{}\n", answer_line).as_str()); }
             content.push_str("\n"); // Blank line after each student
         }
         content.into_bytes()
@@ -2635,7 +2656,8 @@ impl Generator
 
             // Answers
             let mut answers_text = String::new();
-            for (i, question) in qbank.get_questions().iter().enumerate() {
+            for (i, question) in qbank.get_questions().iter().enumerate()
+            {
                 let category_id = question.get_category();
                 let answer_string = match category_id
                 {
@@ -2899,7 +2921,6 @@ impl Generator
     /// std::fs::write("exam_exported.hwpx", result.unwrap()).unwrap();
     /// std::fs::remove_file("exam_exported.hwpx").unwrap();
     /// ```
-    #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
     pub fn export_shuffled_exams_in_hwpx(&self) -> Result<Vec<u8>, String>
     {
         self.build_shuffled_exams_in_hwpx()?
@@ -2907,7 +2928,6 @@ impl Generator
             .map_err(|e| e.to_string())
     }
 
-    #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
     fn build_shuffled_exams_in_hwpx(&self) -> Result<HwpxWriter, String>
     {
         let mut hwpx = HwpxWriter::new();
@@ -2915,17 +2935,18 @@ impl Generator
         let shuffled_qbanks = self.get_shuffled_qbanks();
 
         for (student, qbank) in &shuffled_qbanks
-        {
-            self.write_exam_content_to_hwpx(&mut hwpx, student, qbank)?;
-        }
+            { self.write_exam_content_to_hwpx(&mut hwpx, student, qbank)?; }
 
         // Add answer sheet
-        let title_style = HwpxTextStyle::new()
-            .size(self.title_font_size.round() as u32);
-        let title_style = if self.is_title_bold() { title_style.bold() } else { title_style };
-        let title_style = if self.is_title_italic() { title_style.italic() } else { title_style };
-        let title_style = if self.is_title_underline() { title_style.underline() } else { title_style };
-        let title_style = if self.is_title_strike() { title_style.strikethrough() } else { title_style };
+        let mut title_style = HwpxTextStyle::new().size(self.title_font_size.round() as u32);
+        if self.is_title_bold()
+            { title_style = title_style.bold(); }
+        if self.is_title_italic()
+            { title_style = title_style.italic(); }
+        if self.is_title_underline()
+            { title_style = title_style.underline(); }
+        if self.is_title_strike()
+            { title_style = title_style.strikethrough(); }
 
         hwpx.add_mixed_styled_paragraph(vec![StyledText {
             text: self.answer_sheet_title.clone(),
@@ -2934,26 +2955,28 @@ impl Generator
 
         hwpx.add_paragraph("").map_err(|e| e.to_string())?;
 
-        let answer_sheet_style = HwpxTextStyle::new()
-            .size(self.answer_sheet_font_size.round() as u32);
-        let answer_sheet_style = if self.is_answer_sheet_bold() { answer_sheet_style.bold() } else { answer_sheet_style };
-        let answer_sheet_style = if self.is_answer_sheet_italic() { answer_sheet_style.italic() } else { answer_sheet_style };
-        let answer_sheet_style = if self.is_answer_sheet_underline() { answer_sheet_style.underline() } else { answer_sheet_style };
-        let answer_sheet_style = if self.is_answer_sheet_strike() { answer_sheet_style.strikethrough() } else { answer_sheet_style };
+        let mut answer_sheet_style = HwpxTextStyle::new().size(self.answer_sheet_font_size.round() as u32);
+        if self.is_answer_sheet_bold()
+            { answer_sheet_style = answer_sheet_style.bold(); }
+        if self.is_answer_sheet_italic()
+            { answer_sheet_style = answer_sheet_style.italic(); }
+        if self.is_answer_sheet_underline()
+            { answer_sheet_style = answer_sheet_style.underline(); }
+        if self.is_answer_sheet_strike()
+            { answer_sheet_style = answer_sheet_style.strikethrough(); }
 
         let header = self.shuffler.get_header();
         for (student, qbank) in &shuffled_qbanks
         {
-            let student_info_text = format!("{}: {}        {}: {}",
-                header.get_name(), student.get_name(), header.get_id(), student.get_id()
-            );
+            let student_info_text = format!("{}: {}        {}: {}", header.get_name(), student.get_name(), header.get_id(), student.get_id());
             hwpx.add_mixed_styled_paragraph(vec![StyledText {
                 text: student_info_text,
                 style: answer_sheet_style.clone(),
             }]).map_err(|e| e.to_string())?;
 
             let mut answers_text = String::new();
-            for (i, question) in qbank.get_questions().iter().enumerate() {
+            for (i, question) in qbank.get_questions().iter().enumerate()
+            {
                 let category_id = question.get_category();
                 let answer_string = match category_id
                 {
@@ -3030,24 +3053,30 @@ impl Generator
     fn write_exam_content_to_hwpx(&self, hwpx: &mut HwpxWriter, student: &Student, qbank: &QBank) -> Result<(), String>
     {
         let header = qbank.get_header();
-        let title_style = HwpxTextStyle::new()
-            .size(self.title_font_size.round() as u32);
-        let title_style = if self.is_title_bold() { title_style.bold() } else { title_style };
-        let title_style = if self.is_title_italic() { title_style.italic() } else { title_style };
-        let title_style = if self.is_title_underline() { title_style.underline() } else { title_style };
-        let title_style = if self.is_title_strike() { title_style.strikethrough() } else { title_style };
-
+        let mut title_style = HwpxTextStyle::new().size(self.title_font_size.round() as u32);
+         if self.is_title_bold()
+            { title_style = title_style.bold(); }
+        if self.is_title_italic()
+            { title_style = title_style.italic(); }
+        if self.is_title_underline()
+            { title_style = title_style.underline(); }
+        if self.is_title_strike()
+            { title_style = title_style.strikethrough(); }
+        
         hwpx.add_mixed_styled_paragraph(vec![StyledText {
             text: header.get_title().to_string(),
             style: title_style,
         }]).map_err(|e| e.to_string())?;
 
-        let body_style = HwpxTextStyle::new()
-            .size(self.body_font_size.round() as u32);
-        let body_style = if self.is_body_bold() { body_style.bold() } else { body_style };
-        let body_style = if self.is_body_italic() { body_style.italic() } else { body_style };
-        let body_style = if self.is_body_underline() { body_style.underline() } else { body_style };
-        let body_style = if self.is_body_strike() { body_style.strikethrough() } else { body_style };
+        let mut body_style = HwpxTextStyle::new().size(self.body_font_size.round() as u32);
+        if self.is_body_bold()
+            { body_style = body_style.bold(); }
+        if self.is_body_italic()
+            { body_style = body_style.italic(); }
+        if self.is_body_underline()
+            { body_style = body_style.underline(); }
+        if self.is_body_strike()
+            { body_style = body_style.strikethrough(); }
 
         let student_info = format!("{}: {}        {}: {}", 
             header.get_name(), student.get_name(), header.get_id(), student.get_id());
@@ -3182,7 +3211,6 @@ impl Generator
     /// std::fs::write("exam_exported.hwp", result.unwrap()).unwrap();
     /// std::fs::remove_file("exam_exported.hwp").unwrap();
     /// ```
-    #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
     pub fn export_shuffled_exams_in_hwp(&self) -> Result<Vec<u8>, String>
     {
         self.build_shuffled_exams_in_hwp()?
@@ -3190,7 +3218,6 @@ impl Generator
             .map_err(|e| e.to_string())
     }
 
-    #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
     fn build_shuffled_exams_in_hwp(&self) -> Result<HwpWriter, String>
     {
         let mut hwp = HwpWriter::new();
@@ -3204,30 +3231,33 @@ impl Generator
         let shuffled_qbanks = self.get_shuffled_qbanks();
 
         for (student, qbank) in &shuffled_qbanks
-        {
-            self.write_exam_content_to_hwp(&mut hwp, student, qbank)?;
-        }
+            { self.write_exam_content_to_hwp(&mut hwp, student, qbank)?; }
 
         // Add answer sheet
-        let title_style = TextStyle::new()
-            .size(self.title_font_size.round() as u32);
-        let title_style = if self.is_title_bold() { title_style.bold() } else { title_style };
-        let title_style = if self.is_title_italic() { title_style.italic() } else { title_style };
-        let title_style = if self.is_title_underline() { title_style.underline() } else { title_style };
-        let title_style = if self.is_title_strike() { title_style.strikethrough() } else { title_style };
+        let mut title_style = TextStyle::new().size(self.title_font_size.round() as u32);
+        if self.is_title_bold()
+            { title_style = title_style.bold(); }
+        if self.is_title_italic()
+            { title_style = title_style.italic(); }
+        if self.is_title_underline()
+            { title_style = title_style.underline(); }
+        if self.is_title_strike()
+            { title_style = title_style.strikethrough(); }
 
         let mut title_styled = hwpers::writer::style::StyledText::new(self.answer_sheet_title.clone());
         title_styled = title_styled.add_range(0, self.answer_sheet_title.len(), title_style);
         hwp.add_styled_paragraph(&title_styled).map_err(|e| e.to_string())?;
-
         hwp.add_paragraph("").map_err(|e| e.to_string())?;
 
-        let answer_sheet_style = TextStyle::new()
-            .size(self.answer_sheet_font_size.round() as u32);
-        let answer_sheet_style = if self.is_answer_sheet_bold() { answer_sheet_style.bold() } else { answer_sheet_style };
-        let answer_sheet_style = if self.is_answer_sheet_italic() { answer_sheet_style.italic() } else { answer_sheet_style };
-        let answer_sheet_style = if self.is_answer_sheet_underline() { answer_sheet_style.underline() } else { answer_sheet_style };
-        let answer_sheet_style = if self.is_answer_sheet_strike() { answer_sheet_style.strikethrough() } else { answer_sheet_style };
+        let mut answer_sheet_style = TextStyle::new().size(self.answer_sheet_font_size.round() as u32);
+        if self.is_answer_sheet_bold()
+            { answer_sheet_style = answer_sheet_style.bold(); }
+        if self.is_answer_sheet_italic()
+            { answer_sheet_style = answer_sheet_style.italic(); }
+        if self.is_answer_sheet_underline()
+            { answer_sheet_style = answer_sheet_style.underline(); }
+        if self.is_answer_sheet_strike()
+            { answer_sheet_style = answer_sheet_style.strikethrough(); }
 
         let header = self.shuffler.get_header();
         for (student, qbank) in &shuffled_qbanks
@@ -3312,28 +3342,33 @@ impl Generator
     /// function, it is not intended to be called directly in typical usage.
     /// Instead, it is used internally by the public methods that generate
     /// the HWP document.
-    #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
     fn write_exam_content_to_hwp(&self, hwp: &mut HwpWriter, student: &Student, qbank: &QBank) -> Result<(), String>
     {
         let header = qbank.get_header();
-        let title_style = TextStyle::new()
-            .size(self.title_font_size.round() as u32);
-        let title_style = if self.is_title_bold() { title_style.bold() } else { title_style };
-        let title_style = if self.is_title_italic() { title_style.italic() } else { title_style };
-        let title_style = if self.is_title_underline() { title_style.underline() } else { title_style };
-        let title_style = if self.is_title_strike() { title_style.strikethrough() } else { title_style };
+        let mut title_style = TextStyle::new().size(self.title_font_size.round() as u32);
+        if self.is_title_bold()
+            { title_style = title_style.bold(); }
+        if self.is_title_italic()
+            { title_style = title_style.italic(); }
+        if self.is_title_underline()
+            { title_style = title_style.underline(); }
+        if self.is_title_strike()
+            { title_style = title_style.strikethrough(); }
 
         let title_text = header.get_title();
         let mut title_styled = hwpers::writer::style::StyledText::new(title_text.to_string());
         title_styled = title_styled.add_range(0, title_text.len(), title_style);
         hwp.add_styled_paragraph(&title_styled).map_err(|e| e.to_string())?;
 
-        let body_style = TextStyle::new()
-            .size(self.body_font_size.round() as u32);
-        let body_style = if self.is_body_bold() { body_style.bold() } else { body_style };
-        let body_style = if self.is_body_italic() { body_style.italic() } else { body_style };
-        let body_style = if self.is_body_underline() { body_style.underline() } else { body_style };
-        let body_style = if self.is_body_strike() { body_style.strikethrough() } else { body_style };
+        let mut body_style = TextStyle::new().size(self.body_font_size.round() as u32);
+        if self.is_title_bold()
+            { body_style = body_style.bold(); }
+        if self.is_title_italic()
+            { body_style = body_style.italic(); }
+        if self.is_title_underline()
+            { body_style = body_style.underline(); }
+        if self.is_title_strike()
+            { body_style = body_style.strikethrough(); }
 
         let student_info = format!("{}: {}        {}: {}", 
             header.get_name(), student.get_name(), header.get_id(), student.get_id());

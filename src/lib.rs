@@ -59,6 +59,9 @@ pub mod shuffler;
 /// The `generator` module provides functionalities for generating various exam formats.
 pub mod generator;
 
+/// The `exporter` module provides functionalities for exporting question bank.
+pub mod qbank_exporter;
+
 /// The `utils` module contains utility functions used across the library.
 pub mod utils;
 
@@ -86,6 +89,7 @@ pub use shuffled_question::{ ShuffledQuestion, ShuffledQuestions };
 pub use shuffled_qset::{ ShuffledQSet, ShuffledQSets};
 pub use shuffler::Shuffler;
 pub use generator::Generator;
+pub use qbank_exporter::QBankExporter;
 pub use self_study::{ SelfStudy, ScoringRule, UserAnswer };
 pub use error_messages::ErrorMessage;
 

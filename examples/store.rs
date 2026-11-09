@@ -15,11 +15,11 @@ fn main() -> Result<(), String>
     generator.save_shuffled_exams("./IS_exam".to_string(), "hwp")?;
 
     let txt = generator.export_shuffled_exams_in_txt();
-    let mut file = File::create("./IS_exam_export.txt".to_string()).map_err(|e: Error| e.to_string())?;
+    let mut file = File::create("./IS_exam.txt".to_string()).map_err(|e: Error| e.to_string())?;
     file.write_all(txt.as_slice()).map_err(|e: Error| e.to_string())?;
 
     let docx = generator.export_shuffled_exams_in_docx().unwrap();
-    let mut file = File::create("./IS_exam_export.docx".to_string()).map_err(|e: Error| e.to_string())?;
+    let mut file = File::create("./IS_exam.docx".to_string()).map_err(|e: Error| e.to_string())?;
     file.write_all(docx.as_slice()).map_err(|e: Error| e.to_string())?;
 
     Ok(())
