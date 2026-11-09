@@ -15,6 +15,7 @@ use docx_rs::{ Docx, Paragraph, Run, BreakType, PageMargin, AlignmentType,
 
 use crate::{ Choices, QBank, SBank, Student, Shuffler };
 
+
 #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 use std::fs::File;
 #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
@@ -22,12 +23,15 @@ use std::io::Write;
 #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 use std::path::Path;
 
-#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
-use hwpers::{HwpWriter, HwpxWriter};
-#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
-use hwpers::style::TextStyle;
-#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
-use hwpers::hwpx::{HwpxTextStyle, StyledText};
+
+        #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
+        use hwpers::{HwpWriter, HwpxWriter};
+        #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
+        use hwpers::style::TextStyle;
+        #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
+        use hwpers::hwpx::{HwpxTextStyle, StyledText};
+
+
 #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 use genpdfi::error::Error;
 #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
@@ -35,6 +39,9 @@ use genpdfi::{ Document, elements, fonts, style, Element, SimplePageDecorator, A
 
 #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 use crate::check_path;
+
+#[cfg(any(target_arch = "wasm32", target_arch = "wasm64"))]
+use serde_json::json;
 
 
 pub struct Generator
@@ -2159,7 +2166,9 @@ impl Generator
         {
             Some("txt") => self.save_shuffled_exams_in_txt(file_path),
             Some("docx") => self.save_shuffled_exams_in_docx(file_path),
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
             Some("hwpx") => self.save_shuffled_exams_in_hwpx(file_path),
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
             Some("hwp") => self.save_shuffled_exams_in_hwp(file_path),
             Some("pdf") => self.save_shuffled_exams_in_pdf(file_path),
             _ => Err("Unsupported file format. Please use .txt, .docx, hwpx, hwp or .pdf.".to_string()),
@@ -2921,6 +2930,7 @@ impl Generator
     /// std::fs::write("exam_exported.hwpx", result.unwrap()).unwrap();
     /// std::fs::remove_file("exam_exported.hwpx").unwrap();
     /// ```
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
     pub fn export_shuffled_exams_in_hwpx(&self) -> Result<Vec<u8>, String>
     {
         self.build_shuffled_exams_in_hwpx()?
@@ -2928,6 +2938,7 @@ impl Generator
             .map_err(|e| e.to_string())
     }
 
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
     fn build_shuffled_exams_in_hwpx(&self) -> Result<HwpxWriter, String>
     {
         let mut hwpx = HwpxWriter::new();
@@ -3211,6 +3222,7 @@ impl Generator
     /// std::fs::write("exam_exported.hwp", result.unwrap()).unwrap();
     /// std::fs::remove_file("exam_exported.hwp").unwrap();
     /// ```
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
     pub fn export_shuffled_exams_in_hwp(&self) -> Result<Vec<u8>, String>
     {
         self.build_shuffled_exams_in_hwp()?
@@ -3218,6 +3230,7 @@ impl Generator
             .map_err(|e| e.to_string())
     }
 
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
     fn build_shuffled_exams_in_hwp(&self) -> Result<HwpWriter, String>
     {
         let mut hwp = HwpWriter::new();
@@ -3342,6 +3355,7 @@ impl Generator
     /// function, it is not intended to be called directly in typical usage.
     /// Instead, it is used internally by the public methods that generate
     /// the HWP document.
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
     fn write_exam_content_to_hwp(&self, hwp: &mut HwpWriter, student: &Student, qbank: &QBank) -> Result<(), String>
     {
         let header = qbank.get_header();
@@ -3695,7 +3709,6 @@ impl Generator
     #[cfg(any(target_arch = "wasm32", target_arch = "wasm64"))]
     pub fn export_shuffled_exams_in_pdf(&self) -> Result<Vec<u8>, String>
     {
-        use serde_json::json;
         let shuffled_qsets: Vec<(Student, QBank)> = self.get_shuffled_qbanks();
         let mut content = Vec::new();
 

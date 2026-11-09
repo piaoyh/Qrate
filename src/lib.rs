@@ -62,6 +62,9 @@ pub mod generator;
 /// The `exporter` module provides functionalities for exporting question bank.
 pub mod qbank_exporter;
 
+/// The `exporter` module provides functionalities for exporting student bank.
+pub mod sbank_exporter;
+
 /// The `utils` module contains utility functions used across the library.
 pub mod utils;
 
@@ -90,6 +93,7 @@ pub use shuffled_qset::{ ShuffledQSet, ShuffledQSets};
 pub use shuffler::Shuffler;
 pub use generator::Generator;
 pub use qbank_exporter::QBankExporter;
+pub use sbank_exporter::SBankExporter;
 pub use self_study::{ SelfStudy, ScoringRule, UserAnswer };
 pub use error_messages::ErrorMessage;
 

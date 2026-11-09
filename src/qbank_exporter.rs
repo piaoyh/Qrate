@@ -12,9 +12,6 @@ use std::io::Cursor;
 
 use docx_rs::{ Docx, Paragraph, Run, BreakType, PageMargin, AlignmentType,
                 Footer, InstrText, InstrPAGE, InstrNUMPAGES, FieldCharType };
-use hwpers::{ HwpWriter, HwpxWriter };
-use hwpers::style::TextStyle;
-use hwpers::hwpx::{ HwpxTextStyle, StyledText };
 
 use crate::{ Choices, QBank, Generator };
 
@@ -25,6 +22,17 @@ use std::io::Write;
 #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 use std::path::Path;
 
+
+            #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
+            use hwpers::{ HwpWriter, HwpxWriter };
+            #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
+            use hwpers::style::TextStyle;
+            #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
+            use hwpers::hwpx::{ HwpxTextStyle, StyledText };
+            #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
+            use hwpers::model::PageNumberFormat::Numeric;
+
+
 #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 use genpdfi::error::Error;
 #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
@@ -32,6 +40,9 @@ use genpdfi::{ Document, elements, fonts, style, Element, SimplePageDecorator, A
 
 #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 use crate::check_path;
+
+#[cfg(any(target_arch = "wasm32", target_arch = "wasm64"))]
+use serde_json::json;
 
 
 pub struct QBankExporter
@@ -56,7 +67,7 @@ impl QBankExporter
     const DUMMY_STRING: &str = "_____________________";
 
     // pub new(qbank: QBank, answer_sheet_title: String) -> Self
-    /// Creates a new `Exporter` instance for exporting question bank.
+    /// Creates a new `QBankExporter` instance for exporting question bank.
     ///
     /// # Arguments
     /// * `qbank` - A reference to the `QBank` containing the original questions.
@@ -67,14 +78,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// ```
     pub fn new(qbank: QBank, answer_sheet_title: String) -> Self
     {
@@ -104,14 +115,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// let font_size = exporter.get_title_font_size();
     /// assert_eq!(font_size, 14.0);
     /// ```
@@ -129,14 +140,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// exporter.set_title_font_size(16.0);
     /// assert_eq!(exporter.get_title_font_size(), 16.0);
     /// ```
@@ -154,14 +165,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// let font_size = exporter.get_body_font_size();
     /// assert_eq!(font_size, 11.0);
     /// ```
@@ -179,14 +190,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// exporter.set_body_font_size(12.0);
     /// assert_eq!(exporter.get_body_font_size(), 12.0);
     /// ```
@@ -204,14 +215,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// let font_size = exporter.get_footer_font_size();
     /// assert_eq!(font_size, 9.0);
     /// ```
@@ -229,14 +240,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// exporter.set_footer_font_size(10.0);
     /// assert_eq!(exporter.get_footer_font_size(), 10.0);
     /// ```
@@ -254,14 +265,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// let font_size = exporter.get_answer_sheet_font_size();
     /// assert_eq!(font_size, 12.0);
     /// ```
@@ -279,14 +290,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// exporter.set_answer_sheet_font_size(13.0);
     /// assert_eq!(exporter.get_answer_sheet_font_size(), 13.0);
     /// ```
@@ -304,14 +315,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// assert!(!exporter.is_body_bold());
     /// exporter.set_body_bold(true);
     /// assert!(exporter.is_body_bold());
@@ -330,14 +341,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// exporter.set_body_bold(true);
     /// assert!(exporter.is_body_bold());
     /// exporter.set_body_bold(false);
@@ -360,14 +371,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// assert!(!exporter.is_body_italic());
     /// exporter.set_body_italic(true);
     /// assert!(exporter.is_body_italic());
@@ -386,14 +397,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// exporter.set_body_italic(true);
     /// assert!(exporter.is_body_italic());
     /// exporter.set_body_italic(false);
@@ -416,14 +427,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// assert!(!exporter.is_body_underline());
     /// exporter.set_body_underline(true);
     /// assert!(exporter.is_body_underline());
@@ -442,14 +453,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// exporter.set_body_underline(true);
     /// assert!(exporter.is_body_underline());
     /// exporter.set_body_underline(false);
@@ -472,14 +483,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// assert!(!exporter.is_body_strike());
     /// exporter.set_body_strike(true);
     /// assert!(exporter.is_body_strike());
@@ -498,14 +509,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// exporter.set_body_strike(true);
     /// assert!(exporter.is_body_strike());
     /// exporter.set_body_strike(false);
@@ -529,14 +540,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// assert!(exporter.is_title_bold()); // Default is true
     /// exporter.set_title_bold(false);
     /// assert!(!exporter.is_title_bold());
@@ -555,14 +566,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// exporter.set_title_bold(false); // Default is true, so unset it
     /// assert!(!exporter.is_title_bold());
     /// exporter.set_title_bold(true);
@@ -585,14 +596,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// assert!(!exporter.is_title_italic());
     /// exporter.set_title_italic(true);
     /// assert!(exporter.is_title_italic());
@@ -611,14 +622,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// exporter.set_title_italic(true);
     /// assert!(exporter.is_title_italic());
     /// exporter.set_title_italic(false);
@@ -641,14 +652,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// assert!(!exporter.is_title_underline());
     /// exporter.set_title_underline(true);
     /// assert!(exporter.is_title_underline());
@@ -667,14 +678,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// exporter.set_title_underline(true);
     /// assert!(exporter.is_title_underline());
     /// exporter.set_title_underline(false);
@@ -697,14 +708,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// assert!(!exporter.is_title_strike());
     /// exporter.set_title_strike(true);
     /// assert!(exporter.is_title_strike());
@@ -723,14 +734,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// exporter.set_title_strike(true);
     /// assert!(exporter.is_title_strike());
     /// exporter.set_title_strike(false);
@@ -753,14 +764,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// assert!(!exporter.is_footer_bold());
     /// exporter.set_footer_bold(true);
     /// assert!(exporter.is_footer_bold());
@@ -779,14 +790,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// exporter.set_footer_bold(true);
     /// assert!(exporter.is_footer_bold());
     /// exporter.set_footer_bold(false);
@@ -809,14 +820,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// assert!(!exporter.is_footer_italic());
     /// exporter.set_footer_italic(true);
     /// assert!(exporter.is_footer_italic());
@@ -835,14 +846,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// exporter.set_footer_italic(true);
     /// assert!(exporter.is_footer_italic());
     /// exporter.set_footer_italic(false);
@@ -865,14 +876,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// exporter.set_footer_underline(true);
     /// assert!(exporter.is_footer_underline());
     /// ```
@@ -890,14 +901,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// exporter.set_footer_underline(true);
     /// assert!(exporter.is_footer_underline());
     /// exporter.set_footer_underline(false);
@@ -920,14 +931,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// assert!(!exporter.is_footer_strike());
     /// exporter.set_footer_strike(true);
     /// assert!(exporter.is_footer_strike());
@@ -946,14 +957,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// exporter.set_footer_strike(true);
     /// assert!(exporter.is_footer_strike());
     /// exporter.set_footer_strike(false);
@@ -976,14 +987,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// assert!(!exporter.is_answer_sheet_bold());
     /// exporter.set_answer_sheet_bold(true);
     /// assert!(exporter.is_answer_sheet_bold());
@@ -1002,14 +1013,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// exporter.set_answer_sheet_bold(true);
     /// assert!(exporter.is_answer_sheet_bold());
     /// exporter.set_answer_sheet_bold(false);
@@ -1032,14 +1043,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// assert!(!exporter.is_answer_sheet_italic());
     /// exporter.set_answer_sheet_italic(true);
     /// assert!(exporter.is_answer_sheet_italic());
@@ -1058,14 +1069,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// exporter.set_answer_sheet_italic(true);
     /// assert!(exporter.is_answer_sheet_italic());
     /// exporter.set_answer_sheet_italic(false);
@@ -1088,14 +1099,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// assert!(!exporter.is_answer_sheet_underline());
     /// exporter.set_answer_sheet_underline(true);
     /// assert!(exporter.is_answer_sheet_underline());
@@ -1114,14 +1125,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// exporter.set_answer_sheet_underline(true);
     /// assert!(exporter.is_answer_sheet_underline());
     /// exporter.set_answer_sheet_underline(false);
@@ -1144,14 +1155,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// exporter.set_answer_sheet_strike(true);
     /// assert!(exporter.is_answer_sheet_strike());
     /// ```
@@ -1169,14 +1180,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// exporter.set_answer_sheet_strike(true);
     /// assert!(exporter.is_answer_sheet_strike());
     /// exporter.set_answer_sheet_strike(false);
@@ -1199,14 +1210,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// let attributes = exporter.get_attributes();
     /// // Example: Check if the default title is bold
     /// // const TITLE_BOLD: u16 = 0b_1_0000;
@@ -1229,14 +1240,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// // For example purposes, let's assume direct access or similar constants
     /// const BODY_BOLD: u16 = 0b_1;
     /// const BODY_ITALIC: u16 = 0b_10;
@@ -1260,14 +1271,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// // For example purposes, let's assume direct access or similar constants
     /// const BODY_BOLD: u16 = 0b_1;
     /// const BODY_ITALIC: u16 = 0b_10;
@@ -1292,14 +1303,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// let margin = exporter.get_margin_left_in_mm();
     /// assert_eq!(margin, 10.0);
     /// ```
@@ -1317,14 +1328,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// exporter.set_margin_left_in_mm(15.0);
     /// assert_eq!(exporter.get_margin_left_in_mm(), 15.0);
     /// ```
@@ -1342,14 +1353,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// let margin = exporter.get_margin_right_in_mm();
     /// assert_eq!(margin, 10.0);
     /// ```
@@ -1367,14 +1378,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// exporter.set_margin_right_in_mm(15.0);
     /// assert_eq!(exporter.get_margin_right_in_mm(), 15.0);
     /// ```
@@ -1392,14 +1403,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// let margin = exporter.get_margin_top_in_mm();
     /// assert_eq!(margin, 10.0);
     /// ```
@@ -1417,14 +1428,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// exporter.set_margin_top_in_mm(15.0);
     /// assert_eq!(exporter.get_margin_top_in_mm(), 15.0);
     /// ```
@@ -1442,14 +1453,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// let margin = exporter.get_margin_buttom_in_mm();
     /// assert_eq!(margin, 10.0);
     /// ```
@@ -1467,14 +1478,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// exporter.set_margin_buttom_in_mm(15.0);
     /// assert_eq!(exporter.get_margin_buttom_in_mm(), 15.0);
     /// ```
@@ -1492,14 +1503,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// let spacing = exporter.get_line_spacing();
     /// assert_eq!(spacing, 1.0);
     /// ```
@@ -1517,14 +1528,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// exporter.set_line_spacing(1.5);
     /// assert_eq!(exporter.get_line_spacing(), 1.5);
     /// ```
@@ -1542,14 +1553,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// let title = exporter.get_answer_sheet_title();
     /// assert_eq!(title, "Answer Sheet        정답지        Ответы".to_string());
     /// ```
@@ -1567,14 +1578,14 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question("Question 1".to_string(), "Answer 1".to_string());
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// exporter.set_answer_sheet_title("New Answer Sheet Title".to_string());
     /// assert_eq!(exporter.get_answer_sheet_title(), "New Answer Sheet Title".to_string());
     /// ```
@@ -1588,14 +1599,14 @@ impl QBankExporter
     /// Retrieves the notice string from the original question bank's header.
     ///
     /// This function accesses the header of the `QBank` used to create the
-    /// `Exporter` instance and returns its notice string.
+    /// `QBankExporter` instance and returns its notice string.
     ///
     /// # Output
     /// A `String` containing the notice from the question bank's header.
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter, Header };
+    /// use qrate::{ QBank, QBankExporter, Header };
     ///
     /// let mut qbank = QBank::new_empty();
     /// let mut header = Header::new_empty();
@@ -1606,7 +1617,7 @@ impl QBankExporter
     /// qbank.add_question("Question 2".to_string(), "Answer 2".to_string());
     /// 
     /// // Exports a question bank with 2 questions
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// let notice = exporter.get_notice();
     /// assert_eq!(notice, "Important Notice!");
     /// ```
@@ -1641,13 +1652,13 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question_with_choices("Question 1".to_string(), vec![("A".to_string(), true)]);
     /// qbank.add_question_with_choices("Question 2".to_string(), vec![("B".to_string(), true)]);
     ///
-    /// let mut exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let mut exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     ///
     /// if let Some((num, cat, q_text, choices)) = exporter.next()
     ///     { assert_eq!(num, 1); }  // The actual question text depends on the shuffled order.
@@ -1687,13 +1698,13 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question_with_choices("Question 1".to_string(), vec![("A".to_string(), true)]);
     /// qbank.add_question_with_choices("Question 2".to_string(), vec![("B".to_string(), true)]);
     ///
-    /// let mut exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let mut exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     ///
     /// if let Some((num, cat, q_text, choices)) = exporter.next()
     ///     { assert_eq!(num, 1); }  // The actual question text depends on the shuffled order.
@@ -1734,13 +1745,13 @@ impl QBankExporter
     /// 
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     /// 
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question_with_choices("Question 1".to_string(), vec![("A".to_string(), true)]);
     /// qbank.add_question_with_choices("Question 2".to_string(), vec![("B".to_string(), true)]);
     /// 
-    /// let mut exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let mut exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// 
     /// if let Some((num, cat_id, cat_str, q_text, choices)) = exporter.get_question_by_number(1)
     ///     { assert_eq!(num, 1); }  // The actual question text depends on the shuffled order.
@@ -1771,13 +1782,13 @@ impl QBankExporter
     /// 
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     /// 
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question_with_choices("Question 1".to_string(), vec![("A".to_string(), true)]);
     /// qbank.add_question_with_choices("Question 2".to_string(), vec![("B".to_string(), true)]);
     /// 
-    /// let mut exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let mut exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// assert_eq!(exporter.get_number_of_questions(), 2);
     /// ```
     #[inline]
@@ -1794,13 +1805,13 @@ impl QBankExporter
     /// 
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     /// 
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question_with_choices("Question 1".to_string(), vec![("A".to_string(), true)]);
     /// qbank.add_question_with_choices("Question 2".to_string(), vec![("B".to_string(), true)]);
     /// 
-    /// let mut exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let mut exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// assert_eq!(exporter.get_current_question_number(), 0);
     /// 
     /// if let Some((num, cat, q_text, choices)) = exporter.next()
@@ -1826,13 +1837,13 @@ impl QBankExporter
     /// 
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     /// 
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question_with_choices("Question 1".to_string(), vec![("A".to_string(), true)]);
     /// qbank.add_question_with_choices("Question 2".to_string(), vec![("B".to_string(), true)]);
     /// 
-    /// let mut exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let mut exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// assert_eq!(exporter.get_current_question_number(), 0);
     /// 
     /// exporter.set_current_question_number(1);
@@ -1861,7 +1872,7 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```no_run
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     /// use std::fs; // For std::fs::remove_file
     /// use std::path::Path;
     ///
@@ -1870,7 +1881,7 @@ impl QBankExporter
     /// qbank.add_question(Question::new(2, 2, 1, "Question 2".to_string(), vec![]));
     ///
     /// // Generate exams with 1 question selected for each student
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     ///
     /// let mut result = exporter.save_qbank("qbank.txt".to_string(), "txt");
     /// assert!(result.is_ok());
@@ -1901,7 +1912,9 @@ impl QBankExporter
         {
             Some("txt") => self.save_qbank_in_txt(file_path, is_with_answer_sheet),
             Some("docx") => self.save_qbank_in_docx(file_path, is_with_answer_sheet),
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
             Some("hwpx") => self.save_qbank_in_hwpx(file_path, is_with_answer_sheet),
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
             Some("hwp") => self.save_qbank_in_hwp(file_path, is_with_answer_sheet),
             Some("pdf") => self.save_qbank_in_pdf(file_path, is_with_answer_sheet),
             _ => Err("Unsupported file format. Please use .txt, .docx, hwpx, hwp or .pdf.".to_string()),
@@ -1922,7 +1935,7 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```no_run
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     /// use std::fs;
     /// use std::path::Path;
     ///
@@ -1936,7 +1949,7 @@ impl QBankExporter
     ///     vec![("3".to_string(), false), ("4".to_string(), true)]
     /// );
     ///
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     ///
     /// let result = exporter.save_qbank_in_txt(Path::new("question_bank.txt"), true);
     /// assert!(result.is_ok());
@@ -1946,12 +1959,12 @@ impl QBankExporter
     pub fn save_qbank_in_txt(&self, path: &Path, is_with_answer_sheet: bool) -> Result<(), String>
     {
         let mut file = File::create(path).map_err(|e| e.to_string())?;
-        let content = self.write_questions_in_txt();
+        let content = self.write_questions_to_txt();
         writeln!(file, "{}", content).map_err(|e| e.to_string())?;
 
         if is_with_answer_sheet
         {
-            let answer_sheet = self.write_answer_sheet_in_txt();
+            let answer_sheet = self.write_answer_sheet_to_txt();
             writeln!(file, "{}", answer_sheet).map_err(|e| e.to_string())?;
         }
 
@@ -1969,7 +1982,7 @@ impl QBankExporter
     /// 
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question_with_choices(
     ///     "What is 1+1?".to_string(),
@@ -1980,7 +1993,7 @@ impl QBankExporter
     ///     vec![("3".to_string(), false), ("4".to_string(), true)]
     /// );
     ///
-    /// let exporter = Exporter::Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// let content_bytes = exporter.export_qbank_in_txt(true);
     /// assert!(!content_bytes.is_empty());
     /// let content_str = String::from_utf8(content_bytes).unwrap();
@@ -1990,15 +2003,15 @@ impl QBankExporter
     pub fn export_qbank_in_txt(&self, is_with_answer_sheet: bool) -> Vec<u8>
     {
         let mut content = String::new();
-        let exam_content = self.write_questions_in_txt();
+        let exam_content = self.write_questions_to_txt();
         content.push_str(exam_content.as_str());
 
         if is_with_answer_sheet
-            { content.push_str(self.write_answer_sheet_in_txt().as_str()); }
+            { content.push_str(self.write_answer_sheet_to_txt().as_str()); }
         content.into_bytes()
     }
 
-    // fn write_questions_in_txt(&self) -> String
+    // fn write_questions_to_txt(&self) -> String
     /// Writes the questions of the question bank content
     /// into a human-readable string.
     ///
@@ -2008,7 +2021,7 @@ impl QBankExporter
     ///
     /// # Returns
     /// A `String` containing the fully formatted question bank content.
-    fn write_questions_in_txt(&self) -> String
+    fn write_questions_to_txt(&self) -> String
     {
         let mut content = String::new();
         let header = self.qbank.get_header();
@@ -2062,7 +2075,7 @@ impl QBankExporter
         content
     }
 
-    fn write_answer_sheet_in_txt(&self) -> String
+    fn write_answer_sheet_to_txt(&self) -> String
     {
         let mut answer_sheet = String::new();
         answer_sheet.push_str(format!("{}\n", self.answer_sheet_title).as_str());
@@ -2121,7 +2134,7 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```no_run
-    /// use qrate::{ QBank, Exporter, Question };
+    /// use qrate::{ QBank, QBankExporter, Question };
     /// use std::fs;
     /// use std::path::Path;
     ///
@@ -2129,7 +2142,7 @@ impl QBankExporter
     /// qbank.add_question(Question::new(1, 1, 1, "Question 1".to_string(), vec![]));
     /// qbank.add_question(Question::new(2, 2, 1, "Question 2".to_string(), vec![]));
     ///
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     ///
     /// let result = exporter.save_qbank_in_docx(Path::new("question_bank.docx"), true);
     /// assert!(result.is_ok());
@@ -2164,7 +2177,7 @@ impl QBankExporter
     /// 
     /// # Examples
     /// ```
-    /// use qrate::{ QBank, Exporter };
+    /// use qrate::{ QBank, QBankExporter };
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question_with_choices(
     ///     "What is 1+1?".to_string(),
@@ -2175,7 +2188,7 @@ impl QBankExporter
     ///     vec![("3".to_string(), false), ("4".to_string(), true)]
     /// );
     ///
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// let docx_bytes = exporter.export_qbank_in_docx(true).unwrap();
     /// assert!(!docx_bytes.is_empty());
     /// // Further processing of docx_bytes can be done here, such as saving to a file or sending over a network.
@@ -2213,7 +2226,7 @@ impl QBankExporter
     /// 
     /// # Examples
     /// ```no_run
-    /// use qrate::{ QBank, Exporter, Question };
+    /// use qrate::{ QBank, QBankExporter, Question };
     /// use std::fs;
     /// use std::path::Path;
     ///
@@ -2221,13 +2234,13 @@ impl QBankExporter
     /// qbank.add_question(Question::new(1, 1, 1, "Question 1".to_string(), vec![]));
     /// qbank.add_question(Question::new(2, 2, 1, "Question 2".to_string(), vec![]));
     ///
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// let result = exporter.write_questions_to_docx(Docx::new());
     /// ```
     /// This example demonstrates how the `write_questions_to_docx` function
     /// can be called to write qbank content into a DOCX document.
     /// The actual content of the questions and formatting will depend on the
-    /// properties of the `Exporter` instance and the data in the `QBank`.
+    /// properties of the `QBankExporter` instance and the data in the `QBank`.
     /// Note that since `write_questions_to_docx` is a private helper
     /// function, it is not intended to be called directly in typical usage.
     /// Instead, it is used internally by the public methods that generate
@@ -2503,13 +2516,13 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```no_run
-    /// use qrate::{ QBank, Exporter, Question };
+    /// use qrate::{ QBank, QBankExporter, Question };
     /// use std::fs;
     /// use std::path::Path;
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question(Question::new(1, 1, 1, "Question 1".to_string(), vec![]));
     /// qbank.add_question(Question::new(2, 2, 1, "Question 2".to_string(), vec![]));
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// let result = exporter.save_qbank_in_hwpx(Path::new("question_bank.hwpx"), true);
     /// assert!(result.is_ok());
     /// std::fs::remove_file("question_bank.hwpx").unwrap();
@@ -2543,18 +2556,19 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```no_run
-    /// use qrate::{ QBank, Exporter, Question };
+    /// use qrate::{ QBank, QBankExporter, Question };
     /// use std::fs;
     /// use std::path::Path;
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question(Question::new(1, 1, 1, "Question 1".to_string(), vec![]));
     /// qbank.add_question(Question::new(2, 2, 1, "Question 2".to_string(), vec![]));
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// let result = exporter.export_qbank_in_hwpx(true);
     /// assert!(result.is_ok());
     /// std::fs::write("question_bank.hwpx", result.unwrap()).unwrap();
     /// std::fs::remove_file("question_bank.hwpx").unwrap();
     /// ```
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
     pub fn export_qbank_in_hwpx(&self, is_with_answer_sheet: bool) -> Result<Vec<u8>, String>
     {
         self.build_qbank_in_hwpx(is_with_answer_sheet)?
@@ -2562,6 +2576,7 @@ impl QBankExporter
             .map_err(|e| e.to_string())
     }
 
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
     fn build_qbank_in_hwpx(&self, is_with_answer_sheet: bool) -> Result<HwpxWriter, String>
     {
         let mut hwpx = self.write_questions_to_hwpx()?;
@@ -2588,23 +2603,24 @@ impl QBankExporter
     /// 
     /// # Examples
     /// ```no_run
-    /// use qrate::{ QBank, Exporter, Question };
+    /// use qrate::{ QBank, QBankExporter, Question };
     /// use std::fs;
     /// use std::path::Path;
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question(Question::new(1, 1, 1, "Question 1".to_string(), vec![]));
     /// qbank.add_question(Question::new(2, 2, 1, "Question 2".to_string(), vec![]));
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// let result = exporter.write_questions_to_hwpx()?;
     /// ```
     /// This example demonstrates how the `write_questions_to_hwpx` function
     /// can be called to write qbank content for a student into a HWPX document.
     /// The actual content of the questions and formatting will depend on the
-    /// properties of the `Exporter` instance and the data in the `QBank`.
+    /// properties of the `QBankExporter` instance and the data in the `QBank`.
     /// Note that since `write_questions_to_hwpx` is a private helper
     /// function, it is not intended to be called directly in typical usage.
     /// Instead, it is used internally by the public methods that generate
     /// the HWPX document.
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
     fn write_questions_to_hwpx(&self) -> Result<HwpxWriter, String>
     {
         let mut hwpx = HwpxWriter::new();
@@ -2722,24 +2738,25 @@ impl QBankExporter
     /// 
     /// # Examples
     /// ```no_run
-    /// use qrate::{ QBank, Exporter, Question };
+    /// use qrate::{ QBank, QBankExporter, Question };
     /// use std::fs;
     /// use std::path::Path;
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question(Question::new(1, 1, 1, "Question 1".to_string(), vec![]));
     /// qbank.add_question(Question::new(2, 2, 1, "Question 2".to_string(), vec![]));
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// let mut hwpx = exporter.write_questions_to_hwpx()?;
     /// let result = exporter.write_answer_sheet_to_hwpx(hwpx)?;
     /// ```
     /// This example demonstrates how the `write_questions_to_hwpx` function
     /// can be called to write qbank content for a student into a HWPX document.
     /// The actual content of the questions and formatting will depend on the
-    /// properties of the `Exporter` instance and the data in the `QBank`.
+    /// properties of the `QBankExporter` instance and the data in the `QBank`.
     /// Note that since `write_questions_to_hwpx` is a private helper
     /// function, it is not intended to be called directly in typical usage.
     /// Instead, it is used internally by the public methods that generate
     /// the HWPX document.
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
     fn write_answer_sheet_to_hwpx(&self, mut hwpx: HwpxWriter) -> Result<HwpxWriter, String>
     {
         // Add answer sheet
@@ -2822,13 +2839,13 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```no_run
-    /// use qrate::{ QBank, Exporter, Question };
+    /// use qrate::{ QBank, QBankExporter, Question };
     /// use std::fs;
     /// use std::path::Path;
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question(Question::new(1, 1, 1, "Question 1".to_string(), vec![]));
     /// qbank.add_question(Question::new(2, 2, 1, "Question 2".to_string(), vec![]));
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// let result = exporter.save_qbank_in_hwp(Path::new("question_bank.hwp"), true);
     /// assert!(result.is_ok());
     /// std::fs::remove_file("question_bank.hwp").unwrap();
@@ -2862,18 +2879,19 @@ impl QBankExporter
     ///
     /// # Examples
     /// ```no_run
-    /// use qrate::{ QBank, Exporter, Question };
+    /// use qrate::{ QBank, QBankExporter, Question };
     /// use std::fs;
     /// use std::path::Path;
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question(Question::new(1, 1, 1, "Question 1".to_string(), vec![]));
     /// qbank.add_question(Question::new(2, 2, 1, "Question 2".to_string(), vec![]));
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// let result = exporter.export_qbank_in_hwp(true);
     /// assert!(result.is_ok());
     /// std::fs::write("question_bank.hwp", result.unwrap()).unwrap();
     /// std::fs::remove_file("question_bank.hwp").unwrap();
     /// ```
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
     pub fn export_qbank_in_hwp(&self, is_with_answer_sheet: bool) -> Result<Vec<u8>, String>
     {
         self.build_qbank_in_hwp(is_with_answer_sheet)?
@@ -2881,6 +2899,7 @@ impl QBankExporter
             .map_err(|e| e.to_string())
     }
 
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
     fn build_qbank_in_hwp(&self, is_with_answer_sheet: bool) -> Result<HwpWriter, String>
     {
         let mut hwp = self.write_questions_to_hwp()?;
@@ -2906,26 +2925,29 @@ impl QBankExporter
     /// 
     /// # Examples
     /// ```no_run
-    /// use qrate::{ QBank, Exporter, Question };
+    /// use qrate::{ QBank, QBankExporter, Question };
     /// use std::fs;
     /// use std::path::Path;
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question(Question::new(1, 1, 1, "Question 1".to_string(), vec![]));
     /// qbank.add_question(Question::new(2, 2, 1, "Question 2".to_string(), vec![]));
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// let mut hwp = hwpers::HwpWriter::new();
     /// let result = exporter.write_questions_to_hwp();
     /// ```
     /// This example demonstrates how the `write_questions_to_hwp` function
     /// can be called to write question bank content into a HWP document.
     /// The actual content of the questions and formatting will depend on the
-    /// properties of the `Exporter` instance and the data in the `QBank`.
+    /// properties of the `QBankExporter` instance and the data in the `QBank`.
     /// Note that since `write_questions_to_hwp` is a private helper
     /// function, it is not intended to be called directly in typical usage.
     /// Instead, it is used internally by the public methods that generate
     /// the HWP document.
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
     fn write_questions_to_hwp(&self) -> Result<HwpWriter, String>
     {
+        use hwpers::writer::style::StyledText;
+
         let mut hwp = HwpWriter::new();
         hwp.set_page_margins_mm(
             self.margin_left_in_mm,
@@ -2933,7 +2955,7 @@ impl QBankExporter
             self.margin_top_in_mm,
             self.margin_buttom_in_mm,
         );
-        hwp.add_footer_with_page_number(" ", hwpers::model::PageNumberFormat::Numeric);
+        hwp.add_footer_with_page_number("", Numeric);
         let header = self.qbank.get_header();
         let mut title_style = TextStyle::new().size(self.title_font_size.round() as u32);
         if self.is_title_bold()
@@ -2946,7 +2968,7 @@ impl QBankExporter
             { title_style = title_style.strikethrough(); }
 
         let title_text = header.get_title();
-        let mut title_styled = hwpers::writer::style::StyledText::new(title_text.clone());
+        let mut title_styled = StyledText::new(title_text.clone());
         title_styled = title_styled.add_range(0, title_text.len(), title_style);
         hwp.add_styled_paragraph(&title_styled).map_err(|e| e.to_string())?;
 
@@ -2961,7 +2983,7 @@ impl QBankExporter
             { body_style = body_style.strikethrough(); }
 
         let student_info = format!("{}: {}\t\t{}: {}", header.get_name(), Self::DUMMY_STRING, header.get_id(), Self::DUMMY_STRING);
-        let mut student_info_styled = hwpers::writer::style::StyledText::new(student_info.clone());
+        let mut student_info_styled = StyledText::new(student_info.clone());
         student_info_styled = student_info_styled.add_range(0, student_info.len(), body_style.clone());
         hwp.add_styled_paragraph(&student_info_styled).map_err(|e| e.to_string())?;
 
@@ -2970,7 +2992,7 @@ impl QBankExporter
         // Instructions (Handle multi-line notice)
         for line in header.get_notice().lines()
         {
-            let mut line_styled = hwpers::writer::style::StyledText::new(line.to_string());
+            let mut line_styled = StyledText::new(line.to_string());
             line_styled = line_styled.add_range(0, line.len(), body_style.clone());
             hwp.add_styled_paragraph(&line_styled).map_err(|e| e.to_string())?;
         }
@@ -2986,7 +3008,7 @@ impl QBankExporter
                 { format!("{}. [{}]   {}", question_id, category_text, question.get_question()) }
             else
                 { format!("{}{{={}}}. [{}]   {}", question_id, group_id, category_text, question.get_question()) };
-            let mut q_styled = hwpers::writer::style::StyledText::new(q_text.clone());
+            let mut q_styled = StyledText::new(q_text.clone());
             q_styled = q_styled.add_range(0, q_text.len(), body_style.clone());
             hwp.add_styled_paragraph(&q_styled).map_err(|e| e.to_string())?;
 
@@ -2997,7 +3019,7 @@ impl QBankExporter
                     let max_len = question.get_choices().iter().map(|(t, _)| t.len()).max().unwrap_or(0);
                     let spaces = " ".repeat(max_len * 3);
                     let c_text = format!("    ({})", spaces);
-                    let mut c_styled = hwpers::writer::style::StyledText::new(c_text.clone());
+                    let mut c_styled = StyledText::new(c_text.clone());
                     c_styled = c_styled.add_range(0, c_text.len(), body_style.clone());
                     hwp.add_styled_paragraph(&c_styled).map_err(|e| e.to_string())?;
                 },
@@ -3011,7 +3033,7 @@ impl QBankExporter
                     for (choice_index, (choice_text, _)) in question.get_choices().iter().enumerate()
                     {
                         let c_text = format!("    ({}) {}", choice_index + 1, choice_text);
-                        let mut c_styled = hwpers::writer::style::StyledText::new(c_text.clone());
+                        let mut c_styled = StyledText::new(c_text.clone());
                         c_styled = c_styled.add_range(0, c_text.len(), body_style.clone());
                         hwp.add_styled_paragraph(&c_styled).map_err(|e| e.to_string())?;
                     }
@@ -3022,8 +3044,11 @@ impl QBankExporter
         Ok(hwp)
     }
 
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
     fn write_answer_sheet_to_hwp(&self, mut hwp: HwpWriter) -> Result<HwpWriter, String>
     {
+        use hwpers::writer::style::StyledText;
+
         // Add answer sheet
         let mut title_style = TextStyle::new().size(self.title_font_size.round() as u32);
         if self.is_title_bold()
@@ -3035,7 +3060,7 @@ impl QBankExporter
         if self.is_title_strike()
             { title_style = title_style.strikethrough(); }
 
-        let mut title_styled = hwpers::writer::style::StyledText::new(self.answer_sheet_title.clone());
+        let mut title_styled = StyledText::new(self.answer_sheet_title.clone());
         title_styled = title_styled.add_range(0, self.answer_sheet_title.len(), title_style);
         hwp.add_styled_paragraph(&title_styled).map_err(|e| e.to_string())?;
         hwp.add_paragraph("").map_err(|e| e.to_string())?;
@@ -3073,7 +3098,7 @@ impl QBankExporter
             };
             answers_text.push_str(&format!("{}. {}    ", i + 1, answer_string));
         }
-        let mut answers_styled = hwpers::writer::style::StyledText::new(answers_text.clone());
+        let mut answers_styled = StyledText::new(answers_text.clone());
         answers_styled = answers_styled.add_range(0, answers_text.len(), answer_sheet_style.clone());
         hwp.add_styled_paragraph(&answers_styled).map_err(|e| e.to_string())?;
         hwp.add_paragraph("").map_err(|e| e.to_string())?;
@@ -3113,16 +3138,16 @@ impl QBankExporter
     /// 
     /// # Examples
     /// ```no_run
-    /// use qrate::{ QBank, Exporter, Question };
+    /// use qrate::{ QBank, QBankExporter, Question };
     /// use std::fs;
     /// use std::path::Path;
     ///
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question(Question::new(1, 1, 1, "Question 1".to_string(), vec![]));
     /// qbank.add_question(Question::new(2, 2, 1, "Question 2".to_string(), vec![]));
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     ///
-    /// let result = exporter.save_shuffled_exams_in_pdf(Path::new("question_bank.pdf"), true);
+    /// let result = exporter.save_qbank_in_pdf(Path::new("question_bank.pdf"), true);
     /// assert!(result.is_ok());
     /// std::fs::remove_file("question_bank.pdf").unwrap();
     /// ```
@@ -3156,21 +3181,21 @@ impl QBankExporter
     /// 
     /// # Examples
     /// ```no_run
-    /// use qrate::{ QBank, Exporter, Question };
+    /// use qrate::{ QBank, QBankExporter, Question };
     /// use std::fs;
     /// use std::path::Path;
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question(Question::new(1, 1, 1, "Question 1".to_string(), vec![]));
     /// qbank.add_question(Question::new(2, 2, 1, "Question 2".to_string(), vec![]));
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// let mut doc = genpdfi::Document::new(genpdfi::fonts::from_files("./fonts", "font", None).unwrap());
-    /// let result = exporter.write_exam_content_to_pdf(&mut doc, &student1, &qbank);
+    /// let result = exporter.save_questions_to_pdf(&mut doc, &student1, &qbank);
     /// ```
     /// This example demonstrates how the `save_questions_to_pdf` function
     /// can be called to write question bank content for a student into a PDF
     /// document.
     /// The actual content of the questions and formatting will depend on the
-    /// properties of the `Exporter` instance and the data in the `QBank`.
+    /// properties of the `QBankExporter` instance and the data in the `QBank`.
     /// Note that since `save_questions_to_pdf` is a private helper
     /// function, it is not intended to be called directly in typical usage.
     /// Instead, it is used internally by the public methods that generate
@@ -3258,6 +3283,7 @@ impl QBankExporter
         Ok(doc)
     }
 
+    #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
     fn save_answer_sheet_to_pdf(&self, mut doc: Document) -> Document
     {
         // Add answer sheet
@@ -3330,13 +3356,13 @@ impl QBankExporter
     /// 
     /// # Examples
     /// ```no_run
-    /// use qrate::{ QBank, Exporter, Question };
+    /// use qrate::{ QBank, QBankExporter, Question };
     /// use std::fs;
     /// use std::path::Path;
     /// let mut qbank = QBank::new_empty();
     /// qbank.add_question(Question::new(1, 1, 1, "Question 1".to_string(), vec![]));
     /// qbank.add_question(Question::new(2, 2, 1, "Question 2".to_string(), vec![]));
-    /// let exporter = Exporter::new(&qbank, "Answer Sheet".to_string());
+    /// let exporter = QBankExporter::new(&qbank, "Answer Sheet".to_string());
     /// let result = exporter.export_shuffled_exams_in_pdf();
     /// assert!(result.is_ok());
     /// std::fs::write("exam_exported.json", result.unwrap()).unwrap();
@@ -3345,17 +3371,6 @@ impl QBankExporter
     #[cfg(any(target_arch = "wasm32", target_arch = "wasm64"))]
     pub fn export_qbank_in_pdf(&self, is_with_answer_sheet: bool) -> Result<Vec<u8>, String>
     {
-        let mut content = self.export_questions_to_pdf();
-        if is_with_answer_sheet
-            { content = self.export_answer_sheet_to_pdf(content); }
-
-        Ok(content)
-    }
-
-    #[cfg(any(target_arch = "wasm32", target_arch = "wasm64"))]
-    fn export_questions_to_pdf(&self) -> Vec<u8>
-    {
-        use serde_json::json;
         let mut content = Vec::new();
 
         let title_font_size = self.title_font_size;
@@ -3387,20 +3402,14 @@ impl QBankExporter
             "margin": [0, 2, 0, 2]
         });
 
-
-        let student: &Student = student;
-        let qbank: &QBank = qbank;
-        if idx > 0
-            { content.push(json!({"text": "", "pageBreak": "before"})); }
-
-        let header = qbank.get_header();
+        let header = self.qbank.get_header();
         
         // Title
         content.push(json!({"text": header.get_title(), "style": "title"}));
 
         // Student Info
         content.push(json!({
-            "text": format!("{}: {}        {}: {}", header.get_name(), student.get_name(), header.get_id(), student.get_id()),
+            "text": format!("{}: {}    {}: {}", header.get_name(), Self::DUMMY_STRING, header.get_id(), Self::DUMMY_STRING),
             "style": "body"
         }));
         content.push(json!({"text": "\n"}));
@@ -3411,13 +3420,13 @@ impl QBankExporter
         content.push(json!({"text": "\n"}));
 
         // Questions
-        for (question_index, question) in self.qbank.get_questions().iter().enumerate()
+        for question in self.qbank.get_questions()
         {
-            let question_id = question_index + 1;
+            let question_id = question.get_id();
             let group_id = question.get_group();
             let category_id = question.get_category();
             let category_text = header.get_category(category_id).map(|s: &String| s.as_str()).unwrap_or("");
-            if question_id == group_id as usize
+            if question_id == group_id
             {
                 content.push(json!({
                                 "text": format!("{}. [{}]   {}", question_id, category_text, question.get_question()),
@@ -3461,21 +3470,15 @@ impl QBankExporter
             }
             content.push(json!({"text": "\n"}));
         }
-        content
-    }
-
-    #[cfg(any(target_arch = "wasm32", target_arch = "wasm64"))]
-    fn export_answer_sheet_to_pdf(&self, mut content: Vec<u8>) -> Vec<u8>
-    {
-        // Answer Sheet
-        content.push(json!({"text": "", "pageBreak": "before"}));
-        content.push(json!({"text": self.answer_sheet_title.as_str(), "style": "title"}));
-
-        let header = self.qbank.get_header();
-        for (student, qbank) in &shuffled_qsets
+        
+        if is_with_answer_sheet
         {
+            // Answer Sheet
+            content.push(json!({"text": "", "pageBreak": "before"}));
+            content.push(json!({"text": self.answer_sheet_title.as_str(), "style": "title"}));
+
             let mut answers_text = String::new();
-            for (i, question) in qbank.get_questions().iter().enumerate()
+            for question in self.qbank.get_questions()
             {
                 let category_id = question.get_category();
                 let answer_string = match category_id
@@ -3495,11 +3498,12 @@ impl QBankExporter
                         format!("({})", correct_choices.join(", "))
                     },
                 };
-                answers_text.push_str(&format!("{}. {}    ", i + 1, answer_string));
+                answers_text.push_str(&format!("{}. {}    ", question.get_id(), answer_string));
             }
             content.push(json!({"text": answers_text, "style": "answer_sheet"}));
             content.push(json!({"text": "\n"}));
         }
+
 
         let doc_definition = json!({
             "content": content,
@@ -3509,7 +3513,6 @@ impl QBankExporter
                 "answer_sheet": answer_sheet_style
             }
         });
-
         serde_json::to_vec(&doc_definition).map_err(|e| e.to_string())
     }
 }
