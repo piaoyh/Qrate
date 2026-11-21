@@ -102,6 +102,18 @@ pub enum ErrorMessage
     /// Represents an error where the `SBank` cannot be written to the Excel file.
     FailedToWriteSExcel,
 
+    /// Represents an error where the Spreadsheet file for `QBank` cannot be opened or read.
+    FailedToOpenQSpreadsheet,
+
+    /// Represents an error where the `QBank` cannot be written to the Spreadsheet file.
+    FailedToWriteQSpreadsheet,
+
+    /// Represents an error where the Spreadsheet file for `SBank` cannot be opened or read.
+    FailedToOpenSSpreadsheet,
+
+    /// Represents an error where the `SBank` cannot be written to the Spreadsheet file.
+    FailedToWriteSSpreadsheet,
+
     /// Represents an error where the `QBank` cannot be received from memory.
     FailedToReceiveQBankFromMemory,
 
@@ -154,6 +166,10 @@ impl Display for ErrorMessage
             ErrorMessage::FailedToWriteQExcel => write!(f, "Failed to write the QBank to the Excel file."),
             ErrorMessage::FailedToOpenSExcel => write!(f, "Failed to open the Excel file for the SBank."),
             ErrorMessage::FailedToWriteSExcel => write!(f, "Failed to write the SBank to the Excel file."),
+            ErrorMessage::FailedToOpenQSpreadsheet => write!(f, "Failed to open the Spreadsheet file for the QBank."),
+            ErrorMessage::FailedToWriteQSpreadsheet => write!(f, "Failed to write the QBank to the Spreadsheet file."),
+            ErrorMessage::FailedToOpenSSpreadsheet => write!(f, "Failed to open the Spreadsheet file for the SBank."),
+            ErrorMessage::FailedToWriteSSpreadsheet => write!(f, "Failed to write the SBank to the Spreadsheet file."),
             ErrorMessage::FailedToReceiveQBankFromMemory => write!(f, "Failed to receive the QBank from memory."),
             ErrorMessage::FailedToWriteQBankToMemory => write!(f, "Failed to write the QBank to memory."),
             ErrorMessage::FailedToReceiveSBankFromMemory => write!(f, "Failed to receive the SBank from memory."),

@@ -10,14 +10,16 @@
 
 use std::io::Cursor;
 use calamine::{ DataType, Ods, Reader };
-use rust_xlsxwriter::{ Format, FormatBorder, Workbook };
+use spreadsheet_ods::{ CellStyle, CellStyleRef, WorkBook };
+use spreadsheet_ods::style::units::{ Border, Length };
+use spreadsheet_ods::color::Rgb;
 
 use crate::{ Question, Choices, ErrorMessage, check_path };
 
 
 /// Represents an Spreadsheet file for question bank operations.
 ///
-/// This struct provides methods to read from and write to `.xlsx` files,
+/// This struct provides methods to read from and write to `.ods` files,
 /// structuring the data into "header" and "bank" sheets.
 pub struct Spreadsheet
 {
@@ -27,23 +29,40 @@ pub struct Spreadsheet
     /// The workbook object for reading Spreadsheet files.
     pub(crate) workbook_to_read: Option<Ods<Cursor<Vec<u8>>>>,
 
-    /// The workbook object for writing Excel files.
-    pub(crate) workbook_to_write: Workbook,
+    /// The workbook object for writing ODS files.
+    pub(crate) workbook_to_write: WorkBook,
 
-    /// The format for bold borders.
-    pub(crate) bold_border_format: Format,
+    /// The style reference for bold borders (header cells).
+    pub(crate) bold_border_style: CellStyleRef,
 
-    /// The format for thin borders.
-    pub(crate) thin_border_format: Format,
+    /// The style reference for thin borders (data cells).
+    pub(crate) thin_border_style: CellStyleRef,
 }
 
 impl Spreadsheet
 {
+    // Helper: create a fresh WorkBook and register both cell styles, return (wb, bold_ref, thin_ref)
+    fn make_workbook() -> (WorkBook, CellStyleRef, CellStyleRef)
+    {
+        let mut wb = WorkBook::new_empty();
+
+        let mut named_bold = CellStyle::new_empty();
+        named_bold.set_font_bold();
+        named_bold.set_border(Length::Mm(0.26), Border::Solid, Rgb::new(0, 0, 0));
+        let bold_ref = wb.add_cellstyle(named_bold);
+
+        let mut named_thin = CellStyle::new_empty();
+        named_thin.set_border(Length::Mm(0.088), Border::Solid, Rgb::new(0, 0, 0));
+        let thin_ref = wb.add_cellstyle(named_thin);
+
+        (wb, bold_ref, thin_ref)
+    }
+
     // pub fn open_with_ext(path: String, extention: &str) -> Self
     /// Creates a new `Spreadsheet` instance with a given path.
     ///
     /// # Arguments
-    /// * `path` - The file path for the Excel workbook.
+    /// * `path` - The file path for the ODS workbook.
     /// * `extention` - The file extension to append
     ///   if the path does not have one.
     ///
@@ -58,28 +77,28 @@ impl Spreadsheet
     /// ```
     /// use qrate::Spreadsheet;
     ///
-    /// let spreadsheet_handler = Spreadsheet::open_with_ext("my_quiz".to_string(), ".qb.xlsx");
-    /// assert!(spreadsheet_handler.is_ok());
-    /// assert_eq!(spreadsheet_handler.unwrap().get_path(), "my_quiz.qb.xlsx");
+    /// let spreadsheet_handler = Spreadsheet::open_with_ext("my_quiz".to_string(), ".qb.ods");
+    /// assert_eq!(spreadsheet_handler.get_path(), "my_quiz.qb.ods");
     /// ```
     #[inline]
     pub fn open_with_ext(path: String, extention: &str) -> Self
     {
+        let (wb, bold_ref, thin_ref) = Self::make_workbook();
         Self
         {
             path: check_path(path, extention),
             workbook_to_read: None,
-            workbook_to_write: Workbook::new(),
-            bold_border_format: Format::new().set_bold().set_border(FormatBorder::Thick),
-            thin_border_format: Format::new().set_border(FormatBorder::Thin),
+            workbook_to_write: wb,
+            bold_border_style: bold_ref,
+            thin_border_style: thin_ref,
         }
     }
 
     // pub fn open_in_memory(data: &[u8]) -> Result<Self, ErrorMessage>
-    /// Opens a new `Spreadsheet` instance to an Excel database in memory.
+    /// Opens a new `Spreadsheet` instance to an ODS database in memory.
     ///
     /// # Arguments
-    /// * `data` - contains the contents of the Excel database opened outside
+    /// * `data` - contains the contents of the ODS database opened outside
     /// of the application and read.
     ///
     /// # Output
@@ -91,9 +110,9 @@ impl Spreadsheet
     /// ```
     /// use qrate::Spreadsheet;
     /// 
-    /// // Simulate reading an Excel file into a byte vector
-    /// let excel_data: Vec<u8> = vec![/* Excel file bytes */];
-    /// let db = Spreadsheet::open_in_memory(&excel_data);
+    /// // Simulate reading an ODS file into a byte vector
+    /// let ods_data: Vec<u8> = vec![/* ODS file bytes */];
+    /// let db = Spreadsheet::open_in_memory(&ods_data);
     /// assert!(db.is_ok());
     /// ```
     pub fn open_in_memory(data: &[u8]) -> Result<Self, ErrorMessage>
@@ -101,14 +120,15 @@ impl Spreadsheet
         let cursor = Cursor::new(data.to_vec());
         if let Ok(workbook) = Ods::new(cursor)
         {
+            let (wb, bold_ref, thin_ref) = Self::make_workbook();
             Ok(
                 Self
                 {
                     path: String::new(),
                     workbook_to_read: Some(workbook),
-                    workbook_to_write: Workbook::new(),
-                    bold_border_format: Format::new().set_bold().set_border(FormatBorder::Thick),
-                    thin_border_format: Format::new().set_border(FormatBorder::Thin),
+                    workbook_to_write: wb,
+                    bold_border_style: bold_ref,
+                    thin_border_style: thin_ref,
                 }
             )
         }
@@ -118,13 +138,11 @@ impl Spreadsheet
         }
     }
 
-    // pub fn open_empty_in_memory() -> Result<Self, ErrorMessage>
-    /// Opens a new `Spreadsheet` instance to an empty Excel database in memory.
+    // pub fn open_empty_in_memory() -> Self
+    /// Opens a new `Spreadsheet` instance to an empty ODS database in memory.
     /// 
     /// # Returns
-    /// An `Result<Self, ErrorMessage>` which is:
-    /// * `Ok(Spreadsheet)` on successful connection, or
-    /// * `Err(ErrorMessage::FailedToOpenEmptyDatabaseInMemory)` on failure.
+    /// `Self` - An instance of `Spreadsheet` initialized without a file path.
     /// 
     /// # Examples
     /// ```
@@ -133,34 +151,35 @@ impl Spreadsheet
     /// ```
     pub fn open_empty_in_memory() -> Self
     {
+        let (wb, bold_ref, thin_ref) = Self::make_workbook();
         Self
         {
             path: String::new(),
             workbook_to_read: None,
-            workbook_to_write: Workbook::new(),
-            bold_border_format: Format::new().set_bold().set_border(FormatBorder::Thick),
-            thin_border_format: Format::new().set_border(FormatBorder::Thin),
+            workbook_to_write: wb,
+            bold_border_style: bold_ref,
+            thin_border_style: thin_ref,
         }
     }
 
-    // pub fn save_to_file(&self) -> Result<(), ErrorMessage>
-    /// Saves the Excel database to a file.
+    // pub fn save_to_file(&mut self) -> Result<(), ErrorMessage>
+    /// Saves the ODS database to a file.
     ///
     /// # Returns
-    /// `Ok(())` if the Excel database is saved successfully,
+    /// `Ok(())` if the ODS database is saved successfully,
     /// `Err(ErrorMessage::FailedToWriteDatabase)` otherwise.
     ///
     /// # Examples
     /// ```
     /// use qrate::Spreadsheet;
     ///
-    /// let db = Spreadsheet::open_with_ext("my".to_string(), "qb.xlsx").unwrap();
+    /// let db = Spreadsheet::open_with_ext("my".to_string(), "qb.ods");
     /// let result = db.save_to_file();
     /// assert!(result.is_ok());
     /// ```
     pub fn save_to_file(&mut self) -> Result<(), ErrorMessage>
     {
-        if self.workbook_to_write.save(&self.path).is_ok()
+        if spreadsheet_ods::write_ods(&mut self.workbook_to_write, &self.path).is_ok()
             { Ok(()) }
         else
             { Err(ErrorMessage::FailedToWriteDatabase) }
@@ -177,13 +196,13 @@ impl Spreadsheet
     /// ```
     /// use qrate::Spreadsheet;
     ///
-    /// let db = Spreadsheet::open_with_ext("my_db".to_string(), "qb.xlsx").unwrap();
+    /// let db = Spreadsheet::open_with_ext("my_db".to_string(), "qb.ods");
     /// let result = db.save_in_memory();
     /// assert!(result.is_ok());
     /// ```
     pub fn save_in_memory(&mut self) -> Result<Vec<u8>, ErrorMessage>
     {
-        if let Ok(buffer) = self.workbook_to_write.save_to_buffer()
+        if let Ok(buffer) = spreadsheet_ods::write_ods_buf(&mut self.workbook_to_write, Vec::new())
             { Ok(buffer) }
         else
             { Err(ErrorMessage::FailedToWriteDatabaseToMemory) }
@@ -450,44 +469,24 @@ impl Spreadsheet
         self.workbook_to_read = Some(workbook);
     }
 
-    // pub fn get_workbook_to_write(&self) -> &Workbook
-    /// Gets a reference to the workbook object for writing Excel files.
+    // pub fn get_workbook_to_write(&self) -> &WorkBook
+    /// Gets a reference to the workbook object for writing ODS files.
     ///
     /// # Returns
-    /// `&Workbook` - A reference to the workbook object used for writing Excel files.
-    ///
-    /// # Examples
-    /// ```
-    /// use qrate::Excel;
-    ///
-    /// let db = Excel::open("my".to_string(), "qb.xlsx").unwrap();
-    /// let workbook_ref = db.get_workbook_to_write();
-    /// // You can now use `workbook_ref` to write data to the Excel file.
-    /// ```
+    /// `&WorkBook` - A reference to the workbook object used for writing ODS files.
     #[inline]
-    pub fn get_workbook_to_write(&self) -> &Workbook
+    pub fn get_workbook_to_write(&self) -> &WorkBook
     {
         &self.workbook_to_write
     }
 
-    // pub fn set_workbook_to_write(&mut self, workbook: Workbook)
-    /// Sets the workbook object for writing Excel files.
+    // pub fn set_workbook_to_write(&mut self, workbook: WorkBook)
+    /// Sets the workbook object for writing ODS files.
     ///
     /// # Arguments
-    /// * `workbook` - The new workbook object to be used for writing Excel files.
-    ///
-    /// # Examples
-    /// ```
-    /// use qrate::Excel;
-    /// use rust_xlsxwriter::Workbook;
-    ///
-    /// let mut db = Excel::open("my".to_string(), "qb.xlsx").unwrap();
-    /// let new_workbook = Workbook::new();
-    /// db.set_workbook_to_write(new_workbook);
-    /// // The workbook for writing Excel files has been updated.
-    /// ```
+    /// * `workbook` - The new workbook object to be used for writing ODS files.
     #[inline]
-    pub fn set_workbook_to_write(&mut self, workbook: Workbook)
+    pub fn set_workbook_to_write(&mut self, workbook: WorkBook)
     {
         self.workbook_to_write = workbook;
     }

@@ -1,7 +1,7 @@
 [package]
 authors = ["PARK Youngho"]
 name = "qrate"
-version = "0.17.0"
+version = "0.18.0"
 edition = "2024"
 keywords = ["quiz", "bank", "examination", "question", "teacher"]
 categories = ["algorithms", "data-structures", "database"]
@@ -16,12 +16,14 @@ rusqlite = { version = "0.39", features = ["bundled", "serialize", "backup"] } #
 docx-rs = "0.4"
 serde_json = "1.0"
 calamine = "0.38"
+spreadsheet-ods = "1.0.4"
 
 [target.'cfg(any(target_arch = "wasm32", target_arch = "wasm64"))'.dependencies]
-rust_xlsxwriter = { version = "0.102", features = ["wasm"] }
+rust_xlsxwriter = { version = "0.103", features = ["wasm"] }
+time = { version = "0.3", features = ["wasm-bindgen"] }
 
 [target.'cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))'.dependencies]
-rust_xlsxwriter = "0.102"
+rust_xlsxwriter = "0.103"
 genpdfi = "0.2.7"
 hwpers = "0.5"
 
@@ -48,17 +50,21 @@ name = "conversion"
 path = "examples/conversion.rs"
 
 [[example]]
+name = "convert"
+path = "examples/convert.rs"
+
+[[example]]
+name = "generate_exams"
+path = "examples/generate_exams.rs"
+
+[[example]]
+name = "export_qbank"
+path = "examples/export_qbank.rs"
+
+[[example]]
+name = "export_sbank"
+path = "examples/export_sbank.rs"
+
+[[example]]
 name = "prep"
 path = "examples/prep.rs"
-
-[[example]]
-name = "store"
-path = "examples/store.rs"
-
-[[example]]
-name = "print"
-path = "examples/print.rs"
-
-[[example]]
-name = "export"
-path = "examples/export.rs"

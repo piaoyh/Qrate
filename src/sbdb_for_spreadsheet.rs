@@ -9,6 +9,7 @@
 
 
 use calamine::{ DataType, Reader };
+use spreadsheet_ods::{ Sheet, write_ods };
 
 use crate::{ SBDB, SBank, Student, Spreadsheet, ErrorMessage };
 
@@ -52,26 +53,30 @@ impl SBDB for Spreadsheet
     ///   create the student list table.
     fn make_table(&mut self) -> Result<(), ErrorMessage>
     {
-        let mut workbook = rust_xlsxwriter::Workbook::new();
-        let format = rust_xlsxwriter::Format::new().set_bold();
+        let bold_ref = self.bold_border_style.clone();
+        let thin_ref = self.thin_border_style.clone();
 
-        if let Ok(sheet) = workbook.add_worksheet().set_name("Header")
+        // 1. Create "Header" sheet
+        let mut header_sheet = Sheet::new("Header");
+        header_sheet.set_styled_value(0, 0, "Version", &bold_ref);
+        header_sheet.set_styled_value(1, 0, "1",       &thin_ref);
+        self.workbook_to_write.push_sheet(header_sheet);
+
+        // 2. Create "Students" sheet
+        let mut students_sheet = Sheet::new("Students");
+        students_sheet.set_styled_value(0, 0, "Name", &bold_ref);
+        students_sheet.set_styled_value(0, 1, "ID",   &bold_ref);
+        self.workbook_to_write.push_sheet(students_sheet);
+
+        if !self.path.is_empty()
         {
-            if sheet.write_string_with_format(0, 0, "Version", &format).is_ok()
-            {
-                if let Ok(sheet) = workbook.add_worksheet().set_name("Students")
-                {
-                    if sheet.write_string_with_format(0, 0, "Name", &format).is_ok()
-                    && sheet.write_string_with_format(0, 1, "ID", &format).is_ok()
-                    && workbook.save(&self.path).is_ok()
-                    {
-                        return Ok(());
-                    }
-                }
-                return Err(ErrorMessage::FailedToMakeTableForSBank)
-            }
+            write_ods(&mut self.workbook_to_write, &self.path)
+                .map_err(|_| ErrorMessage::FailedToMakeTableForSBank)
         }
-        Err(ErrorMessage::FailedToCreateHeaderForSBank)
+        else
+        {
+            Ok(())
+        }
     }
 
     // fn read_sbank(&mut self) -> Result<SBank, ErrorMessage>
@@ -127,11 +132,11 @@ impl SBDB for Spreadsheet
                 return Err(ErrorMessage::FailedToReadHeaderForSBank);
             }
         }
-        else if let Ok(mut excel) = calamine::open_workbook_auto(&self.path)
+        else if let Ok(mut spreadsheet) = calamine::open_workbook_auto(&self.path)
         {
-            if let Ok(header_range) = excel.worksheet_range("Header")
+            if let Ok(header_range) = spreadsheet.worksheet_range("Header")
             {
-                if let Ok(students_range) = excel.worksheet_range("Students")
+                if let Ok(students_range) = spreadsheet.worksheet_range("Students")
                     { return parse_workbook(&header_range, &students_range); }
                 else
                     { return Err(ErrorMessage::FailedToOpenSBank); }
@@ -170,59 +175,37 @@ impl SBDB for Spreadsheet
     ///   if writing a question fails.
     fn write_sbank(&mut self, sbank: &SBank) -> Result<(), ErrorMessage>
     {
-        let header_format = rust_xlsxwriter::Format::new().set_bold();
+        let bold_ref = self.bold_border_style.clone();
+        let thin_ref = self.thin_border_style.clone();
 
-        if let Ok(sheet) = self.workbook_to_write.add_worksheet().set_name("Header")
+        // 1. Create "Header" sheet
+        let mut header_sheet = Sheet::new("Header");
+        header_sheet.set_styled_value(0, 0, "Version", &bold_ref);
+        header_sheet.set_styled_value(1, 0, "1",       &thin_ref);
+        self.workbook_to_write.push_sheet(header_sheet);
+
+        // 2. Create "Students" sheet and write student data
+        let mut students_sheet = Sheet::new("Students");
+        students_sheet.set_styled_value(0, 0, "Name", &bold_ref);
+        students_sheet.set_styled_value(0, 1, "ID",   &bold_ref);
+
+        for (row_idx, student) in sbank.get_students().iter().enumerate()
         {
-            if sheet.write_string_with_format(0, 0, "Version", &header_format).is_ok()
-            && sheet.write_string(1, 0, "1").is_ok()
-            {
-                if let Ok(sheet) = self.workbook_to_write.add_worksheet().set_name("Students")
-                {
-                    // Write header
-                    if sheet.write_string_with_format(0, 0, "Name", &header_format).is_ok()
-                    && sheet.write_string_with_format(0, 1, "ID", &header_format).is_ok()
-                    {
-                        // Write student data
-                        for (row_idx, student) in sbank.get_students().iter().enumerate()
-                        {
-                            let row = (row_idx + 1) as u32;
-                            if sheet.write_string(row, 0, student.get_name()).is_err()
-                            || sheet.write_string(row, 1, student.get_id()).is_err()
-                            {
-                                return Err(ErrorMessage::FailedToWriteSBank);
-                            }
-                        }
-                        if !self.path.is_empty()
-                        {
-                            if self.workbook_to_write.save(&self.path).is_ok()
-                                { return Ok(()); }
-                            else
-                                { Err(ErrorMessage::FailedToWriteSBank) }
-                        }
-                        else
-                        {
-                            Ok(())
-                        }
-                    }
-                    else
-                    {
-                        Err(ErrorMessage::FailedToWriteSBank)
-                    }
-                }
-                else
-                {
-                    Err(ErrorMessage::FailedToWriteSBank)
-                }
-            }
-            else
-            {
-                Err(ErrorMessage::FailedToCreateHeaderForSBank)
-            }
+            let row = (row_idx + 1) as u32;
+            students_sheet.set_styled_value(row, 0, student.get_name(), &thin_ref);
+            students_sheet.set_styled_value(row, 1, student.get_id(),   &thin_ref);
+        }
+
+        self.workbook_to_write.push_sheet(students_sheet);
+
+        if !self.path.is_empty()
+        {
+            write_ods(&mut self.workbook_to_write, &self.path)
+                .map_err(|_| ErrorMessage::FailedToWriteSBank)
         }
         else
         {
-            Err(ErrorMessage::FailedToCreateHeaderForSBank)
+            Ok(())
         }
     }
 }
