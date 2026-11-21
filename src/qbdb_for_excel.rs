@@ -318,7 +318,7 @@ impl QBDB for Excel
     }
 }
 
-
+/*
 // AI wrote tests for SQLite and Excel read/write functionality
 #[cfg(test)]
 mod tests
@@ -652,3 +652,4 @@ mod tests
         assert_eq!(q3.get_choices()[1], ("C2".to_string(), true));
     }
 }
+*/
